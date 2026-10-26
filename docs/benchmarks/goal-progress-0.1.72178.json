@@ -1,0 +1,57 @@
+{
+  "goalStatus": "active",
+  "classification": "progress",
+  "consecutiveNoProgressTurns": 0,
+  "version": "0.1.72178",
+  "productCommit": "0111964845245cb54d330bc58e971de000a35663",
+  "fullObjectiveProven": false,
+  "liveJobs": [],
+  "requirements": [
+    {
+      "requirement": "Actual latest-version activation",
+      "state": "incomplete",
+      "evidence": {
+        "observedAt": "2026-10-26T04:34:39.518172+00:00",
+        "targetVersion": "0.1.72178",
+        "registeredVersions": [
+          "0.1.72178"
+        ],
+        "activeVersionCounts": {
+          "0.1.72177": 4
+        },
+        "targetVersionActive": false,
+        "activeTargetWindows": 0,
+        "openOutputHandlesVerified": true,
+        "nativeUiInput": false,
+        "forcedReload": false,
+        "scope": "Actual activation evidence only; not a paired busy latency or CPU measurement"
+      }
+    },
+    {
+      "requirement": "Release unused hidden Explorer and Changes consumers",
+      "state": "implementation and targeted automated checks passed",
+      "evidence": "focus-status-verification-0.1.72178.json; 140 related tests"
+    },
+    {
+      "requirement": "Preserve Native status/index correctness, external consumers and owned process lifetime",
+      "state": "targeted automated checks passed",
+      "evidence": "same 14-file related suite; package/source/install runtime equality"
+    },
+    {
+      "requirement": "Reduce busy-host user latency and whole-app CPU",
+      "state": "unproven",
+      "evidence": "0.1.72177 passive trace is diagnostic; no paired CPU or controlled busy-load gain is claimed"
+    },
+    {
+      "requirement": "Native Explorer focus-transition visual verification",
+      "state": "incomplete",
+      "evidence": "No native input or forced reload; manual reload preference remains"
+    },
+    {
+      "requirement": "Version bump, commit, push, publish exact package and install",
+      "state": "complete",
+      "evidence": "deployment-0.1.72178.json"
+    }
+  ],
+  "nextAction": "Observe manual 0.1.72178 activation and focus cancellation; continue actual busy-response verification without stealing focus"
+}

@@ -97,5 +97,8 @@
     "media/split/splitEditableDiff.js": "24c992bffccc8e10ee6f734c30b395465855e7ee586ec643d3b695c769ca5613",
     "media/stale-branches/staleBranches.css": "01d5bfcab5c7b6747ed544d511001bb99e45e50a985f88d3c416f6fcb3be0ab9",
     "media/stale-branches/staleBranches.js": "a6dc78b1050838a3bdf66e5c6dfb0208595929ba56f6a7a471807f4ba298c189"
-  }
+  },
+  "installedRuntimeMatched": true,
+  "registeredVersion": "0.1.72178",
+  "registeredEntries": 1
 }

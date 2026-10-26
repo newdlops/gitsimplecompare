@@ -1,0 +1,16 @@
+{
+  "observedAt": "2026-10-26T04:34:39.518172+00:00",
+  "targetVersion": "0.1.72178",
+  "registeredVersions": [
+    "0.1.72178"
+  ],
+  "activeVersionCounts": {
+    "0.1.72177": 4
+  },
+  "targetVersionActive": false,
+  "activeTargetWindows": 0,
+  "openOutputHandlesVerified": true,
+  "nativeUiInput": false,
+  "forcedReload": false,
+  "scope": "Actual activation evidence only; not a paired busy latency or CPU measurement"
+}

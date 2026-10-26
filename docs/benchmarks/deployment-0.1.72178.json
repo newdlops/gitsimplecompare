@@ -1,0 +1,30 @@
+{
+  "recordedAt": "2026-10-26T04:33:28.515369+00:00",
+  "version": "0.1.72178",
+  "productCommit": "0111964845245cb54d330bc58e971de000a35663",
+  "productPushed": true,
+  "artifact": "gitsimplecompare-0.1.72178.vsix",
+  "artifactBytes": 937800,
+  "artifactSha256": "f35ce43f4ae2f3913eefae5e198f19f3a5afcb5160b558bfa0d8362dd4fff77e",
+  "publishedExactVsix": true,
+  "publishExitCode": 0,
+  "publishLogSha256": "3f696e73987400a363a3e6f62c4e03267bd9bc4efdf8cd21a18b34eef61f6688",
+  "installedExactVsix": true,
+  "installExitCode": 0,
+  "installLogSha256": "4b7b9b7c720a0768bbbb17e9b0df9047529e7aac2ddc7a8d60f45bb51917bc96",
+  "all81RuntimeFilesMatchPackageSourceAndInstall": true,
+  "registryVersion": "0.1.72178",
+  "registryEntries": 1,
+  "marketplaceListingChecked": false,
+  "nativeUiInput": false,
+  "forcedHostReload": false,
+  "lintCompleted": false,
+  "lintReason": "No eslint.config.* in repository",
+  "nativeExplorerFocusVisualQaPerformed": false,
+  "fullGoalComplete": false,
+  "actualTargetVersionActive": false,
+  "actualActiveVersionCounts": {
+    "0.1.72177": 4
+  },
+  "actualObservation": "actual-session-observation-0.1.72178.json"
+}
