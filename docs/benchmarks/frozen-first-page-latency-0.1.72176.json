@@ -1,0 +1,539 @@
+{
+  "recordedAt": "2026-10-26T01:51:23.711Z",
+  "completed": true,
+  "mode": "sixfold-throttled-frozen-input-latency",
+  "baseline": "0.1.72173",
+  "candidate": "0.1.72176",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "input": {
+    "commits": 300,
+    "branches": 164,
+    "edges": 300,
+    "lanes": 1,
+    "fingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc"
+  },
+  "assets": {
+    "before": {
+      "media/bundled/graph.js": "757401074702f74b38041084130fdb990c5ea74071b0c57cf07002d38c714d4e",
+      "media/graph/graph.css": "68a69100dc833f0b475f9d0d84df8ccd4df9120b13106db4d8ce370d9e74e716",
+      "media/graph/graphControls.css": "6a5e43c7d8f68b80c001c74fbee6390bd31347bf3a19c47770b38889fdcce73c"
+    },
+    "after": {
+      "media/bundled/graph.js": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "media/graph/graph.css": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+      "media/graph/graphControls.css": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055"
+    }
+  },
+  "vsixSha256": {
+    "before": "b8e6045c463a3df4b945ddd3daa30e26aa8b863719c354a2178ce261d4bb57b1",
+    "after": "26aed81b54e05ce86360e1736a043514f150505c9eac71c6ac4e1de5892d092d"
+  },
+  "order": [
+    "before",
+    "after",
+    "after",
+    "before",
+    "after",
+    "before",
+    "before",
+    "after"
+  ],
+  "samples": [
+    {
+      "index": 0,
+      "variant": "before",
+      "startedAt": 1792979485706,
+      "endedAt": 1792979487164,
+      "elapsedMs": 1458,
+      "readyCount": 1,
+      "startup": {
+        "scriptRequests": 1,
+        "scriptDecodedBytes": 226751,
+        "resourceRequests": 26,
+        "longTasks": [
+          {
+            "startTime": 394.40000000596046,
+            "duration": 66
+          },
+          {
+            "startTime": 533.3000000119209,
+            "duration": 320
+          },
+          {
+            "startTime": 853.6000000238419,
+            "duration": 551
+          }
+        ],
+        "navigationMs": 367,
+        "readyMs": 337,
+        "firstGraphFrameMs": 1410,
+        "latestGraphFrameMs": 1410
+      },
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": false,
+        "mutationToFrameMs": 1429,
+        "latestMutationToFrameMs": 1429,
+        "renderMs": 203,
+        "frameMs": 580,
+        "latestRenderMs": 203,
+        "latestFrameMs": 580
+      },
+      "svgFingerprint": "d026a2d21f063bbe88a56e71ab05ca4c1903a8a93dde9b0e69c3c1435f55a7ee",
+      "zeroRowGroups": true,
+      "nativeAndDomExact": true,
+      "selectionExact": true,
+      "systemLoadBefore": [
+        28.3837890625,
+        34.216796875,
+        42.11962890625
+      ],
+      "systemLoadAfter": [
+        28.3837890625,
+        34.216796875,
+        42.11962890625
+      ]
+    },
+    {
+      "index": 1,
+      "variant": "after",
+      "startedAt": 1792979488453,
+      "endedAt": 1792979489609,
+      "elapsedMs": 1156,
+      "readyCount": 1,
+      "startup": {
+        "scriptRequests": 1,
+        "scriptDecodedBytes": 229805,
+        "resourceRequests": 26,
+        "longTasks": [
+          {
+            "startTime": 291.40000000596046,
+            "duration": 56
+          },
+          {
+            "startTime": 401.60000002384186,
+            "duration": 291
+          },
+          {
+            "startTime": 693.3000000119209,
+            "duration": 414
+          }
+        ],
+        "navigationMs": 282,
+        "readyMs": 268,
+        "firstGraphFrameMs": 1114,
+        "latestGraphFrameMs": 1114
+      },
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": false,
+        "mutationToFrameMs": 1128,
+        "latestMutationToFrameMs": 1128,
+        "renderMs": 187,
+        "frameMs": 437,
+        "latestRenderMs": 187,
+        "latestFrameMs": 437
+      },
+      "svgFingerprint": "d026a2d21f063bbe88a56e71ab05ca4c1903a8a93dde9b0e69c3c1435f55a7ee",
+      "zeroRowGroups": true,
+      "nativeAndDomExact": true,
+      "selectionExact": true,
+      "systemLoadBefore": [
+        28.3837890625,
+        34.216796875,
+        42.11962890625
+      ],
+      "systemLoadAfter": [
+        27.71240234375,
+        33.98046875,
+        41.98974609375
+      ]
+    },
+    {
+      "index": 2,
+      "variant": "after",
+      "startedAt": 1792979490442,
+      "endedAt": 1792979491266,
+      "elapsedMs": 824,
+      "readyCount": 1,
+      "startup": {
+        "scriptRequests": 1,
+        "scriptDecodedBytes": 229805,
+        "resourceRequests": 26,
+        "longTasks": [
+          {
+            "startTime": 285.5,
+            "duration": 200
+          },
+          {
+            "startTime": 485.5,
+            "duration": 314
+          }
+        ],
+        "navigationMs": 202,
+        "readyMs": 193,
+        "firstGraphFrameMs": 803,
+        "latestGraphFrameMs": 803
+      },
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": false,
+        "mutationToFrameMs": 810,
+        "latestMutationToFrameMs": 810,
+        "renderMs": 107,
+        "frameMs": 331,
+        "latestRenderMs": 107,
+        "latestFrameMs": 331
+      },
+      "svgFingerprint": "d026a2d21f063bbe88a56e71ab05ca4c1903a8a93dde9b0e69c3c1435f55a7ee",
+      "zeroRowGroups": true,
+      "nativeAndDomExact": true,
+      "selectionExact": true,
+      "systemLoadBefore": [
+        27.71240234375,
+        33.98046875,
+        41.98974609375
+      ],
+      "systemLoadAfter": [
+        27.71240234375,
+        33.98046875,
+        41.98974609375
+      ]
+    },
+    {
+      "index": 3,
+      "variant": "before",
+      "startedAt": 1792979491997,
+      "endedAt": 1792979492692,
+      "elapsedMs": 695,
+      "readyCount": 1,
+      "startup": {
+        "scriptRequests": 1,
+        "scriptDecodedBytes": 226751,
+        "resourceRequests": 26,
+        "longTasks": [
+          {
+            "startTime": 256.5,
+            "duration": 181
+          },
+          {
+            "startTime": 438.2000000178814,
+            "duration": 219
+          }
+        ],
+        "navigationMs": 185,
+        "readyMs": 174,
+        "firstGraphFrameMs": 661,
+        "latestGraphFrameMs": 661
+      },
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": false,
+        "mutationToFrameMs": 671,
+        "latestMutationToFrameMs": 671,
+        "renderMs": 102,
+        "frameMs": 238,
+        "latestRenderMs": 102,
+        "latestFrameMs": 238
+      },
+      "svgFingerprint": "d026a2d21f063bbe88a56e71ab05ca4c1903a8a93dde9b0e69c3c1435f55a7ee",
+      "zeroRowGroups": true,
+      "nativeAndDomExact": true,
+      "selectionExact": true,
+      "systemLoadBefore": [
+        27.71240234375,
+        33.98046875,
+        41.98974609375
+      ],
+      "systemLoadAfter": [
+        27.71240234375,
+        33.98046875,
+        41.98974609375
+      ]
+    },
+    {
+      "index": 4,
+      "variant": "after",
+      "startedAt": 1792979493398,
+      "endedAt": 1792979494315,
+      "elapsedMs": 917,
+      "readyCount": 1,
+      "startup": {
+        "scriptRequests": 1,
+        "scriptDecodedBytes": 229805,
+        "resourceRequests": 26,
+        "longTasks": [
+          {
+            "startTime": 304.90000000596046,
+            "duration": 252
+          },
+          {
+            "startTime": 557.3000000119209,
+            "duration": 321
+          }
+        ],
+        "navigationMs": 212,
+        "readyMs": 200,
+        "firstGraphFrameMs": 882,
+        "latestGraphFrameMs": 882
+      },
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": false,
+        "mutationToFrameMs": 890,
+        "latestMutationToFrameMs": 890,
+        "renderMs": 166,
+        "frameMs": 341,
+        "latestRenderMs": 166,
+        "latestFrameMs": 341
+      },
+      "svgFingerprint": "d026a2d21f063bbe88a56e71ab05ca4c1903a8a93dde9b0e69c3c1435f55a7ee",
+      "zeroRowGroups": true,
+      "nativeAndDomExact": true,
+      "selectionExact": true,
+      "systemLoadBefore": [
+        27.71240234375,
+        33.98046875,
+        41.98974609375
+      ],
+      "systemLoadAfter": [
+        26.7744140625,
+        33.681640625,
+        41.83740234375
+      ]
+    },
+    {
+      "index": 5,
+      "variant": "before",
+      "startedAt": 1792979495579,
+      "endedAt": 1792979497167,
+      "elapsedMs": 1588,
+      "readyCount": 1,
+      "startup": {
+        "scriptRequests": 1,
+        "scriptDecodedBytes": 226751,
+        "resourceRequests": 26,
+        "longTasks": [
+          {
+            "startTime": 362,
+            "duration": 74
+          },
+          {
+            "startTime": 518,
+            "duration": 340
+          },
+          {
+            "startTime": 858.9000000059605,
+            "duration": 656
+          }
+        ],
+        "navigationMs": 334,
+        "readyMs": 298,
+        "firstGraphFrameMs": 1521,
+        "latestGraphFrameMs": 1521
+      },
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": false,
+        "mutationToFrameMs": 1560,
+        "latestMutationToFrameMs": 1560,
+        "renderMs": 217,
+        "frameMs": 687,
+        "latestRenderMs": 217,
+        "latestFrameMs": 687
+      },
+      "svgFingerprint": "d026a2d21f063bbe88a56e71ab05ca4c1903a8a93dde9b0e69c3c1435f55a7ee",
+      "zeroRowGroups": true,
+      "nativeAndDomExact": true,
+      "selectionExact": true,
+      "systemLoadBefore": [
+        26.7744140625,
+        33.681640625,
+        41.83740234375
+      ],
+      "systemLoadAfter": [
+        26.7744140625,
+        33.681640625,
+        41.83740234375
+      ]
+    },
+    {
+      "index": 6,
+      "variant": "before",
+      "startedAt": 1792979498243,
+      "endedAt": 1792979499601,
+      "elapsedMs": 1358,
+      "readyCount": 1,
+      "startup": {
+        "scriptRequests": 1,
+        "scriptDecodedBytes": 226751,
+        "resourceRequests": 26,
+        "longTasks": [
+          {
+            "startTime": 304.90000000596046,
+            "duration": 63
+          },
+          {
+            "startTime": 451,
+            "duration": 309
+          },
+          {
+            "startTime": 760.0999999940395,
+            "duration": 539
+          }
+        ],
+        "navigationMs": 290,
+        "readyMs": 264,
+        "firstGraphFrameMs": 1304,
+        "latestGraphFrameMs": 1304
+      },
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": false,
+        "mutationToFrameMs": 1325,
+        "latestMutationToFrameMs": 1325,
+        "renderMs": 195,
+        "frameMs": 566,
+        "latestRenderMs": 195,
+        "latestFrameMs": 566
+      },
+      "svgFingerprint": "d026a2d21f063bbe88a56e71ab05ca4c1903a8a93dde9b0e69c3c1435f55a7ee",
+      "zeroRowGroups": true,
+      "nativeAndDomExact": true,
+      "selectionExact": true,
+      "systemLoadBefore": [
+        26.7744140625,
+        33.681640625,
+        41.83740234375
+      ],
+      "systemLoadAfter": [
+        26.7919921875,
+        33.5703125,
+        41.75
+      ]
+    },
+    {
+      "index": 7,
+      "variant": "after",
+      "startedAt": 1792979500685,
+      "endedAt": 1792979502053,
+      "elapsedMs": 1368,
+      "readyCount": 1,
+      "startup": {
+        "scriptRequests": 1,
+        "scriptDecodedBytes": 229805,
+        "resourceRequests": 26,
+        "longTasks": [
+          {
+            "startTime": 336.7999999821186,
+            "duration": 64
+          },
+          {
+            "startTime": 447.69999998807907,
+            "duration": 349
+          },
+          {
+            "startTime": 797,
+            "duration": 527
+          }
+        ],
+        "navigationMs": 319,
+        "readyMs": 295,
+        "firstGraphFrameMs": 1329,
+        "latestGraphFrameMs": 1329
+      },
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": false,
+        "mutationToFrameMs": 1351,
+        "latestMutationToFrameMs": 1351,
+        "renderMs": 230,
+        "frameMs": 558,
+        "latestRenderMs": 230,
+        "latestFrameMs": 558
+      },
+      "svgFingerprint": "d026a2d21f063bbe88a56e71ab05ca4c1903a8a93dde9b0e69c3c1435f55a7ee",
+      "zeroRowGroups": true,
+      "nativeAndDomExact": true,
+      "selectionExact": true,
+      "systemLoadBefore": [
+        26.7919921875,
+        33.5703125,
+        41.75
+      ],
+      "systemLoadAfter": [
+        26.7919921875,
+        33.5703125,
+        41.75
+      ]
+    }
+  ],
+  "scope": "Same frozen Native data and same host/layout/HTML; only verified published JS and two CSS assets differ. Four fresh browser/document lifetimes per variant in one Node harness. CPU window covers startup mount through completed Graph ACK and settling frames; Git reads, Node layout, Native/DOM verification, selection, build, setup and cleanup are excluded. Renderer CPU throttle is 6 from before script loading. CPU counters are disabled. Natural host variation remains. No actual Code transport, physical screen, or whole-app improvement claim.",
+  "repositoryProtectedStateExact": true,
+  "allSvgBytesIdentical": true,
+  "summary": {
+    "medians": {
+      "before": {
+        "elapsedMs": 1408.0,
+        "renderPlusFrameMs": 772.0,
+        "firstGraphFrameMs": 1357.0
+      },
+      "after": {
+        "elapsedMs": 1036.5,
+        "renderPlusFrameMs": 565.5,
+        "firstGraphFrameMs": 998.0
+      }
+    },
+    "changePercent": {
+      "elapsedMs": -26.384943181818176,
+      "renderPlusFrameMs": -26.74870466321243,
+      "firstGraphFrameMs": -26.4554163596168
+    }
+  },
+  "driverSourceSha256": "a36219cbe8f86030172132a0a539d85aa4395937ca4551552e10cf7c02fa9ad3",
+  "productionChangedThisTurn": false,
+  "interpretation": "Bounded descriptive comparison only. Paired directions are mixed; no statistical equivalence, repeatable whole-app CPU reduction, or updated actual VS Code response claim."
+}

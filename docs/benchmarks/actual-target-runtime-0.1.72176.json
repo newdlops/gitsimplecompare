@@ -1,0 +1,1697 @@
+{
+  "recordedAt": "2026-10-26T01:58:41.286743+00:00",
+  "activeVersion": "0.1.72176",
+  "liveActualWindows": [
+    "window3",
+    "window5",
+    "window2",
+    "window1"
+  ],
+  "openLogHandlesVerified": true,
+  "nativeInputActions": false,
+  "forcedReload": false,
+  "scope": "Passive actual-window log evidence only; no paired load/CPU experiment or visual QA claim. Paths, refs, object IDs, authors and subjects omitted.",
+  "rows": [
+    {
+      "window": "window3",
+      "at": "2026-10-26T01:42:53.722Z",
+      "event": "extension activating",
+      "focusedFromLoggedWindowEvents": null,
+      "fields": {
+        "extensionVersion": "0.1.72176",
+        "workspaceFolders": 1
+      }
+    },
+    {
+      "window": "window3",
+      "at": "2026-10-26T01:42:53.733Z",
+      "event": "git metadata watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "activation"
+      }
+    },
+    {
+      "window": "window3",
+      "at": "2026-10-26T01:42:53.733Z",
+      "event": "working tree file decorations configured",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "activation",
+        "scopes": 1
+      }
+    },
+    {
+      "window": "window3",
+      "at": "2026-10-26T01:42:53.733Z",
+      "event": "working tree decoration reads deferred",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "activation",
+        "repositories": 0
+      }
+    },
+    {
+      "window": "window3",
+      "at": "2026-10-26T01:44:43.375Z",
+      "event": "working tree decoration watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "repositories": 0
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:53:58.511Z",
+      "event": "extension activating",
+      "focusedFromLoggedWindowEvents": null,
+      "fields": {
+        "extensionVersion": "0.1.72176",
+        "workspaceFolders": 1
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:53:58.524Z",
+      "event": "git metadata watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "reason": "activation"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:53:58.525Z",
+      "event": "working tree file decorations configured",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "reason": "activation",
+        "scopes": 1
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:54:00.851Z",
+      "event": "working tree file decorations refreshed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "files": 2,
+        "affected": 4,
+        "durationMs": 1539
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:55:29.788Z",
+      "event": "working tree decoration watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:39.498Z",
+      "event": "git metadata watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "window-unfocused"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:39.499Z",
+      "event": "working tree decoration watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:46.952Z",
+      "event": "git metadata watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "reason": "window-focused"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:46.953Z",
+      "event": "working tree decoration watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:48.777Z",
+      "event": "working tree decoration watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:50.545Z",
+      "event": "graph reload requested",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "reason": "ready"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:50.546Z",
+      "event": "graph refresh start",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 1
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:50.911Z",
+      "event": "graph performance fingerprint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 1,
+        "elapsedMs": 365
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:50.914Z",
+      "event": "graph first page prepared",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "limit": 301,
+        "generation": 1
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:50.914Z",
+      "event": "graph performance start",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "trace": "T1"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:51.252Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "localBranches",
+        "elapsedMs": 329,
+        "totalElapsedMs": 338,
+        "count": 164,
+        "source": "git",
+        "trace": "T1"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:51.252Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "worktrees",
+        "elapsedMs": 18,
+        "totalElapsedMs": 338,
+        "count": 7,
+        "reused": true,
+        "trace": "T1"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:51.252Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "branchSnapshot",
+        "elapsedMs": 329,
+        "totalElapsedMs": 338,
+        "trace": "T1"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:51.252Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "remoteBranches",
+        "elapsedMs": 21,
+        "totalElapsedMs": 338,
+        "status": "ready",
+        "count": 2113,
+        "source": "fingerprint",
+        "trace": "T1"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:51.322Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "gitLog",
+        "elapsedMs": 407,
+        "totalElapsedMs": 408,
+        "skip": 0,
+        "limit": 301,
+        "fetchedCount": 301,
+        "refCount": 0,
+        "prepared": true,
+        "trace": "T1"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:51.322Z",
+      "event": "graph first page adopted",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "commits": 301
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:51.324Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "layout",
+        "elapsedMs": 2,
+        "totalElapsedMs": 410,
+        "kind": "initial",
+        "rows": 300,
+        "edges": 300,
+        "calculatedRows": 300,
+        "reusedRows": 0,
+        "sentRows": 300,
+        "updatedRows": 0,
+        "updatedEdges": 0,
+        "trace": "T1"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:51.345Z",
+      "event": "graph refresh complete",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 1
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:51.365Z",
+      "event": "graph performance postMessage",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "kind": "initial",
+        "accepted": true,
+        "elapsedMs": 41,
+        "trace": "T1"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:51.402Z",
+      "event": "graph performance webview paint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "kind": "initial",
+        "transportMs": 4,
+        "renderMs": 25,
+        "frameMs": 48,
+        "totalMs": 487,
+        "trace": "T1"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:51.489Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "status",
+        "elapsedMs": 227,
+        "totalElapsedMs": 575,
+        "trace": "T1"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:51.490Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "layout",
+        "elapsedMs": 1,
+        "totalElapsedMs": 576,
+        "kind": "workingTree",
+        "rows": 302,
+        "edges": 302,
+        "calculatedRows": 302,
+        "reusedRows": 0,
+        "sentRows": 302,
+        "updatedRows": 0,
+        "updatedEdges": 0,
+        "trace": "T1"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:51.493Z",
+      "event": "graph performance postMessage",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "kind": "workingTree",
+        "accepted": true,
+        "elapsedMs": 3,
+        "trace": "T1"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:56:51.578Z",
+      "event": "graph performance webview paint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "kind": "workingTree",
+        "transportMs": 4,
+        "renderMs": 65,
+        "frameMs": 18,
+        "totalMs": 663,
+        "trace": "T1"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:02.888Z",
+      "event": "git metadata watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "window-unfocused"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:02.888Z",
+      "event": "working tree decoration watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:31.121Z",
+      "event": "git metadata watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "reason": "window-focused"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:31.122Z",
+      "event": "working tree decoration watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:31.787Z",
+      "event": "graph performance fingerprint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "graphAction",
+        "generation": 1,
+        "elapsedMs": 664
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:31.789Z",
+      "event": "graph performance fingerprint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 1,
+        "elapsedMs": 657
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:31.801Z",
+      "event": "graph refresh start",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 2
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:31.809Z",
+      "event": "graph first page prepared",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "limit": 301,
+        "generation": 2
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:31.809Z",
+      "event": "graph performance start",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 4,
+        "trace": "T2"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:31.834Z",
+      "event": "git metadata watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "window-unfocused"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:31.834Z",
+      "event": "working tree decoration watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:36.090Z",
+      "event": "git metadata watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "reason": "window-focused"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:36.090Z",
+      "event": "working tree decoration watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:36.880Z",
+      "event": "graph performance fingerprint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 2,
+        "elapsedMs": 790
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:36.881Z",
+      "event": "graph performance fingerprint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 2,
+        "elapsedMs": 775
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:36.883Z",
+      "event": "graph refresh start",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 3
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:36.885Z",
+      "event": "graph first page prepared",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "limit": 301,
+        "generation": 3
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:36.885Z",
+      "event": "graph performance start",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 6,
+        "trace": "T3"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:37.530Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 6,
+        "phase": "localBranches",
+        "elapsedMs": 635,
+        "totalElapsedMs": 645,
+        "count": 164,
+        "source": "git",
+        "trace": "T3"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:37.530Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 6,
+        "phase": "worktrees",
+        "elapsedMs": 14,
+        "totalElapsedMs": 645,
+        "count": 7,
+        "reused": true,
+        "trace": "T3"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:37.530Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 6,
+        "phase": "branchSnapshot",
+        "elapsedMs": 635,
+        "totalElapsedMs": 645,
+        "trace": "T3"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:37.530Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 6,
+        "phase": "remoteBranches",
+        "elapsedMs": 18,
+        "totalElapsedMs": 645,
+        "status": "ready",
+        "count": 2129,
+        "source": "fingerprint",
+        "trace": "T3"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:37.538Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 6,
+        "phase": "status",
+        "elapsedMs": 0,
+        "totalElapsedMs": 653,
+        "trace": "T3"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:37.559Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 6,
+        "phase": "gitLog",
+        "elapsedMs": 673,
+        "totalElapsedMs": 674,
+        "skip": 0,
+        "limit": 301,
+        "fetchedCount": 301,
+        "refCount": 0,
+        "prepared": true,
+        "trace": "T3"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:37.559Z",
+      "event": "graph first page adopted",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "commits": 301
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:37.560Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 6,
+        "phase": "layout",
+        "elapsedMs": 1,
+        "totalElapsedMs": 675,
+        "kind": "initial",
+        "rows": 302,
+        "edges": 302,
+        "calculatedRows": 302,
+        "reusedRows": 0,
+        "sentRows": 302,
+        "updatedRows": 0,
+        "updatedEdges": 0,
+        "trace": "T3"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:37.578Z",
+      "event": "graph performance postMessage",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "kind": "initial",
+        "accepted": true,
+        "elapsedMs": 18,
+        "trace": "T3"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:37.695Z",
+      "event": "graph performance webview paint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "kind": "initial",
+        "transportMs": 5,
+        "renderMs": 67,
+        "frameMs": 62,
+        "totalMs": 809,
+        "trace": "T3"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:39.223Z",
+      "event": "graph refresh complete",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 3
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:48.978Z",
+      "event": "working tree file decorations refreshed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "files": 63,
+        "affected": 100,
+        "durationMs": 679
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:57:53.308Z",
+      "event": "working tree file decorations refreshed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "files": 984,
+        "affected": 1593,
+        "durationMs": 59
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:29.880Z",
+      "event": "graph refresh start",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 4
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:30.332Z",
+      "event": "graph performance fingerprint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 4,
+        "elapsedMs": 452
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:30.339Z",
+      "event": "graph performance start",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 7,
+        "trace": "T4"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:30.684Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 7,
+        "phase": "localBranches",
+        "elapsedMs": 343,
+        "totalElapsedMs": 345,
+        "count": 165,
+        "source": "git",
+        "trace": "T4"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:30.684Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 7,
+        "phase": "worktrees",
+        "elapsedMs": 2,
+        "totalElapsedMs": 345,
+        "count": 7,
+        "reused": true,
+        "trace": "T4"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:30.684Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 7,
+        "phase": "branchSnapshot",
+        "elapsedMs": 343,
+        "totalElapsedMs": 345,
+        "trace": "T4"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:30.696Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 7,
+        "phase": "layout",
+        "elapsedMs": 1,
+        "totalElapsedMs": 357,
+        "kind": "checkout",
+        "rows": 300,
+        "edges": 300,
+        "calculatedRows": 300,
+        "reusedRows": 0,
+        "sentRows": 300,
+        "updatedRows": 0,
+        "updatedEdges": 0,
+        "trace": "T4"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:30.700Z",
+      "event": "graph refresh complete",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 4
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:30.701Z",
+      "event": "graph performance postMessage",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "kind": "checkout",
+        "accepted": true,
+        "elapsedMs": 5,
+        "trace": "T4"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:30.766Z",
+      "event": "graph performance webview paint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "kind": "checkout",
+        "transportMs": 4,
+        "renderMs": 19,
+        "frameMs": 46,
+        "totalMs": 426,
+        "trace": "T4"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:32.496Z",
+      "event": "graph refresh start",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 5
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:32.774Z",
+      "event": "graph performance fingerprint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 5,
+        "elapsedMs": 278
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:32.780Z",
+      "event": "graph performance start",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 8,
+        "trace": "T5"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:33.129Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 8,
+        "phase": "localBranches",
+        "elapsedMs": 347,
+        "totalElapsedMs": 349,
+        "count": 166,
+        "source": "git",
+        "trace": "T5"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:33.129Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 8,
+        "phase": "worktrees",
+        "elapsedMs": 4,
+        "totalElapsedMs": 349,
+        "count": 7,
+        "reused": true,
+        "trace": "T5"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:33.129Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 8,
+        "phase": "branchSnapshot",
+        "elapsedMs": 348,
+        "totalElapsedMs": 349,
+        "trace": "T5"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:33.140Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 8,
+        "phase": "layout",
+        "elapsedMs": 1,
+        "totalElapsedMs": 360,
+        "kind": "checkout",
+        "rows": 300,
+        "edges": 300,
+        "calculatedRows": 0,
+        "reusedRows": 300,
+        "sentRows": 0,
+        "updatedRows": 1,
+        "updatedEdges": 0,
+        "trace": "T5"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:33.144Z",
+      "event": "graph refresh complete",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "generation": 5
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:33.144Z",
+      "event": "graph performance postMessage",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "kind": "checkout",
+        "accepted": true,
+        "elapsedMs": 4,
+        "trace": "T5"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:33.169Z",
+      "event": "graph performance webview paint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "checkout",
+        "kind": "checkout",
+        "transportMs": 5,
+        "renderMs": 5,
+        "frameMs": 18,
+        "totalMs": 388,
+        "trace": "T5"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:40.862Z",
+      "event": "git metadata watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "window-unfocused"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T01:58:40.862Z",
+      "event": "working tree decoration watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T01:42:53.767Z",
+      "event": "extension activating",
+      "focusedFromLoggedWindowEvents": null,
+      "fields": {
+        "extensionVersion": "0.1.72176",
+        "workspaceFolders": 1
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T01:42:53.780Z",
+      "event": "git metadata watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "activation"
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T01:42:53.780Z",
+      "event": "working tree file decorations configured",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "activation",
+        "scopes": 1
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T01:42:53.780Z",
+      "event": "working tree decoration reads deferred",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "activation",
+        "repositories": 0
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T01:45:03.701Z",
+      "event": "working tree decoration watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "repositories": 0
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:42:54.573Z",
+      "event": "extension activating",
+      "focusedFromLoggedWindowEvents": null,
+      "fields": {
+        "extensionVersion": "0.1.72176",
+        "workspaceFolders": 1
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:42:54.584Z",
+      "event": "git metadata watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "activation"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:42:54.584Z",
+      "event": "working tree file decorations configured",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "activation",
+        "scopes": 1
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:42:54.584Z",
+      "event": "working tree decoration reads deferred",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "activation",
+        "repositories": 0
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:42:56.764Z",
+      "event": "git metadata watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "reason": "window-focused"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:42:56.764Z",
+      "event": "working tree decoration watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "repositories": 0
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:11.835Z",
+      "event": "working tree file decorations refreshed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "files": 412,
+        "affected": 446,
+        "durationMs": 22
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:43.904Z",
+      "event": "graph reload requested",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "reason": "ready"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:43.907Z",
+      "event": "graph refresh start",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 1
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:45.230Z",
+      "event": "graph performance fingerprint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 1,
+        "elapsedMs": 1323
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:45.232Z",
+      "event": "graph first page prepared",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "limit": 301,
+        "generation": 1
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:45.232Z",
+      "event": "graph performance start",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "trace": "T6"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:45.973Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "localBranches",
+        "elapsedMs": 736,
+        "totalElapsedMs": 741,
+        "count": 164,
+        "source": "git",
+        "trace": "T6"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:45.973Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "worktrees",
+        "elapsedMs": 7,
+        "totalElapsedMs": 741,
+        "count": 7,
+        "reused": true,
+        "trace": "T6"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:45.973Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "branchSnapshot",
+        "elapsedMs": 736,
+        "totalElapsedMs": 741,
+        "trace": "T6"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:45.977Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "remoteBranches",
+        "elapsedMs": 10,
+        "totalElapsedMs": 745,
+        "status": "ready",
+        "count": 2113,
+        "source": "fingerprint",
+        "trace": "T6"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:46.057Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "gitLog",
+        "elapsedMs": 825,
+        "totalElapsedMs": 825,
+        "skip": 0,
+        "limit": 301,
+        "fetchedCount": 301,
+        "refCount": 0,
+        "prepared": true,
+        "trace": "T6"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:46.057Z",
+      "event": "graph first page adopted",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "commits": 301
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:46.058Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "layout",
+        "elapsedMs": 0,
+        "totalElapsedMs": 826,
+        "kind": "initial",
+        "rows": 300,
+        "edges": 300,
+        "calculatedRows": 300,
+        "reusedRows": 0,
+        "sentRows": 300,
+        "updatedRows": 0,
+        "updatedEdges": 0,
+        "trace": "T6"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:46.072Z",
+      "event": "graph refresh complete",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 1
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:46.085Z",
+      "event": "graph performance postMessage",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "kind": "initial",
+        "accepted": true,
+        "elapsedMs": 27,
+        "trace": "T6"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:46.176Z",
+      "event": "graph performance webview paint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "kind": "initial",
+        "transportMs": 4,
+        "renderMs": 17,
+        "frameMs": 97,
+        "totalMs": 944,
+        "trace": "T6"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:46.770Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "status",
+        "elapsedMs": 787,
+        "totalElapsedMs": 1538,
+        "trace": "T6"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:46.770Z",
+      "event": "graph performance phase",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "generation": 2,
+        "phase": "layout",
+        "elapsedMs": 0,
+        "totalElapsedMs": 1538,
+        "kind": "workingTree",
+        "rows": 302,
+        "edges": 302,
+        "calculatedRows": 302,
+        "reusedRows": 0,
+        "sentRows": 302,
+        "updatedRows": 0,
+        "updatedEdges": 0,
+        "trace": "T6"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:46.772Z",
+      "event": "graph performance postMessage",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "kind": "workingTree",
+        "accepted": true,
+        "elapsedMs": 2,
+        "trace": "T6"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:46.840Z",
+      "event": "graph performance webview paint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "ready",
+        "kind": "workingTree",
+        "transportMs": 3,
+        "renderMs": 38,
+        "frameMs": 28,
+        "totalMs": 1607,
+        "trace": "T6"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:56.024Z",
+      "event": "git metadata watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "window-unfocused"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:43:56.024Z",
+      "event": "working tree decoration watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:44:34.409Z",
+      "event": "git metadata watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "reason": "window-focused"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:44:34.419Z",
+      "event": "working tree decoration watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:44:34.990Z",
+      "event": "graph performance fingerprint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 1,
+        "elapsedMs": 455
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:44:38.164Z",
+      "event": "git metadata watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "window-unfocused"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:44:38.165Z",
+      "event": "working tree decoration watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:45:48.764Z",
+      "event": "working tree decoration watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:52:28.921Z",
+      "event": "git metadata watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "reason": "window-focused"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:52:28.922Z",
+      "event": "working tree decoration watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:52:29.256Z",
+      "event": "graph performance fingerprint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 1,
+        "elapsedMs": 330
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:52:33.974Z",
+      "event": "git metadata watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "window-unfocused"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:52:33.974Z",
+      "event": "working tree decoration watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:53:44.339Z",
+      "event": "git metadata watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "reason": "window-focused"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:53:44.339Z",
+      "event": "working tree decoration watcher resumed",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:53:44.684Z",
+      "event": "graph performance fingerprint",
+      "focusedFromLoggedWindowEvents": true,
+      "fields": {
+        "cause": "windowFocusedReconcile",
+        "generation": 1,
+        "elapsedMs": 343
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:53:49.908Z",
+      "event": "git metadata watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "reason": "window-unfocused"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T01:53:49.908Z",
+      "event": "working tree decoration watcher suspended",
+      "focusedFromLoggedWindowEvents": false,
+      "fields": {
+        "repositories": 1
+      }
+    }
+  ],
+  "derivedGraphFrames": [
+    {
+      "window": "window5",
+      "cause": "ready",
+      "kind": "initial",
+      "refreshStartedAt": "2026-10-26T01:56:50.546Z",
+      "paintedAt": "2026-10-26T01:56:51.402Z",
+      "refreshStartToFrameMs": 856,
+      "postFingerprintTraceTotalMs": 487,
+      "renderMs": 25,
+      "frameMs": 48,
+      "scope": "Graph refresh only; excludes preceding Git mutation, physical click and application startup"
+    },
+    {
+      "window": "window5",
+      "cause": "checkout",
+      "kind": "checkout",
+      "refreshStartedAt": "2026-10-26T01:58:29.880Z",
+      "paintedAt": "2026-10-26T01:58:30.766Z",
+      "refreshStartToFrameMs": 886,
+      "postFingerprintTraceTotalMs": 426,
+      "renderMs": 19,
+      "frameMs": 46,
+      "scope": "Graph refresh only; excludes preceding Git mutation, physical click and application startup"
+    },
+    {
+      "window": "window5",
+      "cause": "checkout",
+      "kind": "checkout",
+      "refreshStartedAt": "2026-10-26T01:58:32.496Z",
+      "paintedAt": "2026-10-26T01:58:33.169Z",
+      "refreshStartToFrameMs": 673,
+      "postFingerprintTraceTotalMs": 388,
+      "renderMs": 5,
+      "frameMs": 18,
+      "scope": "Graph refresh only; excludes preceding Git mutation, physical click and application startup"
+    },
+    {
+      "window": "window1",
+      "cause": "ready",
+      "kind": "initial",
+      "refreshStartedAt": "2026-10-26T01:43:43.907Z",
+      "paintedAt": "2026-10-26T01:43:46.176Z",
+      "refreshStartToFrameMs": 2269,
+      "postFingerprintTraceTotalMs": 944,
+      "renderMs": 17,
+      "frameMs": 97,
+      "scope": "Graph refresh only; excludes preceding Git mutation, physical click and application startup"
+    }
+  ],
+  "deferredStartupWindows": [
+    "window3",
+    "window2",
+    "window1"
+  ],
+  "readOnlyUiObservation": {
+    "observed": true,
+    "surface": "Existing native desktop Graph and Changes/PR panels",
+    "graphLoadedCount": 300,
+    "nativeInputActions": false,
+    "forcedReload": false,
+    "screenshotsOrRawAccessibilityPublished": false,
+    "scope": "One passive existing desktop state only; no responsive, keyboard, hover or Explorer focus-transition visual signoff"
+  }
+}
