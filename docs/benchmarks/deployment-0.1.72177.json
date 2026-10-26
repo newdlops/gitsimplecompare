@@ -1,0 +1,22 @@
+{
+  "recordedAt": "2026-10-26T02:58:43.559469+00:00",
+  "version": "0.1.72177",
+  "productCommit": "ea9bd7ba7436ee7fc732fe2ca874f6e9e2a5e28b",
+  "productPushed": true,
+  "artifact": "gitsimplecompare-0.1.72177.vsix",
+  "artifactBytes": 937424,
+  "artifactSha256": "152e84773b212c33ed44c741d53edb47f7125f88b25c491be74766acc5ff1979",
+  "publishedExactVsix": true,
+  "publishExitCode": 0,
+  "installedExactVsix": true,
+  "installExitCode": 0,
+  "all81RuntimeFilesMatchPackageSourceAndInstall": true,
+  "registryVersion": "0.1.72177",
+  "registryEntries": 1,
+  "marketplaceListingChecked": false,
+  "nativeUiInput": false,
+  "forcedHostReload": false,
+  "lintCompleted": false,
+  "lintReason": "No eslint.config.* in the repository; source lint could not run",
+  "fullGoalComplete": false
+}

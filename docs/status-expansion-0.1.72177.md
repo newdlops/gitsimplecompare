@@ -57,3 +57,11 @@ native 입력·포커스 변경·강제 reload와 Marketplace 점검도 수행�
 /private/tmp/gsc-status-binding-baseline-72177.mjs에 보존했다. 측정한 source/driver
 SHA256과 검사 로그 digest는 결과 파일에 기록했다. 실제 창의 15초 대기와 전체
 동시 부하 응답은 후속 검증 대상이며, 전체 성능 목표는 active다.
+
+동일한 검증 VSIX로 게시와 로컬 설치를 완료했다. 설치된 runtime 81개도 패키지·소스와
+바이트 단위로 일치했다. 게시/설치 후 관찰한 실제 창 4개는 0.1.72176을 실행 중이었다.
+강제 reload를 수행하지 않았으며 최신 실제 창의 개선을 확인한 것으로 보고하지 않는다.
+
+[배포·설치 영수증](benchmarks/deployment-0.1.72177.json),
+[실제 세션 관찰](benchmarks/actual-session-observation-0.1.72177.json),
+[전체 목표 진행 상태](benchmarks/goal-progress-0.1.72177.json).

@@ -1,0 +1,32 @@
+{
+  "observedAt": "2026-10-26T02:58:44.044648+00:00",
+  "since": "2026-10-26T02:58:43.559469+00:00",
+  "registeredVersions": [
+    "0.1.72177"
+  ],
+  "runtime": [
+    {
+      "window": "window3",
+      "activeVersion": "0.1.72176",
+      "newGraphFrames": []
+    },
+    {
+      "window": "window5",
+      "activeVersion": "0.1.72176",
+      "newGraphFrames": []
+    },
+    {
+      "window": "window2",
+      "activeVersion": "0.1.72176",
+      "newGraphFrames": []
+    },
+    {
+      "window": "window1",
+      "activeVersion": "0.1.72176",
+      "newGraphFrames": []
+    }
+  ],
+  "liveHandlesVerified": true,
+  "inputActionsPerformed": false,
+  "forcedReloadPerformed": false
+}

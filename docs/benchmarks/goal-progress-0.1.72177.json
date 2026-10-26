@@ -1,0 +1,66 @@
+{
+  "recordedAt": "2026-10-26T02:58:44.044648+00:00",
+  "objective": "해당 머신이 바쁠때 우리 익스텐션의 성능이 떨어져, 사실 git만 사용하는 익스텐션이고 그래프를 랜더링하는 단순한 확장이라 성능 저하가 많지 않아야 해.",
+  "goalStatusAtRecording": "active",
+  "objectiveAchieved": false,
+  "latestRelease": "0.1.72177",
+  "productCommit": "ea9bd7ba7436ee7fc732fe2ca874f6e9e2a5e28b",
+  "currentGoalTurnClassification": "progress: shipped and installed early stale-status expansion fence and HEAD/config consistency guards with 114 tests and owned Native resource evidence",
+  "sameBlockerConsecutiveGoalTurns": 0,
+  "provenThisTurn": {
+    "finalRelatedNodeCasesPassed": 114,
+    "baselineRegressionCasesFailed": 5,
+    "typecheckAndBuildPassed": true,
+    "nativeBenchmarkSamples": 48,
+    "nativeUntrackedExpansionsOnInvalidation": "2 to 1",
+    "nativeCallsOnInvalidation": "5 to 4",
+    "allSourceIndexesPreserved": true,
+    "all81RuntimeBytesMatchSourcePackageAndInstall": true,
+    "exactVsixPublishedAndInstalled": true
+  },
+  "currentRuntime": {
+    "observedAt": "2026-10-26T02:58:44.044648+00:00",
+    "since": "2026-10-26T02:58:43.559469+00:00",
+    "registeredVersions": [
+      "0.1.72177"
+    ],
+    "runtime": [
+      {
+        "window": "window3",
+        "activeVersion": "0.1.72176",
+        "newGraphFrames": []
+      },
+      {
+        "window": "window5",
+        "activeVersion": "0.1.72176",
+        "newGraphFrames": []
+      },
+      {
+        "window": "window2",
+        "activeVersion": "0.1.72176",
+        "newGraphFrames": []
+      },
+      {
+        "window": "window1",
+        "activeVersion": "0.1.72176",
+        "newGraphFrames": []
+      }
+    ],
+    "liveHandlesVerified": true,
+    "inputActionsPerformed": false,
+    "forcedReloadPerformed": false
+  },
+  "remaining": [
+    "The actual 15-second first-decoration delay has not been proven resolved by this change.",
+    "Current 0.1.72177 activation and actual concurrent-load response are not yet verified.",
+    "Whole-app CPU reduction and normal-read equivalence remain unproven; the stable-case measurements were mixed.",
+    "No new native Explorer focus-transition visual QA was performed."
+  ],
+  "lint": {
+    "completed": false,
+    "reason": "No eslint.config.*"
+  },
+  "nativeInputActions": false,
+  "forcedReload": false,
+  "liveJobs": []
+}

@@ -98,5 +98,7 @@
     "package.nls.json": "27c6a3e884103469cb16a8b1cc3315bbea09a40496a4d03a36a974549f88441a",
     "package.nls.ko.json": "7e15635587234659600b096506b51d655d057a21f37f65f9f1277a2b4b975d7c"
   },
-  "installedRuntimeMatched": false
+  "installedRuntimeMatched": true,
+  "registeredVersion": "0.1.72177",
+  "registeredEntries": 1
 }
