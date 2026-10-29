@@ -1,0 +1,47 @@
+{
+  "version": "0.1.72179",
+  "verifiedAtUtc": "2026-10-29T19:33:08.609381+00:00",
+  "extensionId": "newdlops.gitsimplecompare",
+  "productCommit": "d7e41e7a73cc68d60d7e525cd42c2948cf382022",
+  "branch": "main",
+  "pushedToOrigin": true,
+  "artifact": "gitsimplecompare-0.1.72179.vsix",
+  "bytes": 939341,
+  "sha256": "eefcc00beea416b4907b9a58098d4a921825a3dc3cb9be8a8cb9aec1468cf5e4",
+  "publish": {
+    "exitCode": 0,
+    "method": "vsce publish --packagePath (the verified VSIX, without rebuilding)",
+    "logSha256": "5d3def44a7236caf84ebcbad0200e85f5cd2b612176ae22dffbc06e0ec741594",
+    "url": "https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare"
+  },
+  "marketplace": {
+    "versionedPublicDownloadVerified": true,
+    "latestPublicDownloadVerified": true,
+    "latestDownloadedVersion": "0.1.72179",
+    "bothArchivesByteIdenticalToRelease": true,
+    "versionedDownloadTransportEncoding": "gzip; decoded before comparison",
+    "catalogObservedVersion": "0.1.72178",
+    "catalogVersionMatchesRelease": false,
+    "catalogResponseSha256": "07f05135c9459645a608ea88e739d5ab792087c51f305e2bdf7698db828b5811"
+  },
+  "install": {
+    "exitCode": 0,
+    "registeredVersion": "0.1.72179",
+    "registeredEntries": 1,
+    "runtimeFilesVerified": 84,
+    "allRuntimeBytesMatched": true,
+    "existingUserWindowsReloaded": false,
+    "activationNote": "Use Restart Extensions or Reload Window in existing VS Code windows to activate the installed update."
+  },
+  "validation": {
+    "artifactRecord": "release-artifact-0.1.72179.json",
+    "typecheckExitCode": 0,
+    "productionPackageExitCode": 0,
+    "unitRegressionTestsPassed": 189,
+    "unitSourceMatchesExceptVersion": true,
+    "extractedArtifactHostSmokeExitCode": 0,
+    "headlessGraphTestsPassed": 22,
+    "nativeGraphInitialPaintVerified": true,
+    "nativeGraphFullSuite": "Incomplete because the isolated native window focus requirement was not maintained."
+  }
+}
