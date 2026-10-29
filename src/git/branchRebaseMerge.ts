@@ -283,13 +283,14 @@ async function completePendingBranchRebaseMerge(
   );
   assertLocalChangesRestoreNotAttempted(pending);
   await new BranchOperationUndoStore(repoRoot).capture(pending.branch, pending.snapshotRef, "completed", allowMissingUndo, rebasedHead);
-  // Undo 기록을 기다리는 동안 외부 commit/checkout이 생겼으면 그 상태에 stash를 적용하지 않는다.
+  // Undo 기록 중의 외부 commit/checkout은 stash 적용 전에 새로 검증하고, 그 OID를 복구 기록에도 사용한다.
   await assertCurrentBranchHead(repoRoot, pending.branch, rebasedHead, "restoring branch rebase local changes");
   try {
     await restorePendingLocalChanges(
       repoRoot,
       pending,
-      "Branch rebase merge completed, but local changes could not be restored."
+      "Branch rebase merge completed, but local changes could not be restored.",
+      rebasedHead
     );
   } catch (err) {
     if (await hasUnmergedChanges(repoRoot)) {
@@ -436,17 +437,23 @@ async function cleanupFailedStart(
   }
 }
 
-/** 보존 stash 를 복원한다. */
+/**
+ * 보존 stash를 복원하고 적용 시도와 완료를 기록해 중복 적용을 방지한다.
+ * @param repoRoot 작업 저장소 @param pending 소유한 rebase/stash 복구 상태
+ * @param failureMessage stash 복원 실패 시 설명 @param verifiedHead 호출 직전에 branch와 함께 검증한 HEAD
+ * @returns 복원이 끝나거나 이미 끝났으면 완료한다. 완료 경로는 검증한 OID를 기록에 재사용한다.
+ */
 async function restorePendingLocalChanges(
   repoRoot: string,
   pending: PendingBranchRebaseMerge,
-  failureMessage: string
+  failureMessage: string,
+  verifiedHead?: string
 ): Promise<void> {
   assertLocalChangesRestoreNotAttempted(pending);
   if (!pending.preservedStashHash || pending.localChangesRestored) {
     return;
   }
-  pending.restoreHead = await currentHead(repoRoot);
+  pending.restoreHead = verifiedHead ?? await currentHead(repoRoot);
   await writePendingBranchRebaseMerge(repoRoot, pending);
   await restorePreservedLocalChangesStash(repoRoot, pending.preservedStashHash, failureMessage);
   pending.localChangesRestored = true;

@@ -42,8 +42,8 @@ async function readDirectory(repoRoot: string, signal?: AbortSignal): Promise<st
  * @param signal 표시용 요청의 취소 신호. mutation 안전 검사는 신호 없이 끝까지 수행한다.
  * @returns 실제 Git directory로 정규화한 checkout identity. unborn HEAD와 Git 조회 실패는 전파한다.
  */
-export function readGitCheckoutIdentity(repoRoot: string, signal?: AbortSignal): Promise<GitCheckoutIdentity> {
-  return readCheckoutIdentity(repoRoot, "HEAD", signal);
+export async function readGitCheckoutIdentity(repoRoot: string, signal?: AbortSignal): Promise<GitCheckoutIdentity> {
+  return (await readCheckoutIdentity(repoRoot, "HEAD", signal)).identity;
 }
 
 /**
@@ -51,28 +51,51 @@ export function readGitCheckoutIdentity(repoRoot: string, signal?: AbortSignal):
  * @param repoRoot 저장소 루트 @param signal 선택적인 조회 취소 신호
  * @returns commit으로 검증한 checkout identity. blob/tag를 가리키도록 손상된 branch는 호출자가 ref OID도 비교한다.
  */
-export function readGitCommitCheckoutIdentity(repoRoot: string, signal?: AbortSignal): Promise<GitCheckoutIdentity> {
-  return readCheckoutIdentity(repoRoot, "HEAD^{commit}", signal);
+export async function readGitCommitCheckoutIdentity(repoRoot: string, signal?: AbortSignal): Promise<GitCheckoutIdentity> {
+  return (await readCheckoutIdentity(repoRoot, "HEAD^{commit}", signal)).identity;
 }
 
-/** @param repoRoot 저장소 루트 @param headReference OID 조회에 사용할 HEAD 표현 @param signal 취소 신호 @returns 공통 형식으로 파싱한 identity */
-async function readCheckoutIdentity(repoRoot: string, headReference: "HEAD" | "HEAD^{commit}", signal?: AbortSignal): Promise<GitCheckoutIdentity> {
+/**
+ * 복구 snapshot의 commit과 현재 checkout을 한 Native 조회에서 새로 읽는다. 결과를 캐시하지 않는다.
+ * @param repoRoot 저장소 루트 @param snapshotRef 확장이 만든 refs/gitsimplecompare/ 전체 ref
+ * @returns checkout identity와 commit으로 검증한 snapshot OID. 누락·손상된 ref나 조회 실패는 전파한다.
+ */
+export async function readGitCheckoutIdentityWithSnapshot(repoRoot: string, snapshotRef: string): Promise<{
+  identity: GitCheckoutIdentity; snapshotHead: string;
+}> {
+  // 복구 JSON을 인수로 쓰기 전에 전용 namespace와 안전한 문자만 허용한다. revision/option 주입을 막는다.
+  if (!/^refs\/gitsimplecompare\/[a-z0-9/_-]+$/.test(snapshotRef)) {
+    throw new Error("Invalid operation recovery snapshot ref.");
+  }
+  const result = await readCheckoutIdentity(repoRoot, "HEAD", undefined, snapshotRef);
+  return { identity: result.identity, snapshotHead: result.referenceHead! };
+}
+
+/**
+ * @param repoRoot 저장소 루트 @param headReference HEAD 표현 @param signal 취소 신호
+ * @param snapshotRef 추가로 commit 검증할 안전한 내부 ref @returns 끝의 고정 필드부터 파싱한 identity와 선택적 snapshot OID
+ */
+async function readCheckoutIdentity(repoRoot: string, headReference: "HEAD" | "HEAD^{commit}", signal?: AbortSignal,
+  snapshotRef?: string): Promise<{ identity: GitCheckoutIdentity; referenceHead?: string }> {
   let output: string;
   try {
-    output = await runGit(["rev-parse", "--absolute-git-dir", headReference, "--symbolic-full-name", "HEAD"], repoRoot, { signal });
+    output = await runGit(["rev-parse", "--absolute-git-dir", headReference,
+      ...(snapshotRef ? [`${snapshotRef}^{commit}`] : []), "--symbolic-full-name", "HEAD"], repoRoot, { signal });
   } catch (error) {
     // ref 이름 충돌로 symbolic 표현만 실패한 경우에도 OID와 directory는 stdout에 남을 수 있다.
     if (!(error instanceof GitError) || !/ambiguous/i.test(error.stderr)) throw error;
     output = error.stdout;
   }
   const lineEnd = output.endsWith("\r\n") ? "\r\n" : "\n";
-  const full = new RegExp(`${lineEnd}([0-9a-f]{40}|[0-9a-f]{64})${lineEnd}(HEAD|refs/heads/[^\\r\\n]+)${lineEnd}$`).exec(output);
-  const oidOnly = full ? undefined : new RegExp(`${lineEnd}([0-9a-f]{40}|[0-9a-f]{64})${lineEnd}$`).exec(output);
+  const oid = "([0-9a-f]{40}|[0-9a-f]{64})";
+  const commits = `${lineEnd}${oid}${lineEnd}${snapshotRef ? `${oid}${lineEnd}` : ""}`;
+  const full = new RegExp(`${commits}(HEAD|refs/heads/[^\\r\\n]+)${lineEnd}$`).exec(output);
+  const oidOnly = full ? undefined : new RegExp(`${commits}$`).exec(output);
   const record = full ?? oidOnly;
   if (!record) throw new Error("Cannot verify the current Git checkout identity.");
   const directory = output.slice(0, record.index);
   if (!directory) throw new Error("Cannot verify the current worktree Git directory.");
-  const symbolic = full?.[2] ?? await readSymbolicHead(repoRoot, signal);
+  const symbolic = full?.[snapshotRef ? 3 : 2] ?? await readSymbolicHead(repoRoot, signal);
   const branchRef = symbolic === "HEAD" ? "" : symbolic;
   if (branchRef && !branchRef.startsWith("refs/heads/")) {
     throw new Error("HEAD does not point at a local branch.");
@@ -80,12 +103,13 @@ async function readCheckoutIdentity(repoRoot: string, headReference: "HEAD" | "H
   const gitDir = await realpath(directory);
   signal?.throwIfAborted();
   if (!signal) await rememberGitOperationDirectory(repoRoot, gitDir);
-  return {
+  const identity = {
     gitDir,
     head: record[1],
     branchRef,
     branch: branchRef.slice("refs/heads/".length),
   };
+  return { identity, referenceHead: snapshotRef ? record[2] : undefined };
 }
 
 /** 모호한 ref 출력만 보강하고, detached HEAD의 정상 exit=1과 실제 Git 오류를 구분한다. */

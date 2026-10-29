@@ -1,0 +1,91 @@
+{
+  "date": "2026-10-30",
+  "stage": "Shared operation recovery lookup after compact worktree optimization",
+  "baselineCommit": "7911b3c84c8d3f1e5b6178c0811650995f756f05",
+  "previousStage": "branch-operation-verification-20261030.json",
+  "sourceFiles": {
+    "src/git/branchOperationService.ts": "b1b01ec6e36e9a1f164de7dfbfe484f49006b9c2508eb6dddae54862f22edab1",
+    "src/git/branchRebaseMerge.ts": "7c86149734ca8f83075d2cff08bc18c202863e0c7b098c4e6904e3d421a9ee65",
+    "src/git/operationResultReset.ts": "eee3bafc3a426fd63610f371cdea8fc12de223d4b5ced84967d9849e3704c5c7",
+    "src/git/pullRequestResultReset.ts": "a451a7fdb675a5b94a753f6ba5699471fc480c2d1d15890a194938d49579bb26",
+    "src/git/replayWorktree.ts": "99d8d2f9b1480a9a8212cb55aa943d7c02ef186b7b73f178e82ab8e650b3206b",
+    "src/git/replayWorktreePolicy.ts": "423f8dd272c292095195d546c9c54862d50535ef5b445cc6ae52bc99028d04b4",
+    "src/git/temporaryWorktree.ts": "89d0bd074b33f9121711f096e65cde532cbe6bc2430ec6d2597233e787fbbf22",
+    "src/git/repositoryIdentity.ts": "7e589204c04601098dc1183387e6bd352fc161a5a7a219a5a7bda6e973ea1cd6",
+    "src/git/operationUndoStore.ts": "95fa1953d547627da7d5fe7dfba63863e37f3ddd3ddcdcb62cd45c40e0beb816"
+  },
+  "fingerprint": {
+    "files": 530,
+    "sha256": "d7b184925742204acc9c34e53c74e71617ab5ceb9e17ed66f45b95fb86b677c9"
+  },
+  "benchmark": {
+    "report": "branch-recovery-paired-20261030.json",
+    "sha256": "2b70ceb1872c734dc1a03dc069b55575d9e2b21556960f955028b045e978fa41",
+    "scenarios": 4,
+    "measuredSamples": 48,
+    "warmups": 8,
+    "nativeVerified": true
+  },
+  "checks": {
+    "npm run check-types": {
+      "exitCode": 0
+    },
+    "npm run compile": {
+      "exitCode": 0
+    },
+    "git diff --check": {
+      "exitCode": 0
+    },
+    "npm run lint": {
+      "status": "Unavailable: repository has no ESLint dependency/configuration. Prior attempt exited 127; see previousStage. Not rerun."
+    }
+  },
+  "unitRuns": [
+    {
+      "commandPrefix": "npm test --",
+      "files": [
+        "test/operationSnapshotIdentity.test.ts",
+        "test/operationMetadataSafety.test.ts",
+        "test/operationMetadataPerformance.test.ts",
+        "test/rebaseExecutionPerformance.test.ts",
+        "test/pushCheckoutIdentity.test.ts",
+        "test/gitStatePathScope.test.ts"
+      ],
+      "tests": 35,
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 36253.176625
+    },
+    {
+      "commandPrefix": "npm test --",
+      "files": [
+        "test/branchOperationSafety.test.ts",
+        "test/branchRebaseCompletion.test.ts",
+        "test/branchRebaseFinalize.test.ts",
+        "test/branchSyncSafety.test.ts",
+        "test/branchSyncPerformance.test.ts",
+        "test/completedOperationOwnership.test.ts",
+        "test/pullRequestUndoSafety.test.ts",
+        "test/graphPullRequestUndo.test.ts",
+        "test/complexGitOperationSafety.test.ts",
+        "test/remainingGitRecoverySafety.test.ts",
+        "test/branchSquashWorktree.test.ts",
+        "test/operationMetadataSafety.test.ts"
+      ],
+      "tests": 128,
+      "passed": 128,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 457275.470833,
+      "note": "Includes an additional prepare-time Git-directory replacement case; prior capture and path cases were rerun."
+    }
+  ],
+  "uniqueTestFiles": 17,
+  "uniqueCasesCovered": 161,
+  "limitations": [
+    "Git process reductions are consistent across all measured samples; elapsed times do not establish a consistent overall latency improvement.",
+    "Measurements exclude VS Code UI, external network, and Native Git/OS CPU. No RSS improvement is claimed.",
+    "No visual or installed-extension performance checks were performed."
+  ]
+}

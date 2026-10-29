@@ -37,6 +37,9 @@ export async function run(): Promise<void> {
     await ownedWindow.assertFocused();
     assert.equal(vscode.window.state.focused, true, "Native measurement stopped without changing window focus.");
   };
+  // 새 Host의 native 포커스 이벤트가 도착할 짧은 여유만 준다. 창을 활성화하지는 않는다.
+  const focusDeadline = Date.now() + 10_000;
+  while (!vscode.window.state.focused && Date.now() < focusDeadline) await new Promise(resolve => setTimeout(resolve, 50));
   await ensureFocused();
   /** renderer 대기 중 실제 focus가 해제되면 측정을 끝내고 사용자 앱의 포커스를 보존한다. */
   const focusedPaint = async <T>(promise: Promise<T>): Promise<T> => {
@@ -69,7 +72,9 @@ export async function run(): Promise<void> {
   const handle = graph.messages.handle.bind(graph.messages);
   graph.messages.handle = (message: FromWebviewMessage) => {
     operationPaints.observe(message);
-    if (message.type === "graphRendered" && message.performance.kind === "initial") initial.resolve(message);
+    // 첫 frame 전에 localOnly 갱신이 합쳐지면 renderer는 마지막 payload의 ACK만 보낸다.
+    // kind 대신 status gate 이전의 실제 paint를 받고 아래에서 commit 행까지 검증한다.
+    if (message.type === "graphRendered" && !statusFinished) initial.resolve(message);
     if (message.type === "graphRendered" && message.performance.kind === "workingTree") hydrated.resolve(message);
     const result = handle(message);
     if (message.type === "ready") void Promise.resolve(result).then(() => ready.resolve());
@@ -86,9 +91,13 @@ export async function run(): Promise<void> {
     assert.equal(graph.commits.length, 1);
     assert.equal(graph.loading, false);
     assert.equal(graph.workingTree.state.loading, true);
+    const initialRows = await ownedWindow.graphRows();
+    assert.deepEqual(initialRows.map(row => row.hash), [graph.commits[0].hash], "First paint must contain the actual initial commit.");
+    assert.equal(initialRows[0].head, true, "First paint must include the current HEAD badge.");
     const firstPaintMs = paint.paintedAt - paint.performance.extensionStartedAt;
     console.log(JSON.stringify({ check: "initialGraphPaint", firstPaintMs, openToPaintMs: paint.paintedAt - openedAt,
-      commitCount: graph.commits.length, workingTreeStillPending: !statusFinished, backgroundPaging }));
+      commitCount: graph.commits.length, kind: paint.performance.kind, renderedRowsChecked: initialRows.length,
+      workingTreeStillPending: !statusFinished, backgroundPaging }));
     releaseStatus();
     const complete = await focusedPaint(hydrated.promise);
     assert.equal(statusFinished, true);

@@ -8,7 +8,7 @@ import { finishPendingBranchRebaseMergeAfterContinue } from "../src/git/branchRe
 import { PullRequestOperationSnapshot } from "../src/git/pullRequestOperationSnapshot";
 import { OperationUndoStore } from "../src/git/operationUndoStore";
 import { runGit } from "../src/git/gitExec";
-import { commitText, git, safetyFixture } from "./helpers/gitSafetyFixture";
+import { cleanupFixtureBranchWorktrees, commitText, git, safetyFixture } from "./helpers/gitSafetyFixture";
 
 /** 실제 분기/커밋으로 squash 또는 rebase의 정상·충돌 경로를 만든다. */
 async function branchFixture(t: TestContext, conflict = false) {
@@ -133,10 +133,12 @@ test("a failed temporary squash never classifies the user's original staged work
   await writeFile(join(root, "tracked.txt"), "original staged work\n");
   await git(root, "add", "tracked.txt");
   const before = await currentState(root);
-  await assert.rejects(() => service.squashMerge("source"));
-  assert.equal(await service.hasUndoSnapshot(), false);
-  await assert.rejects(() => service.undoLastOperation(), /no longer matches/);
-  assert.deepEqual(await currentState(root), before);
+  try {
+    await assert.rejects(() => service.squashMerge("source"));
+    assert.equal(await service.hasUndoSnapshot(), false);
+    await assert.rejects(() => service.undoLastOperation(), /no longer matches/);
+    assert.deepEqual(await currentState(root), before);
+  } finally { await cleanupFixtureBranchWorktrees(root); }
 });
 
 test("a later commit invalidates completed Undo and preserves its snapshot", async (t) => {

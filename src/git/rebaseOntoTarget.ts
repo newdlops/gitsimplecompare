@@ -2,6 +2,13 @@
 // - rebase 계획 생성에서만 필요한 git 범위 판단을 RebaseService 밖으로 분리해 서비스 책임을 줄인다.
 import { runGit } from "./gitExec";
 
+/** 같은 계획 호출에서 Native 부모 metadata로 확인한 범위다. UI 입력이나 이전 계획의 cache를 전달하지 않는다. */
+export interface RebaseOntoRange {
+  head: string;
+  linear: boolean;
+  commits: ReadonlyArray<{ hash: string }>;
+}
+
 /**
  * 드래그 drop 대상 커밋을 --onto 로 사용할 수 있는지 판단한다.
  * - 대상이 base 이거나 base..HEAD 재작성 범위 내부면 reorder 의도로 보고 --onto 를 생략한다.
@@ -10,25 +17,33 @@ import { runGit } from "./gitExec";
  * @param ontoHash 사용자가 드래그를 놓은 대상 커밋 해시
  * @param base     rebase 기준점
  * @param root     root rebase 여부
+ * @param range 같은 호출에서 고정 HEAD로 읽고 선형 여부를 검증한 범위. 없거나 비선형이면 Native ancestry를 확인한다.
  * @returns --onto 로 넘길 정규화된 커밋 해시. 사용할 수 없으면 undefined
  */
 export async function usableRebaseOntoTarget(
   repoRoot: string,
   ontoHash: string | undefined,
   base: string,
-  root: boolean
+  root: boolean,
+  range?: RebaseOntoRange
 ): Promise<string | undefined> {
   if (!ontoHash) {
+    return undefined;
+  }
+  // 완전한 OID가 이미 읽은 선형 범위/base와 같으면 존재와 포함 관계를 다시 조회하지 않는다.
+  if (range?.linear && ((!root && ontoHash === base) || range.commits.some(commit => commit.hash === ontoHash))) {
     return undefined;
   }
   const onto = await normalizeCommit(repoRoot, ontoHash);
   if (!root && onto === base) {
     return undefined;
   }
+  if (range?.linear) return range.commits.some(commit => commit.hash === onto) ? undefined : onto;
+  const head = range?.head ?? "HEAD";
   const insideRewrittenRange = root
-    ? await isAncestor(repoRoot, onto, "HEAD")
+    ? await isAncestor(repoRoot, onto, head)
     : (await isAncestor(repoRoot, base, onto)) &&
-      (await isAncestor(repoRoot, onto, "HEAD"));
+      (await isAncestor(repoRoot, onto, head));
   return insideRewrittenRange ? undefined : onto;
 }
 

@@ -1,0 +1,117 @@
+{
+  "date": "2026-10-30",
+  "stage": "Medium dirty-squash worktree and interactive rebase plan optimization",
+  "baselineCommit": "7911b3c84c8d3f1e5b6178c0811650995f756f05",
+  "previousStages": [
+    "branch-operation-verification-20261030.json",
+    "branch-recovery-verification-20261030.json"
+  ],
+  "sourceFiles": {
+    "src/git/branchOperationService.ts": "b1b01ec6e36e9a1f164de7dfbfe484f49006b9c2508eb6dddae54862f22edab1",
+    "src/git/branchRebaseMerge.ts": "7c86149734ca8f83075d2cff08bc18c202863e0c7b098c4e6904e3d421a9ee65",
+    "src/git/operationResultReset.ts": "eee3bafc3a426fd63610f371cdea8fc12de223d4b5ced84967d9849e3704c5c7",
+    "src/git/operationUndoStore.ts": "95fa1953d547627da7d5fe7dfba63863e37f3ddd3ddcdcb62cd45c40e0beb816",
+    "src/git/pullRequestResultReset.ts": "a451a7fdb675a5b94a753f6ba5699471fc480c2d1d15890a194938d49579bb26",
+    "src/git/rebaseCommitReader.ts": "7bae47b9439e2e7732448c8578ada71d8b5b901ed465530bd2fecfcc0c249828",
+    "src/git/rebaseOntoTarget.ts": "2b27be9407c18fa8537f76a7962a41851c53045ceb96570965182127f86a8b80",
+    "src/git/rebaseService.ts": "19fc374c4e2263ddb339a8ab2a368b766a4aa188eb720cd464f9781a3e8f3215",
+    "src/git/replayWorktree.ts": "d16148c4b44a5dd180ee4dfc754a05a281d998454bfc48d9bbb6b6a594dd2d84",
+    "src/git/replayWorktreePolicy.ts": "ab619ef58f1553f598b7de8bb3438572a9acbf747b576d82d9f5829db7e56fe3",
+    "src/git/repositoryIdentity.ts": "7e589204c04601098dc1183387e6bd352fc161a5a7a219a5a7bda6e973ea1cd6",
+    "src/git/temporaryWorktree.ts": "89d0bd074b33f9121711f096e65cde532cbe6bc2430ec6d2597233e787fbbf22"
+  },
+  "fingerprint": {
+    "files": 530,
+    "sha256": "af80ee38017575bdcc4ad1517e72e5792a3e7bcdcd2249faaf321744a35d0574"
+  },
+  "benchmarks": [
+    {
+      "report": "branch-worktree-threshold-final-20261030.json",
+      "sha256": "58892b11028fa03e1846e86a5773178d57d65edf36ec16b3e75b722c8533722d",
+      "scenarios": 4,
+      "measuredSamples": 48,
+      "warmups": 8,
+      "nativeVerified": true,
+      "sourceMatchesFinal": true
+    },
+    {
+      "report": "rebase-plan-range-reuse-20261030.json",
+      "sha256": "c8caf58a3fe1bf73fd97ff4ce998102f282024769185e38d6c77d49153cff3f8",
+      "scenarios": 4,
+      "measuredSamples": 48,
+      "warmups": 8,
+      "nativeVerified": true,
+      "sourceMatchesFinal": true,
+      "actualNativeExecutions": 8
+    }
+  ],
+  "checks": {
+    "npm run check-types": {
+      "exitCode": 0
+    },
+    "npm run compile": {
+      "exitCode": 0
+    },
+    "git diff --check": {
+      "exitCode": 0
+    },
+    "npm run lint": {
+      "status": "Unavailable: repository has no ESLint dependency/configuration. Prior attempt exited 127; see previous stages. Not rerun."
+    }
+  },
+  "unitRuns": [
+    {
+      "commandPrefix": "npm test --",
+      "files": [
+        "test/rebasePlanRangeReuse.test.ts",
+        "test/rebasePlanSelection.test.ts",
+        "test/rebaseLoadingPerformance.test.ts",
+        "test/branchSquashWorktree.test.ts"
+      ],
+      "tests": 42,
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "durationMs": 123330.482459,
+      "logSha256": "aa970bcfc7312be4a11685a6fd31b6ebe273e668865c88597e030a117dfaa212",
+      "note": "Executed before four additional medium-size hook/filter/driver cases and the 1000-entry conditional-hook fixture were added. Product source is identical to final."
+    },
+    {
+      "commandPrefix": "npm test --",
+      "files": [
+        "test/branchSquashWorktree.test.ts",
+        "test/replayWorktree.test.ts",
+        "test/replayWorktreeHookPolicy.test.ts",
+        "test/replayWorktreePaths.test.ts",
+        "test/rebaseCommitDetails.test.ts",
+        "test/rebaseRangePerformance.test.ts",
+        "test/rebaseExecutionPerformance.test.ts",
+        "test/rebaseStartScope.test.ts",
+        "test/rebaseSessionScope.test.ts",
+        "test/complexGitOperationSafety.test.ts",
+        "test/branchSyncPerformance.test.ts",
+        "test/branchSyncSafety.test.ts",
+        "test/branchRebaseCompletion.test.ts",
+        "test/operationResultReset.test.ts",
+        "test/pullRequestWorktreeRecovery.test.ts",
+        "test/pullRequestUndoSafety.test.ts"
+      ],
+      "tests": 173,
+      "passed": 173,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "durationMs": 380168.453125,
+      "logSha256": "3b4cb7cef59340643ea1be618f58313b376bdf84c139557d520227126d21e455"
+    }
+  ],
+  "uniqueTestFiles": 19,
+  "limitations": [
+    "Local filesystem-warm synthetic fixtures. Each comparison isolates the listed source overlays; it is not a cumulative comparison against the original HEAD.",
+    "Rebase timings measure plan preparation only. Actual Native rebase execution was verified for correctness, not benchmarked for a latency claim.",
+    "The 100-file and 10000-file squash scenarios retain the same execution path and are controls; their timing shifts are not attributed to the threshold change.",
+    "No VS Code UI, installed-extension, external network, Native Git/OS CPU or RSS performance claim. Node CPU increases for medium-size compact squash are retained in the report.",
+    "Focused and regression runs overlap on branchSquashWorktree; their case counts must not be added as unique coverage."
+  ]
+}

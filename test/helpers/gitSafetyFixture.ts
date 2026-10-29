@@ -54,3 +54,15 @@ export async function addOrigin(root: string, directory: string, publish = true)
   if (publish) await git(root, "push", "-qu", "origin", "main");
   return remote;
 }
+
+/**
+ * 실패 복구 검증 뒤 소유 fixture에 등록된 branch 임시 worktree만 정리한다.
+ * @param root 이 테스트가 생성한 저장소. 사용자 저장소에는 호출하지 않는다.
+ * @returns Native 등록과 파일을 제거한 뒤 완료한다. 원본 fixture 삭제 전에 호출해야 한다.
+ */
+export async function cleanupFixtureBranchWorktrees(root: string): Promise<void> {
+  const paths = (await git(root, "worktree", "list", "--porcelain")).split("\n")
+    .filter(line => line.startsWith("worktree ") && line.includes("gsc-branch-operation-"))
+    .map(line => line.slice("worktree ".length));
+  for (const worktree of paths) await git(root, "worktree", "remove", "--force", worktree);
+}

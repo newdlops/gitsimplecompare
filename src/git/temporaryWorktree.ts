@@ -31,7 +31,21 @@ export async function createPrOperationWorktree(
   startPoint: string,
   checkout = true
 ): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), PR_OPERATION_WORKTREE_PREFIX));
+  return createOperationWorktree(repoRoot, startPoint, checkout, PR_OPERATION_WORKTREE_PREFIX);
+}
+
+/**
+ * 브랜치 squash 전용 등록을 만들어 PR worktree 정리 명령과 소유 범위를 분리한다.
+ * @param repoRoot 원래 저장소 @param startPoint 고정 시작 OID @param checkout 전체 파일 생성 여부
+ * @returns 성공 시 정리하거나 충돌 복구를 위해 보존할 detached worktree 경로
+ */
+export function createBranchOperationWorktree(repoRoot: string, startPoint: string, checkout = true): Promise<string> {
+  return createOperationWorktree(repoRoot, startPoint, checkout, "gsc-branch-operation-");
+}
+
+/** 작업 종류별 접두어만 달리하고 Native worktree 생성·계측은 같은 경계에서 수행한다. */
+async function createOperationWorktree(repoRoot: string, startPoint: string, checkout: boolean, prefix: string): Promise<string> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.rm(dir, { recursive: true, force: true });
   const started = Date.now();
   await runGit(["worktree", "add", "--detach", ...(checkout ? [] : ["--no-checkout"]), dir, startPoint], repoRoot);

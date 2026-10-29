@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.72179] - 2026-10-30
+
+### Performance
+
+- Use compact isolated worktrees for large dirty squash operations, retaining
+  full-checkout fallbacks when repository hooks or configuration require them.
+- Reuse validated commit-range metadata while preparing interactive rebase plans
+  and reduce duplicate Git reads during branch recovery and Undo preparation.
+
+### Fixes
+
+- Recheck the current branch and HEAD before committing or stashing, and verify
+  squash result ownership before recording completion or offering Undo.
+- Preserve staged changes and recoverable worktrees when squash, rebase, or
+  result restoration fails, and retain earlier Undo information for no-op merges.
+- Resolve upstream branches correctly after checkout changes and keep source
+  commits pinned throughout branch operations.
+
 ## [0.1.72178] - 2026-10-26
 
 ### Performance

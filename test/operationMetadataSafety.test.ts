@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import childProcess from "node:child_process";
+import { writeFileSync } from "node:fs";
+import { mkdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 import { OperationUndoStore } from "../src/git/operationUndoStore";
 import { readGitCheckoutIdentity, readGitDirectory } from "../src/git/repositoryIdentity";
 import { git, safetyFixture } from "./helpers/gitSafetyFixture";
 
-test("a same-call Undo directory cannot be adopted by another Git directory at the same branch and commit", async t => {
+for (const action of ["capture", "prepare"] as const) test(`Undo ${action} cannot adopt another Git directory at the same branch and commit`, async t => {
   const { root, directory, head } = await safetyFixture(t, "operation-directory-safety");
   await git(root, "init", "-q", "--separate-git-dir", join(directory, "original metadata"));
   const originalGitDir = await readGitDirectory(root), replacement = join(directory, "replacement");
@@ -16,14 +18,18 @@ test("a same-call Undo directory cannot be adopted by another Git directory at t
   await git(root, "update-ref", ref, head); await git(replacement, "update-ref", ref, head);
   const store = new OperationUndoStore(root);
   await store.start("main", head, ref);
+  if (action === "prepare") await store.capture("main", ref, "completed");
   const file = join(originalGitDir, "gitsimplecompare", "branch-operation-undo", `${Buffer.from("main").toString("hex")}.json`);
   const before = await readFile(file, "utf8");
-  const check = (store as any).assertSnapshot.bind(store);
-  t.mock.method(store as any, "assertSnapshot", async (...args: any[]) => {
-    await check(...args);
-    await writeFile(join(root, ".git"), `gitdir: ${replacementGitDir}\n`);
+  const spawn = childProcess.spawn;
+  t.mock.method(childProcess, "spawn", (...args: any[]) => {
+    // binding을 읽은 뒤 실제 checkout 검증 직전에 같은 OID/branch를 가진 다른 git-dir로 바꾼다.
+    if (args[0] === "git" && args[1].includes("--symbolic-full-name")) {
+      writeFileSync(join(root, ".git"), `gitdir: ${replacementGitDir}\n`);
+    }
+    return (spawn as Function)(...args);
   });
-  await assert.rejects(store.capture("main", ref, "completed"), /no longer matches/);
+  await assert.rejects(action === "capture" ? store.capture("main", ref, "completed") : store.prepare("main"), /no longer matches/);
   const current = await readGitCheckoutIdentity(root);
   assert.equal(current.branch, "main"); assert.equal(current.head, head);
   assert.equal(current.gitDir, replacementGitDir); assert.notEqual(current.gitDir, originalGitDir);

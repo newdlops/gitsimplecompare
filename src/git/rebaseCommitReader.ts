@@ -6,6 +6,7 @@ import type { RebaseCommit, RebaseCommitFile } from "./rebaseService";
 interface CommitRecord {
   hash: string;
   parent?: string;
+  parentCount: number;
   subject: string;
   body: string;
 }
@@ -32,12 +33,42 @@ export async function readRebaseCommits(
   root: boolean,
   includeFiles = true
 ): Promise<RebaseCommit[]> {
+  return (await readCommitRange(repoRoot, base, root, includeFiles, "HEAD")).commits;
+}
+
+/**
+ * 계획 시작 시 고정한 HEAD의 커밋과 파일을 읽고, 추가 Git 실행 없이 선형 범위인지 확인한다.
+ * - 각 커밋의 유일한 부모가 직전 항목이고 첫 부모가 base인 경우만 범위 재사용을 허용한다.
+ * - root 계획은 첫 항목에 부모가 없어야 한다. merge DAG나 순서가 불확실하면 기존 ancestry 조회를 쓴다.
+ * @param repoRoot 저장소 루트 @param base 대상 범위 직전 OID @param root 전체 조상 범위 여부
+ * @param head 계획의 checkout 검증이 고정한 전체 HEAD OID
+ * @returns 기존 형식의 커밋 목록과 같은 Native metadata로 증명한 선형 여부
+ */
+export async function readRebasePlanCommits(repoRoot: string, base: string, root: boolean, head: string): Promise<{
+  commits: RebaseCommit[]; linear: boolean;
+}> {
+  const oid = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+  if (!oid.test(head) || (!root && !oid.test(base))) throw new Error("A fixed commit range is required for the rebase plan.");
+  const { records, commits } = await readCommitRange(repoRoot, base, root, true, head);
+  const linear = records.length > 0 && records.at(-1)!.hash === head && records.every((record, index) => {
+    if (!index && root) return record.parentCount === 0;
+    return record.parentCount === 1 && record.parent === (index ? records[index - 1].hash : base);
+  });
+  return { commits, linear };
+}
+
+/**
+ * 동일 log/diff-tree 경로를 공유하며 계획용 호출만 고정 HEAD를 사용한다.
+ * @param repoRoot/base/root/includeFiles 공개 reader와 같은 범위/파일 옵션 @param head 고정 OID 또는 일반 조회의 HEAD
+ * @returns 부모 metadata와 UI 형식을 분리한 동일 범위의 결과
+ */
+async function readCommitRange(repoRoot: string, base: string, root: boolean, includeFiles: boolean, head: string) {
   const records = parseCommitRecords(await runGit([
     "log", "--reverse", "--format=%H%x00%P%x00%s%x00%b", "-z",
-    root ? "HEAD" : `${base}..HEAD`, "--",
+    root ? head : `${base}..${head}`, "--",
   ], repoRoot));
   const files = includeFiles ? await readCommitFiles(repoRoot, records) : new Map<string, RebaseCommitFile[]>();
-  return records.map(({ hash, subject, body }) => ({ hash, subject, body, files: files.get(hash) ?? [] }));
+  return { records, commits: records.map(({ hash, subject, body }) => ({ hash, subject, body, files: files.get(hash) ?? [] })) };
 }
 
 /**
@@ -74,7 +105,11 @@ function parseCommitRecords(raw: string): CommitRecord[] {
   for (let index = 0; index + 3 < tokens.length; index += 4) {
     const [hash, parents, subject, body] = tokens.slice(index, index + 4);
     if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(hash)) throw new Error("Invalid rebase commit metadata.");
-    records.push({ hash, parent: parents.split(" ")[0] || undefined, subject, body: body.trim() });
+    const parentIds = parents ? parents.split(" ") : [];
+    if (parentIds.some(parent => !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(parent) || parent.length !== hash.length)) {
+      throw new Error("Invalid rebase parent metadata.");
+    }
+    records.push({ hash, parent: parentIds[0], parentCount: parentIds.length, subject, body: body.trim() });
   }
   return records;
 }

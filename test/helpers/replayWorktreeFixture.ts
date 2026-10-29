@@ -7,18 +7,18 @@ import { safetyPullRequest } from "./prOperationSafetyFixture";
 import { removeTemporaryWorktree } from "../../src/git/temporaryWorktree";
 
 /**
- * 실제 5천 파일 tree를 만들되 원래 저장소의 동일 padding은 Native S-bit로만 두어 테스트 I/O를 제한한다.
+ * 지정한 수의 파일 tree를 만들되 원래 저장소의 동일 padding은 Native S-bit로만 두어 테스트 I/O를 제한한다.
  * 원래 index 바이트 보존을 검사하므로 제품의 새 worktree에 이 최적화 상태를 넘기지는 않는다.
- * @param t 소유 fixture 정리 문맥 @param conflict 대상·원본 내용 충돌 여부
+ * @param t 소유 fixture 정리 문맥 @param conflict 대상·원본 내용 충돌 여부 @param entries padding 파일 수
  */
-export async function replayWorktreeFixture(t: TestContext, conflict = false) {
+export async function replayWorktreeFixture(t: TestContext, conflict = false, entries = 5000) {
   const cleanups: Array<() => unknown> = [];
   const f = await safetyFixture({ after: (cleanup: () => unknown) => cleanups.push(cleanup) } as TestContext, "compact-pr-replay");
   t.after(async () => { for (const cleanup of cleanups.reverse()) await cleanup(); });
   /** 공용 fixture 루트가 지워지기 전에 Native 등록부터 해제할 소유 worktree를 기록한다. */
   const ownWorktree = (worktree: string) => cleanups.push(() => removeTemporaryWorktree(f.root, worktree));
   const blob = (await runGitWithInput(["hash-object", "-w", "--stdin"], f.root, "unchanged padding\n")).trim();
-  const paths = Array.from({ length: 5000 }, (_, index) => `padding/keep-${String(index).padStart(4, "0")}.txt`);
+  const paths = Array.from({ length: entries }, (_, index) => `padding/keep-${String(index).padStart(4, "0")}.txt`);
   await runGitWithInput(["update-index", "-z", "--index-info"], f.root, paths.map(file => `100644 ${blob}\t${file}\0`).join(""));
   await runGitWithInput(["update-index", "--skip-worktree", "-z", "--stdin"], f.root, paths.join("\0") + "\0");
   await writeFile(join(f.root, "delete-me.txt"), "delete this\n");

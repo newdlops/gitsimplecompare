@@ -43,6 +43,12 @@ for (const mode of ["squashCherryPick", "rebasePullRequest"] as const) {
     await writeFile(join(root, "other.txt"), "user staged work\n");
     await git(root, "add", "other.txt");
     await service[mode](pr);
+    assert.equal(await git(root, "show", ":other.txt"), "user staged work");
+    const beforeUndo = await state(root);
+    // 결과 반영이 stage를 유지하므로 기존 Undo 보호가 이를 자동으로 reset하지 않아야 한다.
+    await assert.rejects(service.undoLastOperation(), /staged changes would be reset/);
+    assert.deepEqual(await state(root), beforeUndo);
+    await git(root, "reset", "-q", "HEAD", "--", "other.txt");
     await service.undoLastOperation();
     assert.equal(await git(root, "rev-parse", "HEAD"), base);
     assert.equal(await readFile(join(root, "other.txt"), "utf8"), "user staged work\n");

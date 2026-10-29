@@ -1,15 +1,12 @@
 // 브랜치 단위 squash merge / rebase merge 작업을 담당하는 서비스.
 // - graph UI 는 확인과 결과 안내만 하고, 실제 git 상태 변경은 이 모듈로 모은다.
-import * as fs from "node:fs/promises";
-import * as os from "node:os";
-import * as path from "node:path";
 import { randomUUID } from "node:crypto";
 import { detectOperation, detectOperationInGitDir } from "./conflictService";
 import { readGitCheckoutIdentity } from "./repositoryIdentity";
 import { withGitStatePathScope } from "./gitStatePathScope";
 import { recoverFailedRebaseStart } from "./rebaseFailureRecovery";
 import { OperationUndoStore as BranchOperationUndoStore, type OperationUndoPlan as BranchOperationUndoPlan } from "./operationUndoStore";
-import { logError } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
 import {
   assertPendingBranchRebaseMergeLocalChangesRestoreSafe,
   restorePendingBranchRebaseMergeLocalChangesForBranch,
@@ -17,11 +14,15 @@ import {
 } from "./branchRebaseMerge";
 import { GitError, runGit } from "./gitExec";
 import { commitPreparedIndex } from "./preparedIndexCommit";
-import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
+import { assertCurrentBranchHead } from "./refSafety";
 import { pushPreservedLocalChangesStash } from "./stashExec";
 import { listUnmergedFiles } from "./unmergedFiles";
 import { hasStagedWorkingTreeChanges, hasWorkingTreeChanges } from "./workingTreeChanges";
 import { BranchRebaseCompletionError } from "./branchRebaseCompletionError";
+import { createBranchSquashWorktree, materializeReplayWorktree } from "./replayWorktree";
+import { removeTemporaryWorktree } from "./temporaryWorktree";
+import { resetOperationResult } from "./operationResultReset";
+import { readBranchSquashResult } from "./branchSquashResult";
 
 /** 브랜치 단위 작업 실행 결과와 undo 에 필요한 snapshot 정보 */
 export interface BranchOperationResult {
@@ -67,24 +68,37 @@ export class BranchOperationService {
   /** 실행 한 번의 metadata 경로만 공유하며 snapshot/현재 브랜치 검증은 기존 쓰기 경계마다 수행한다. */
   private async squashMergeScoped(sourceBranch: string): Promise<BranchOperationResult> {
     const { branch, head: beforeHead } = await this.assertReadyForBranchOperation();
-    await this.assertSourceBranch(sourceBranch);
+    const sourceHead = await this.assertSourceBranch(sourceBranch);
     this.assertDifferentBranches(branch, sourceBranch);
-    if (await this.hasLocalChanges()) {
-      return this.squashMergeWithLocalChanges(sourceBranch, branch, beforeHead);
+    // 같은 OID끼리의 squash는 결과가 없다. 이전 Undo와 사용자 index를 건드리기 전에 끝낸다.
+    if (sourceHead === beforeHead) {
+      logInfo("branch squash skipped", { repoRoot: this.repoRoot, branch, sourceBranch, head: beforeHead, reason: "identicalCommit" });
+      throw new Error(`Branch '${sourceBranch}' did not produce changes to commit.`);
     }
-    const snapshotRef = await this.createSnapshot(branch, beforeHead);
+    if (await this.hasLocalChanges()) {
+      return this.squashMergeWithLocalChanges(sourceBranch, branch, beforeHead, sourceHead);
+    }
+    // 시작 OID는 먼저 보존하되, 실제 변경이 없으면 이전 완료 작업의 Undo 연결은 그대로 둔다.
+    const snapshotRef = await this.createSnapshot(branch, beforeHead, false);
+    let bound = false, unchanged = false;
     try {
       // 준비 중 외부 checkout/commit을 건드리지 않도록 native merge 직전에 다시 검증한다.
       await assertCurrentBranchHead(this.repoRoot, branch, beforeHead, "starting branch squash merge");
-      await runGit(["merge", "--squash", sourceBranch], this.repoRoot, {
+      await runGit(["merge", "--squash", sourceHead], this.repoRoot, {
         env: { GIT_EDITOR: "true", HUSKY: "0" },
       });
       if (!await this.hasPendingChanges()) {
+        unchanged = true;
+        await runGit(["update-ref", "-d", snapshotRef, beforeHead], this.repoRoot, { retryOnLock: false });
+        logInfo("branch squash skipped", { repoRoot: this.repoRoot, branch, sourceBranch, reason: "noIndexChanges" });
         throw new Error(`Branch '${sourceBranch}' did not produce changes to commit.`);
       }
+      await this.undoStore.start(branch, beforeHead, snapshotRef);
+      bound = true;
       // merge --squash가 확정한 index만 commit해 이후 생긴 사용자 편집을 다시 stage하지 않는다.
+      await assertCurrentBranchHead(this.repoRoot, branch, beforeHead, "committing branch squash result");
       await this.commitSquash(sourceBranch, branch, this.repoRoot);
-      const afterHead = await this.currentHead();
+      const afterHead = await readBranchSquashResult(this.repoRoot, beforeHead);
       await this.undoStore.capture(branch, snapshotRef, "completed", false, afterHead);
       return {
         status: "completed",
@@ -95,8 +109,9 @@ export class BranchOperationService {
         snapshotRef,
       };
     } catch (err) {
-      await this.recordFailedSquash(branch, snapshotRef);
-      if (await this.hasUnmergedChanges()) {
+      if (unchanged) throw err;
+      const recorded = await this.recordFailedSquash(branch, beforeHead, snapshotRef, bound);
+      if (recorded && await this.hasUnmergedChanges()) {
         return {
           status: "conflicts",
           branch,
@@ -128,7 +143,7 @@ export class BranchOperationService {
     this.assertDifferentBranches(branch, targetRef);
     const targetHead = await this.resolveCommit(targetRef);
     const snapshotRef = await this.createSnapshot(branch, beforeHead);
-    const preserved = await this.preserveLocalChanges(`before rebase onto '${targetRef}'`);
+    const preserved = await this.preserveLocalChanges(`before rebase onto '${targetRef}'`, branch, beforeHead);
     let result: Awaited<ReturnType<typeof runBranchRebaseMerge>>;
     try {
       result = await runBranchRebaseMerge({
@@ -243,8 +258,9 @@ export class BranchOperationService {
   /**
    * source 브랜치 ref 가 실제 로컬 브랜치인지 확인한다.
    * @param sourceBranch 병합할 로컬 브랜치 이름
+   * @returns 준비 중 ref가 이동하거나 같은 이름의 tag가 생겨도 실행 대상을 바꾸지 않을 전체 OID
    */
-  private async assertSourceBranch(sourceBranch: string): Promise<void> {
+  private async assertSourceBranch(sourceBranch: string): Promise<string> {
     const out = await runGit(
       ["rev-parse", "--verify", `refs/heads/${sourceBranch}^{commit}`],
       this.repoRoot
@@ -255,6 +271,7 @@ export class BranchOperationService {
     if (!out.trim()) {
       throw new Error(`Local branch not found: ${sourceBranch}`);
     }
+    return out.trim();
   }
 
   /**
@@ -268,11 +285,6 @@ export class BranchOperationService {
     }
   }
 
-  /** 현재 HEAD commit hash 를 반환한다. */
-  private async currentHead(): Promise<string> {
-    return (await runGit(["rev-parse", "--verify", "HEAD"], this.repoRoot)).trim();
-  }
-
   /** 현재 작업트리나 index 에 커밋되지 않은 변경이 있는지 확인한다. */
   private async hasLocalChanges(): Promise<boolean> {
     return hasWorkingTreeChanges(this.repoRoot);
@@ -280,7 +292,7 @@ export class BranchOperationService {
 
   /** index 에 unmerged 상태로 남은 파일이 있는지 확인한다. */
   private async hasUnmergedChanges(): Promise<boolean> {
-    return (await listUnmergedFiles(this.repoRoot).catch(() => [])).length > 0;
+    return (await listUnmergedFiles(this.repoRoot)).length > 0;
   }
 
   /** squash merge 후 commit 할 변경이 있는지 확인한다. */
@@ -288,20 +300,36 @@ export class BranchOperationService {
     return this.hasPendingChangesIn(this.repoRoot);
   }
 
-  /** 현재 브랜치용 branch operation undo snapshot ref 를 생성한다. */
-  private async createSnapshot(branch: string, head: string): Promise<string> {
+  /**
+   * 시작 commit을 보호하는 ref를 만든다. clean squash는 변경 확인까지 기존 Undo 연결을 유지한다.
+   * @param branch 대상 브랜치 @param head 시작 OID @param bind true면 새 작업의 Undo 연결도 즉시 준비한다.
+   * @returns 시작 OID를 보존한 고유 ref
+   */
+  private async createSnapshot(branch: string, head: string, bind = true): Promise<string> {
     const ref = `refs/gitsimplecompare/branch-operation-snapshots/${Buffer.from(branch).toString("hex")}/${randomUUID()}`;
     await runGit(["update-ref", ref, head], this.repoRoot);
-    await this.undoStore.start(branch, head, ref);
+    if (bind) await this.undoStore.start(branch, head, ref);
     return ref;
   }
 
-  /** squash가 부분 적용된 채 실패하면 복구 정보를 남기고 최초 Git 오류는 그대로 전달한다. */
-  private async recordFailedSquash(branch: string, snapshotRef: string): Promise<void> {
+  /**
+   * squash 부분 적용의 소유권을 기록한다. 실패하면 다른 Git 충돌을 이 작업의 결과로 분류하지 않는다.
+   * @param branch 작업 소유 브랜치 @param beforeHead 시작 OID @param snapshotRef 시작 상태를 보존한 내부 ref
+   * @param bound 이미 이 snapshot의 Undo 연결을 준비했는지 여부. 아니면 원래 checkout의 부분 적용부터 확인한다.
+   * @returns 현재 HEAD/index/작업 세대까지 기록했으면 true, 오류를 OUTPUT에 남겼으면 false
+   */
+  private async recordFailedSquash(branch: string, beforeHead: string, snapshotRef: string, bound: boolean): Promise<boolean> {
     try {
+      if (!bound) {
+        await assertCurrentBranchHead(this.repoRoot, branch, beforeHead, "recording failed branch squash");
+        if (!await this.hasPendingChanges()) return false;
+        await this.undoStore.start(branch, beforeHead, snapshotRef);
+      }
       await this.undoStore.capture(branch, snapshotRef, "squash");
+      return true;
     } catch (error) {
       logError("branch squash recovery recording failed; snapshot preserved", error, { repoRoot: this.repoRoot, branch, snapshotRef });
+      return false;
     }
   }
 
@@ -325,87 +353,76 @@ export class BranchOperationService {
   private async squashMergeWithLocalChanges(
     sourceBranch: string,
     branch: string,
-    beforeHead: string
+    beforeHead: string,
+    sourceHead: string
   ): Promise<BranchOperationResult> {
-    const worktreePath = await this.createTemporaryWorktree(beforeHead);
+    const worktree = await createBranchSquashWorktree(this.repoRoot, beforeHead, sourceHead);
+    const worktreePath = worktree.path;
     let keepWorktree = false;
     let snapshotRef = "";
     try {
       try {
-        await runGit(["merge", "--squash", sourceBranch], worktreePath, {
+        await runGit(["merge", "--squash", sourceHead], worktreePath, {
           env: { GIT_EDITOR: "true", HUSKY: "0" },
         });
       } catch (err) {
-        if (await this.hasUnmergedChangesIn(worktreePath)) {
-          keepWorktree = true;
+        // 충돌 검사 자체가 실패해도 부분 적용된 index를 삭제하지 않는다.
+        keepWorktree = true;
+        let unmerged: boolean;
+        try {
+          unmerged = await this.hasUnmergedChangesIn(worktreePath);
+          if (unmerged && worktree.compact) await materializeReplayWorktree(worktreePath, "branch squash");
+        } catch (recoveryError) {
+          logError("branch squash conflict preparation failed; worktree preserved", recoveryError,
+            { repoRoot: this.repoRoot, worktreePath, compact: worktree.compact });
+          throw new Error(`${errText(err)}\nConflict recovery could not be prepared. ` +
+            `Inspect the preserved temporary worktree: ${worktreePath}. ${errText(recoveryError)}`);
+        }
+        if (unmerged) {
           throw new Error(
             `Branch '${sourceBranch}' has squash merge conflicts. ` +
             "The current working tree was not changed. " +
             `Resolve the conflict in the preserved temporary worktree: ${worktreePath}. ${errText(err)}`
           );
         }
+        keepWorktree = false;
         throw err;
       }
-      if (!await this.hasPendingChangesIn(worktreePath)) {
-        throw new Error(`Branch '${sourceBranch}' did not produce changes to commit.`);
+      // index가 준비된 뒤의 hook/반영/기록 실패도 복구 대상이다. 성공 전에는 생성 결과를 지우지 않는다.
+      keepWorktree = true;
+      try {
+        if (!await this.hasPendingChangesIn(worktreePath)) {
+          keepWorktree = false;
+          throw new Error(`Branch '${sourceBranch}' did not produce changes to commit.`);
+        }
+        await this.commitSquash(sourceBranch, branch, worktreePath, !worktree.compact);
+        const afterHead = await readBranchSquashResult(worktreePath, beforeHead);
+        snapshotRef = await this.createSnapshot(branch, beforeHead);
+        // 직접 부모를 위에서 검증했다. 원본 branch/HEAD는 실제 index lock 안에서 새로 확인한다.
+        await resetOperationResult(this.repoRoot, afterHead, { branch, head: beforeHead }, "branch squash");
+        await this.undoStore.capture(branch, snapshotRef, "completed", false, afterHead);
+        keepWorktree = false;
+        return { status: "completed", branch, sourceBranch, beforeHead, afterHead, snapshotRef };
+      } catch (error) {
+        if (!keepWorktree) throw error;
+        let materialization = "";
+        try { if (worktree.compact) await materializeReplayWorktree(worktreePath, "branch squash"); }
+        catch (failure) { materialization = ` Recovery files could not be fully materialized: ${errText(failure)}`; }
+        logError("branch squash finalization failed; worktree preserved", error,
+          { repoRoot: this.repoRoot, branch, worktreePath, snapshotRef, materialization });
+        throw new Error(`${errText(error)}\nInspect the preserved temporary worktree: ${worktreePath}.${materialization}`);
       }
-      // Native squash가 이미 만든 index를 그대로 사용해 전체 파일의 중복 stage를 피한다.
-      await this.commitSquash(sourceBranch, branch, worktreePath);
-      const afterHead = await this.currentHeadIn(worktreePath);
-      snapshotRef = await this.createSnapshot(branch, beforeHead);
-      await this.assertStillOnBranch(branch, beforeHead, afterHead);
-      await runGit(["reset", "--keep", afterHead], this.repoRoot);
-      await this.undoStore.capture(branch, snapshotRef, "completed", false, afterHead);
-      return { status: "completed", branch, sourceBranch, beforeHead, afterHead, snapshotRef };
     } finally {
       if (!keepWorktree) {
-        await this.removeTemporaryWorktree(worktreePath);
+        await removeTemporaryWorktree(this.repoRoot, worktreePath);
       }
     }
   }
 
   /** squash merge commit 을 만든다. 자동 작업이므로 pre-commit hook 은 실행하지 않는다. */
-  private async commitSquash(sourceBranch: string, destinationBranch: string, cwd: string): Promise<void> {
+  private async commitSquash(sourceBranch: string, destinationBranch: string, cwd: string, checkout = true): Promise<void> {
     await commitPreparedIndex(cwd, { title: `Squash merge '${sourceBranch}'`,
-      body: `Squash-merged branch '${sourceBranch}' into '${destinationBranch}'.` });
-  }
-
-  /**
-   * 브랜치 작업 결과를 현재 브랜치에 반영해도 되는지 확인한다.
-   * - 브랜치 이름과 시작 HEAD 를 함께 검증해, 작업 도중 같은 브랜치 ref 가 다른 커밋으로
-   *   이동한 경우 reset 으로 사용자 커밋을 숨기지 않도록 중단한다.
-   * @param branch 작업 시작 시점의 대상 브랜치
-   * @param beforeHead 작업 시작 시점의 대상 브랜치 HEAD
-   * @param targetRef 현재 브랜치에 적용하려는 결과 ref
-   */
-  private async assertStillOnBranch(
-    branch: string,
-    beforeHead: string,
-    targetRef: string
-  ): Promise<void> {
-    await assertCurrentBranchHead(this.repoRoot, branch, beforeHead, "applying branch operation result");
-    await assertTargetDescendsFrom(this.repoRoot, beforeHead, targetRef, "applying branch operation result");
-  }
-
-  /** 임시 worktree 를 만들어 더러운 작업트리를 건드리지 않고 squash 결과를 계산한다. */
-  private async createTemporaryWorktree(startPoint: string): Promise<string> {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gsc-branch-operation-"));
-    await fs.rm(dir, { recursive: true, force: true });
-    await runGit(["worktree", "add", "--detach", dir, startPoint], this.repoRoot);
-    return dir;
-  }
-
-  /** 임시 worktree 를 제거한다. 제거 실패 시 남은 디렉터리만 한 번 더 정리한다. */
-  private async removeTemporaryWorktree(worktreePath: string): Promise<void> {
-    await runGit(["worktree", "remove", "--force", worktreePath], this.repoRoot)
-      .catch(async () => {
-        await fs.rm(worktreePath, { recursive: true, force: true }).catch(() => undefined);
-      });
-  }
-
-  /** 지정한 worktree 의 HEAD commit hash 를 반환한다. */
-  private async currentHeadIn(cwd: string): Promise<string> {
-    return (await runGit(["rev-parse", "--verify", "HEAD"], cwd)).trim();
+      body: `Squash-merged branch '${sourceBranch}' into '${destinationBranch}'.`, checkout });
   }
 
   /** Native squash가 index에 확정한 변경만 확인한다. 나중에 생긴 unstaged 편집은 commit 대상으로 삼지 않는다. */
@@ -415,14 +432,19 @@ export class BranchOperationService {
 
   /** 지정한 worktree 에 충돌로 남은 unmerged index entry 가 있는지 확인한다. */
   private async hasUnmergedChangesIn(cwd: string): Promise<boolean> {
-    return (await listUnmergedFiles(cwd).catch(() => [])).length > 0;
+    return (await listUnmergedFiles(cwd)).length > 0;
   }
 
-  /** 로컬 변경을 임시 stash 로 보존해 branch rebase merge 가 clean tree 에서 시작되도록 한다. */
-  private async preserveLocalChanges(reason: string): Promise<PreservedLocalChanges | undefined> {
+  /**
+   * 원래 checkout을 새로 검증한 뒤 로컬 변경을 stash로 보존한다. 다른 브랜치의 편집은 이동하지 않는다.
+   * @param reason stash 설명 @param branch 준비 시 고정한 브랜치 @param beforeHead 준비 시 고정한 OID
+   * @returns 로컬 변경이 없으면 undefined, 보존했으면 소유 stash OID
+   */
+  private async preserveLocalChanges(reason: string, branch: string, beforeHead: string): Promise<PreservedLocalChanges | undefined> {
     if (!await this.hasLocalChanges()) {
       return undefined;
     }
+    await assertCurrentBranchHead(this.repoRoot, branch, beforeHead, "preserving branch rebase local changes");
     return pushPreservedLocalChangesStash(this.repoRoot, `Git Simple Compare ${reason}`);
   }
 

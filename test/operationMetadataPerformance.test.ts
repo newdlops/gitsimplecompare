@@ -32,7 +32,9 @@ test("Undo metadata shares only same-call directories while retaining a usable r
   const capture = calls.length;
   t.diagnostic(JSON.stringify({ start, capture }));
   assert.ok(start <= 1, `Undo start exceeded its Git process budget: ${start}`);
-  assert.ok(capture <= 4, `Undo capture exceeded its Git process budget: ${capture}`);
+  assert.ok(capture <= 3, `Undo capture exceeded its Git process budget: ${capture}`);
+  assert.equal(calls.filter(args => args.includes(`${ref}^{commit}`)).length, 1);
+  assert.ok(calls.find(args => args.includes(`${ref}^{commit}`))!.includes("--symbolic-full-name"));
   const plan = await store.prepare("main");
   assert.equal(plan.restoredHead, head); assert.equal(plan.expectedHead, head);
   assert.equal(plan.snapshotRef, ref); assert.equal(plan.phase, "completed");

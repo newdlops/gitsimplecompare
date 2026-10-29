@@ -1,0 +1,601 @@
+{
+  "source": {
+    "kind": "commit",
+    "commit": "7911b3c84c8d3f1e5b6178c0811650995f756f05",
+    "bundleSha256": "29edf720a94c2d51b80e1e7cada4febfae83134d4b9db47bede4b6fdd44da992"
+  },
+  "warmup": 1,
+  "samples": 3,
+  "scope": "Native branch service completion; fixture preparation and final verification excluded; Node CPU excludes Git/OS CPU",
+  "results": [
+    {
+      "name": "small-dirty-squash",
+      "files": 100,
+      "dirty": true,
+      "operation": "squash",
+      "samples": [
+        {
+          "elapsedMs": 647.983833,
+          "nodeCpuMs": 40.276,
+          "gitCalls": 17,
+          "commands": {
+            "commit": {
+              "count": 1,
+              "elapsedMs": 79
+            },
+            "diff": {
+              "count": 1,
+              "elapsedMs": 44
+            },
+            "ls-files": {
+              "count": 2,
+              "elapsedMs": 33
+            },
+            "merge": {
+              "count": 1,
+              "elapsedMs": 79
+            },
+            "merge-base": {
+              "count": 1,
+              "elapsedMs": 47
+            },
+            "reset": {
+              "count": 1,
+              "elapsedMs": 27
+            },
+            "rev-parse": {
+              "count": 6,
+              "elapsedMs": 153
+            },
+            "status": {
+              "count": 1,
+              "elapsedMs": 22
+            },
+            "update-ref": {
+              "count": 1,
+              "elapsedMs": 38
+            },
+            "worktree": {
+              "count": 2,
+              "elapsedMs": 132
+            }
+          },
+          "unchangedFileMaterializedAtCommit": true,
+          "nativeTreeMatches": true,
+          "localChangesPreserved": true
+        },
+        {
+          "elapsedMs": 512.7382079999998,
+          "nodeCpuMs": 37.108,
+          "gitCalls": 17,
+          "commands": {
+            "commit": {
+              "count": 1,
+              "elapsedMs": 41
+            },
+            "diff": {
+              "count": 1,
+              "elapsedMs": 17
+            },
+            "ls-files": {
+              "count": 2,
+              "elapsedMs": 38
+            },
+            "merge": {
+              "count": 1,
+              "elapsedMs": 40
+            },
+            "merge-base": {
+              "count": 1,
+              "elapsedMs": 23
+            },
+            "reset": {
+              "count": 1,
+              "elapsedMs": 31
+            },
+            "rev-parse": {
+              "count": 6,
+              "elapsedMs": 143
+            },
+            "status": {
+              "count": 1,
+              "elapsedMs": 23
+            },
+            "update-ref": {
+              "count": 1,
+              "elapsedMs": 23
+            },
+            "worktree": {
+              "count": 2,
+              "elapsedMs": 142
+            }
+          },
+          "unchangedFileMaterializedAtCommit": true,
+          "nativeTreeMatches": true,
+          "localChangesPreserved": true
+        },
+        {
+          "elapsedMs": 510.1220000000003,
+          "nodeCpuMs": 39.557,
+          "gitCalls": 17,
+          "commands": {
+            "commit": {
+              "count": 1,
+              "elapsedMs": 37
+            },
+            "diff": {
+              "count": 1,
+              "elapsedMs": 18
+            },
+            "ls-files": {
+              "count": 2,
+              "elapsedMs": 58
+            },
+            "merge": {
+              "count": 1,
+              "elapsedMs": 44
+            },
+            "merge-base": {
+              "count": 1,
+              "elapsedMs": 21
+            },
+            "reset": {
+              "count": 1,
+              "elapsedMs": 32
+            },
+            "rev-parse": {
+              "count": 6,
+              "elapsedMs": 123
+            },
+            "status": {
+              "count": 1,
+              "elapsedMs": 24
+            },
+            "update-ref": {
+              "count": 1,
+              "elapsedMs": 34
+            },
+            "worktree": {
+              "count": 2,
+              "elapsedMs": 137
+            }
+          },
+          "unchangedFileMaterializedAtCommit": true,
+          "nativeTreeMatches": true,
+          "localChangesPreserved": true
+        }
+      ],
+      "median": {
+        "elapsedMs": 512.7382079999998,
+        "nodeCpuMs": 39.557,
+        "gitCalls": 17
+      }
+    },
+    {
+      "name": "large-dirty-squash",
+      "files": 10000,
+      "dirty": true,
+      "operation": "squash",
+      "samples": [
+        {
+          "elapsedMs": 3869.9797500000022,
+          "nodeCpuMs": 42.947,
+          "gitCalls": 17,
+          "commands": {
+            "commit": {
+              "count": 1,
+              "elapsedMs": 42
+            },
+            "diff": {
+              "count": 1,
+              "elapsedMs": 21
+            },
+            "ls-files": {
+              "count": 2,
+              "elapsedMs": 48
+            },
+            "merge": {
+              "count": 1,
+              "elapsedMs": 474
+            },
+            "merge-base": {
+              "count": 1,
+              "elapsedMs": 19
+            },
+            "reset": {
+              "count": 1,
+              "elapsedMs": 77
+            },
+            "rev-parse": {
+              "count": 6,
+              "elapsedMs": 126
+            },
+            "status": {
+              "count": 1,
+              "elapsedMs": 42
+            },
+            "update-ref": {
+              "count": 1,
+              "elapsedMs": 23
+            },
+            "worktree": {
+              "count": 2,
+              "elapsedMs": 3008
+            }
+          },
+          "unchangedFileMaterializedAtCommit": true,
+          "nativeTreeMatches": true,
+          "localChangesPreserved": true
+        },
+        {
+          "elapsedMs": 3595.547499999997,
+          "nodeCpuMs": 35.463,
+          "gitCalls": 17,
+          "commands": {
+            "commit": {
+              "count": 1,
+              "elapsedMs": 126
+            },
+            "diff": {
+              "count": 1,
+              "elapsedMs": 16
+            },
+            "ls-files": {
+              "count": 2,
+              "elapsedMs": 37
+            },
+            "merge": {
+              "count": 1,
+              "elapsedMs": 335
+            },
+            "merge-base": {
+              "count": 1,
+              "elapsedMs": 18
+            },
+            "reset": {
+              "count": 1,
+              "elapsedMs": 74
+            },
+            "rev-parse": {
+              "count": 6,
+              "elapsedMs": 124
+            },
+            "status": {
+              "count": 1,
+              "elapsedMs": 32
+            },
+            "update-ref": {
+              "count": 1,
+              "elapsedMs": 18
+            },
+            "worktree": {
+              "count": 2,
+              "elapsedMs": 2824
+            }
+          },
+          "unchangedFileMaterializedAtCommit": true,
+          "nativeTreeMatches": true,
+          "localChangesPreserved": true
+        },
+        {
+          "elapsedMs": 3044.552584000001,
+          "nodeCpuMs": 30.683,
+          "gitCalls": 17,
+          "commands": {
+            "commit": {
+              "count": 1,
+              "elapsedMs": 40
+            },
+            "diff": {
+              "count": 1,
+              "elapsedMs": 13
+            },
+            "ls-files": {
+              "count": 2,
+              "elapsedMs": 41
+            },
+            "merge": {
+              "count": 1,
+              "elapsedMs": 148
+            },
+            "merge-base": {
+              "count": 1,
+              "elapsedMs": 15
+            },
+            "reset": {
+              "count": 1,
+              "elapsedMs": 73
+            },
+            "rev-parse": {
+              "count": 6,
+              "elapsedMs": 99
+            },
+            "status": {
+              "count": 1,
+              "elapsedMs": 32
+            },
+            "update-ref": {
+              "count": 1,
+              "elapsedMs": 15
+            },
+            "worktree": {
+              "count": 2,
+              "elapsedMs": 2578
+            }
+          },
+          "unchangedFileMaterializedAtCommit": true,
+          "nativeTreeMatches": true,
+          "localChangesPreserved": true
+        }
+      ],
+      "median": {
+        "elapsedMs": 3595.547499999997,
+        "nodeCpuMs": 35.463,
+        "gitCalls": 17
+      }
+    },
+    {
+      "name": "large-clean-squash",
+      "files": 10000,
+      "dirty": false,
+      "operation": "squash",
+      "samples": [
+        {
+          "elapsedMs": 327.4827920000025,
+          "nodeCpuMs": 25.124,
+          "gitCalls": 13,
+          "commands": {
+            "commit": {
+              "count": 1,
+              "elapsedMs": 38
+            },
+            "diff": {
+              "count": 1,
+              "elapsedMs": 13
+            },
+            "ls-files": {
+              "count": 2,
+              "elapsedMs": 38
+            },
+            "merge": {
+              "count": 1,
+              "elapsedMs": 111
+            },
+            "rev-parse": {
+              "count": 6,
+              "elapsedMs": 89
+            },
+            "status": {
+              "count": 1,
+              "elapsedMs": 30
+            },
+            "update-ref": {
+              "count": 1,
+              "elapsedMs": 14
+            }
+          },
+          "unchangedFileMaterializedAtCommit": true,
+          "nativeTreeMatches": true,
+          "localChangesPreserved": true
+        },
+        {
+          "elapsedMs": 446.3452079999988,
+          "nodeCpuMs": 21.794,
+          "gitCalls": 13,
+          "commands": {
+            "commit": {
+              "count": 1,
+              "elapsedMs": 67
+            },
+            "diff": {
+              "count": 1,
+              "elapsedMs": 17
+            },
+            "ls-files": {
+              "count": 2,
+              "elapsedMs": 29
+            },
+            "merge": {
+              "count": 1,
+              "elapsedMs": 171
+            },
+            "rev-parse": {
+              "count": 6,
+              "elapsedMs": 99
+            },
+            "status": {
+              "count": 1,
+              "elapsedMs": 58
+            },
+            "update-ref": {
+              "count": 1,
+              "elapsedMs": 12
+            }
+          },
+          "unchangedFileMaterializedAtCommit": true,
+          "nativeTreeMatches": true,
+          "localChangesPreserved": true
+        },
+        {
+          "elapsedMs": 368.4312079999945,
+          "nodeCpuMs": 25.712,
+          "gitCalls": 13,
+          "commands": {
+            "commit": {
+              "count": 1,
+              "elapsedMs": 38
+            },
+            "diff": {
+              "count": 1,
+              "elapsedMs": 16
+            },
+            "ls-files": {
+              "count": 2,
+              "elapsedMs": 43
+            },
+            "merge": {
+              "count": 1,
+              "elapsedMs": 122
+            },
+            "rev-parse": {
+              "count": 6,
+              "elapsedMs": 112
+            },
+            "status": {
+              "count": 1,
+              "elapsedMs": 30
+            },
+            "update-ref": {
+              "count": 1,
+              "elapsedMs": 14
+            }
+          },
+          "unchangedFileMaterializedAtCommit": true,
+          "nativeTreeMatches": true,
+          "localChangesPreserved": true
+        }
+      ],
+      "median": {
+        "elapsedMs": 368.4312079999945,
+        "nodeCpuMs": 25.124,
+        "gitCalls": 13
+      }
+    },
+    {
+      "name": "large-dirty-rebase",
+      "files": 10000,
+      "dirty": true,
+      "operation": "rebase",
+      "samples": [
+        {
+          "elapsedMs": 1005.299791999998,
+          "nodeCpuMs": 64.79,
+          "gitCalls": 26,
+          "commands": {
+            "ls-files": {
+              "count": 3,
+              "elapsedMs": 68
+            },
+            "merge-base": {
+              "count": 1,
+              "elapsedMs": 19
+            },
+            "rebase": {
+              "count": 1,
+              "elapsedMs": 139
+            },
+            "rev-parse": {
+              "count": 14,
+              "elapsedMs": 237
+            },
+            "stash": {
+              "count": 4,
+              "elapsedMs": 385
+            },
+            "status": {
+              "count": 1,
+              "elapsedMs": 75
+            },
+            "update-index": {
+              "count": 1,
+              "elapsedMs": 66
+            },
+            "update-ref": {
+              "count": 1,
+              "elapsedMs": 19
+            }
+          },
+          "nativeTreeMatches": true,
+          "localChangesPreserved": true
+        },
+        {
+          "elapsedMs": 1300.8422500000015,
+          "nodeCpuMs": 57.707,
+          "gitCalls": 26,
+          "commands": {
+            "ls-files": {
+              "count": 3,
+              "elapsedMs": 74
+            },
+            "merge-base": {
+              "count": 1,
+              "elapsedMs": 18
+            },
+            "rebase": {
+              "count": 1,
+              "elapsedMs": 131
+            },
+            "rev-parse": {
+              "count": 14,
+              "elapsedMs": 235
+            },
+            "stash": {
+              "count": 4,
+              "elapsedMs": 672
+            },
+            "status": {
+              "count": 1,
+              "elapsedMs": 88
+            },
+            "update-index": {
+              "count": 1,
+              "elapsedMs": 61
+            },
+            "update-ref": {
+              "count": 1,
+              "elapsedMs": 19
+            }
+          },
+          "nativeTreeMatches": true,
+          "localChangesPreserved": true
+        },
+        {
+          "elapsedMs": 832.6346670000057,
+          "nodeCpuMs": 48.82,
+          "gitCalls": 26,
+          "commands": {
+            "ls-files": {
+              "count": 3,
+              "elapsedMs": 58
+            },
+            "merge-base": {
+              "count": 1,
+              "elapsedMs": 16
+            },
+            "rebase": {
+              "count": 1,
+              "elapsedMs": 131
+            },
+            "rev-parse": {
+              "count": 14,
+              "elapsedMs": 202
+            },
+            "stash": {
+              "count": 4,
+              "elapsedMs": 353
+            },
+            "status": {
+              "count": 1,
+              "elapsedMs": 31
+            },
+            "update-index": {
+              "count": 1,
+              "elapsedMs": 22
+            },
+            "update-ref": {
+              "count": 1,
+              "elapsedMs": 20
+            }
+          },
+          "nativeTreeMatches": true,
+          "localChangesPreserved": true
+        }
+      ],
+      "median": {
+        "elapsedMs": 1005.299791999998,
+        "nodeCpuMs": 57.707,
+        "gitCalls": 26
+      }
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "date": "2026-10-30",
+  "objective": "브랜치 작업 안정화와 최적화",
+  "baselineCommit": "7911b3c84c8d3f1e5b6178c0811650995f756f05",
+  "previousStage": "branch-optimization-verification-20261030.json",
+  "fingerprint": {
+    "files": 531,
+    "sha256": "f6906a2b032344a57e5e7a82d5ee033b39af9111d4890358c90e8bc3152e5db7"
+  },
+  "sourceFiles": {
+    "src/git/branchOperationService.ts": "189c62ebb06de43be8d71487f3979102b8682a133bb1d783f10950bf28584c37",
+    "src/git/rebaseService.ts": "813ecb870f04c4c61cea090b899cba7a3bb7e76ee50744d9d3576f8026dcaf86",
+    "src/git/branchSquashResult.ts": "a499935712ea5ec3db1dfe83d89be1e6a6496803d7b611ccd430935b6f1e2250"
+  },
+  "initialReproductions": {
+    "distinctFailingCasesOnPriorSource": 9,
+    "runs": [
+      {
+        "logSha256": "635fb51160ca3fbb030f27b05a1f7473caf25ae001bccfb9c7c4a559ce24e52e",
+        "tests": 16,
+        "failed": 6
+      },
+      {
+        "logSha256": "39c61e4fb1f23d40d6f7f2a12e664fa34ebe0fa20d0535862749889068d0d64d",
+        "tests": 8,
+        "failed": 8
+      }
+    ],
+    "note": "Five failures overlap. Later tests also cover repeated and ancestor no-change squash, compact failure recovery, SHA-256 and merge-result rejection."
+  },
+  "benchmark": {
+    "report": "branch-stability-paired-20261030.json",
+    "sha256": "0fb1fe456fe0665390c48889001a7c0ac689d7557d1e7a3e5ce583866ca11c90",
+    "scenarios": 4,
+    "measuredSamples": 48,
+    "warmups": 8,
+    "nativeVerified": true,
+    "sourceMatchesFinal": true
+  },
+  "checks": {
+    "npm run check-types": {
+      "exitCode": 0
+    },
+    "npm run compile": {
+      "exitCode": 0
+    },
+    "git diff --check": {
+      "exitCode": 0
+    },
+    "npm run lint": {
+      "status": "Unavailable: no ESLint dependency/configuration; prior attempt exited 127. Not rerun."
+    }
+  },
+  "unitRuns": [
+    {
+      "commandPrefix": "npm test --",
+      "files": [
+        "test/branchSquashCompletionSafety.test.ts",
+        "test/rebasePlanRangeReuse.test.ts",
+        "test/branchOperationSafety.test.ts"
+      ],
+      "tests": 47,
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "durationMs": 65731.351208,
+      "logSha256": "975621b66c39913be7d2c5e1e5b6b3ac4eca54d474820ce4a8859b229f67803c"
+    },
+    {
+      "commandPrefix": "npm test --",
+      "files": [
+        "test/branchSquashWorktree.test.ts",
+        "test/branchSquashIndex.test.ts",
+        "test/branchRebaseCompletion.test.ts",
+        "test/branchRebaseFinalize.test.ts",
+        "test/branchRebasePreparation.test.ts",
+        "test/branchSyncSafety.test.ts",
+        "test/branchSyncPerformance.test.ts",
+        "test/completedOperationOwnership.test.ts",
+        "test/operationReadiness.test.ts",
+        "test/operationResultReset.test.ts",
+        "test/operationMetadataSafety.test.ts",
+        "test/operationMetadataPerformance.test.ts",
+        "test/operationSnapshotIdentity.test.ts",
+        "test/rebasePlanSelection.test.ts",
+        "test/rebaseStartScope.test.ts",
+        "test/rebaseSessionScope.test.ts",
+        "test/rebaseExecutionPerformance.test.ts",
+        "test/complexGitOperationSafety.test.ts"
+      ],
+      "tests": 142,
+      "passed": 142,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "durationMs": 182585.932041,
+      "logSha256": "24f26d27ddac1454248e0713780857e2b15353450c4606928a404bb1a7d796ed"
+    }
+  ],
+  "uniqueTestFiles": 21,
+  "limitations": [
+    "Local filesystem-warm fixtures; each paired comparison overlays branchOperationService only, not the entire initial repository.",
+    "Additional safety checks add one Git process to clean squash and dirty branch rebase. The isolated squash path removes two redundant processes.",
+    "No claim of improved elapsed time unless paired samples establish it. No VS Code UI, installed-extension, external network, Native Git/OS CPU or RSS measurement.",
+    "Final checkout checks use fresh Native state and retain Git index locking; they do not claim a repository-wide transaction against every possible external writer."
+  ]
+}

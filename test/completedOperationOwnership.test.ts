@@ -6,7 +6,7 @@ import { BranchOperationService } from "../src/git/branchOperationService";
 import { OperationUndoStore } from "../src/git/operationUndoStore";
 import { PullRequestOperationSnapshot } from "../src/git/pullRequestOperationSnapshot";
 import { prSafetyFixture } from "./helpers/prOperationSafetyFixture";
-import { git } from "./helpers/gitSafetyFixture";
+import { cleanupFixtureBranchWorktrees, git } from "./helpers/gitSafetyFixture";
 
 /** 적용 결과 위에 외부 작업자의 별도 commit을 만든다. 원래 로컬 편집은 stage하지 않는다. */
 async function externalCommit(root: string): Promise<string> {
@@ -46,10 +46,12 @@ for (const dirty of [false, true]) {
       }
       return original.apply(this, args);
     });
-    await assert.rejects(service.squashMerge("source"), /Ref safety/);
-    assert.equal(await git(f.root, "rev-parse", "HEAD"), later); assert.equal(await git(f.root, "rev-parse", "HEAD^"), expected);
-    assert.equal(await readFile(join(f.root, "other.txt"), "utf8"), dirty ? "preserved local work\n" : "other base\n");
-    assert.equal(await git(f.root, "rev-parse", snapshot), f.base); assert.equal(await service.hasUndoSnapshot(), false);
+    try {
+      await assert.rejects(service.squashMerge("source"), /Ref safety/);
+      assert.equal(await git(f.root, "rev-parse", "HEAD"), later); assert.equal(await git(f.root, "rev-parse", "HEAD^"), expected);
+      assert.equal(await readFile(join(f.root, "other.txt"), "utf8"), dirty ? "preserved local work\n" : "other base\n");
+      assert.equal(await git(f.root, "rev-parse", snapshot), f.base); assert.equal(await service.hasUndoSnapshot(), false);
+    } finally { await cleanupFixtureBranchWorktrees(f.root); }
   });
 }
 

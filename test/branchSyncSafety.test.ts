@@ -53,10 +53,11 @@ for (const change of ["switch", "commit"] as const) {
     const source = (service as any).assertSourceBranch.bind(service);
     let expectedHead = "";
     t.mock.method(service as any, "assertSourceBranch", async (...args: any[]) => {
-      await source(...args);
+      const sourceHead = await source(...args);
       if (change === "switch") await git(root, "switch", "-qc", "other");
       else await commitText(root, "new user commit\n", "new user commit");
       expectedHead = await git(root, "rev-parse", "HEAD");
+      return sourceHead;
     });
     await assert.rejects(service.squashMerge("target"), /Ref safety check failed/);
     assert.equal(await git(root, "rev-parse", "HEAD"), expectedHead);

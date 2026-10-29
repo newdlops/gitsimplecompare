@@ -1,0 +1,2334 @@
+{
+  "sourceOverlays": [
+    {
+      "file": "src/git/rebaseService.ts",
+      "before": "// 인터랙티브 rebase 를 비대화식으로 수행하는 서비스 모듈.\n// - git 의 시퀀스 에디터/커밋 에디터를 우리 헬퍼 스크립트로 대체해, 사용자가 UI 에서\n//   짠 계획(todo)과 메시지를 주입한다. 사용자 입력은 모두 호출부에서 받아 전달받는다.\nimport * as fs from \"node:fs\";\nimport * as os from \"node:os\";\nimport * as path from \"node:path\";\nimport { GitError, runGit } from \"./gitExec\";\nimport { withGitStatePathScope } from \"./gitStatePathScope\";\nimport { detectOperation } from \"./conflictService\";\nimport { readRebaseCommits, readRebaseCommitDetails } from \"./rebaseCommitReader\";\nimport { listUnmergedFiles } from \"./unmergedFiles\";\nimport { amendRebaseEdit } from \"./rebaseEditApply\";\nimport { assertGitOperation, captureGitOperation, type GitOperationIdentity } from \"./operationControl\";\nimport { assertRebaseCheckout, captureRebaseCheckout, REBASE_RESTORE_CONFLICT_MESSAGE, type RebaseCheckoutIdentity } from \"./rebasePlanSafety\";\nimport { readLinearRebaseRange } from \"./rebaseStartRange\";\nimport { readRebaseStartContext } from \"./rebaseStartContext\";\nimport {\n  collectHistoryExcludePaths,\n} from \"./rebaseFileExcludes\";\nimport { RebaseFileRewritePlanner } from \"./rebaseFileRewriteOps\";\nimport {\n  cleanupRebaseMessageQueue,\n  initializeRebaseMessageQueue,\n} from \"./rebaseMessageQueue\";\nimport { usableRebaseOntoTarget } from \"./rebaseOntoTarget\";\nimport { rebaseSequenceEditor } from \"./rebaseNativeEditors\";\nimport { readRebaseTodoProgress, type RebaseTodoProgress } from \"./rebaseTodoProgress\";\nimport { validateRebaseTodoCoverage } from \"./rebaseTodoValidation\";\nimport { logError, logInfo } from \"../ui/outputLog\";\n\n/** rebase 계획에서 커밋별로 보여줄 변경 파일 한 건 */\nexport interface RebaseCommitFile {\n  status: string;\n  path: string;\n  oldPath?: string;\n  additions: number;\n  deletions: number;\n}\n/** rebase 대상 커밋 한 건(계획 UI 표시용) */\nexport interface RebaseCommit {\n  hash: string;\n  subject: string;\n  body: string;\n  files: RebaseCommitFile[];\n}\n/** todo 한 줄의 동작 */\nexport type RebaseAction = \"pick\" | \"reword\" | \"edit\" | \"squash\" | \"fixup\" | \"drop\";\n/** 한 커밋의 파일 변경을 다른 커밋으로 옮기는 계획 */\nexport interface RebaseFileMove { sourceHash: string; sourcePath: string; sourceOldPath?: string; targetHash: string; }\n/** 사용자가 짠 계획 한 항목 */\nexport interface RebaseItem {\n  hash: string;\n  action: RebaseAction;\n  /** UI 복원과 rename 처리용 파일 목록 */\n  files?: RebaseCommitFile[];\n  /** reword/squash 시 사용할 메시지(빈 값이면 git 기본 메시지 유지) */\n  message?: string;\n  /** 이 커밋에서 제외할 파일 경로 목록 */ excludePaths?: string[];\n  /** 계획 범위 전체 커밋에서 제외할 파일 경로 목록 */\n  historyExcludePaths?: string[];\n  /** 다른 커밋으로 옮길 파일 변경 목록 */ fileMoves?: RebaseFileMove[];\n}\n/** rebase 실행 결과 */\nexport interface RebaseResult {\n  status: \"completed\" | \"conflicts\" | \"failed\" | \"noop\" | \"paused\" | \"stopped\";\n  message?: string;\n  paused?: RebasePausedState;\n  stopped?: RebaseStoppedState;\n  restoringLocalChanges?: boolean;\n}\n/** rebase 가 edit todo 에서 멈췄을 때 UI 가 이어받을 상태 */\nexport interface RebasePausedState {\n  hash: string;\n  originalHash?: string;\n  parent?: string;\n  files: RebaseCommitFile[];\n  /** 같은 커밋으로 rebase를 재시작한 경우도 구분하기 위한 native 작업 식별자 */\n  operation?: GitOperationIdentity;\n}\n/** rebase 가 충돌/실패로 특정 todo 항목에서 멈춘 위치 */\nexport interface RebaseStoppedState {\n  /** 현재 HEAD. 충돌 중에는 실패한 커밋 직전의 새 커밋일 수 있다. */\n  hash?: string;\n  /** git rebase 상태 파일의 원본 todo 커밋 해시(stopped-sha). */\n  originalHash?: string;\n}\n\n/** 한 번의 최신 작업 검증 안에서 함께 읽은 복원용 rebase 상태다. */\nexport interface RebaseRuntimeState {\n  operation: GitOperationIdentity;\n  conflicts: string[];\n  progress?: RebaseTodoProgress;\n  stopped?: RebaseStoppedState;\n  paused?: RebasePausedState;\n}\n/** 현재 브랜치에서 그래프 rebase UI 가 편집할 계획 범위 */\nexport interface RebasePlanInfo {\n  branch: string;\n  checkout?: RebaseCheckoutIdentity;\n  upstream?: string;\n  /** rebase 기준 커밋. root=true 일 때는 빈 문자열이다. */\n  base: string;\n  /** true 면 `git rebase -i --root` 로 현재 브랜치의 루트부터 편집한다. */\n  root?: boolean;\n  /** --onto 대상 커밋. 없으면 git rebase -i base 형태로 실행한다. */\n  onto?: string;\n  baseReason: \"upstream\" | \"selected\";\n  commits: RebaseCommit[];\n  /** 진행 중인 rebase 복원 시 UI action/message/order 를 되살리기 위한 저장된 todo 항목 */\n  items?: RebaseItem[];\n}\n/** 번들 seq 규약의 todo 복사만 대체한다. 별도 editorScript를 쓰는 독립 호출은 기본 Node 규약을 유지한다. */\nexport interface RebaseServiceOptions { nativeEditors?: boolean }\n/**\n * 한 저장소의 인터랙티브 rebase 를 다루는 서비스.\n */\nexport class RebaseService {\n  private preparedCheckout?: RebaseCheckoutIdentity;\n  /** @param repoRoot 작업 저장소 @param options 번들 helper임을 아는 조립 계층만 nativeEditors를 허용한다. */\n  constructor(public readonly repoRoot: string, private readonly options: RebaseServiceOptions = {}) {}\n  /**\n   * 작업트리가 깨끗한지(추적 파일에 미커밋 변경이 없는지) 확인한다.\n   * - 현재 그래프 기반 rebase 는 --autostash 로 미커밋 변경을 보존하므로 필수 검사는 아니다.\n   * - 기존 명령/테스트가 상태를 표시해야 할 때 재사용할 수 있도록 유지한다(추적되지 않은 파일은 무시).\n   */\n  async isClean(): Promise<boolean> {\n    const out = await runGit(\n      [\"status\", \"--porcelain\", \"--untracked-files=no\"],\n      this.repoRoot\n    );\n    return out.trim().length === 0;\n  }\n  /**\n   * rebase 대상 커밋들을 오래된 것부터(rebase todo 순서로) 반환한다.\n   * @param base 편집 대상의 직전 커밋(이 커밋은 포함되지 않음)\n   * @param root true 면 HEAD 의 전체 조상 커밋을 root 부터 반환한다.\n   * @param includeFiles false면 파일 diff 없이 현재 커밋 범위와 원본 메시지만 새로 읽는다.\n   */\n  async getCommits(base: string, root = false, includeFiles = true): Promise<RebaseCommit[]> {\n    return readRebaseCommits(this.repoRoot, base, root, includeFiles);\n  }\n\n  /**\n   * 현재 checkout 된 로컬 브랜치에서 그래프 rebase 계획의 기준점을 계산한다.\n   * - 사용자가 커밋을 지정했으면 현재 HEAD 이력에 포함된 행인지 확인한 뒤 그 부모를 기준점으로 삼는다.\n   * - 다른 브랜치 행을 현재 HEAD 기준 범위로 계산하면 브랜치 시작까지 잘못 포함되므로 명시적으로 거부한다.\n   * - 사용자가 root 커밋을 지정했으면 --root rebase 로 현재 브랜치 전체를 편집한다.\n   * - 커밋을 지정하지 않았을 때만 upstream merge-base 를 자동 기준점으로 사용한다.\n   * @param startHash 사용자가 그래프에서 드래그한 시작 커밋 해시\n   * @param ontoHash  드래그를 놓은 대상 커밋. 재작성 범위 바깥이면 --onto 대상으로 사용한다.\n   */\n  async prepareCurrentBranchPlan(\n    startHash?: string,\n    ontoHash?: string\n  ): Promise<RebasePlanInfo> {\n    const checkout = await captureRebaseCheckout(this.repoRoot);\n    const branch = (\n      await runGit([\"branch\", \"--show-current\"], this.repoRoot)\n    ).trim();\n    if (!branch) {\n      throw new Error(\"Interactive rebase requires a checked-out local branch.\");\n    }\n    const upstream = await optionalGit(\n      [\"rev-parse\", \"--abbrev-ref\", \"--symbolic-full-name\", \"@{u}\"],\n      this.repoRoot\n    );\n    let base = \"\";\n    let root = false;\n    let baseReason: RebasePlanInfo[\"baseReason\"] = \"selected\";\n    if (startHash) {\n      await this.assertHeadAncestor(startHash);\n      base = (await this.parentOf(startHash)) ?? \"\";\n      root = !base;\n    } else if (upstream) {\n      const mergeBase = (\n        await runGit([\"merge-base\", \"HEAD\", upstream], this.repoRoot)\n      ).trim();\n      const localCount = Number(\n        (\n          await runGit([\"rev-list\", \"--count\", `${mergeBase}..HEAD`], this.repoRoot)\n        ).trim()\n      );\n      if (localCount > 0) {\n        base = mergeBase;\n        baseReason = \"upstream\";\n      }\n    }\n    if (!base && !root) {\n      throw new Error(\"Drag a commit to choose the rebase start point.\");\n    }\n\n    const commits = await this.getCommits(base, root);\n    const onto = await usableRebaseOntoTarget(\n      this.repoRoot,\n      ontoHash,\n      base,\n      root\n    );\n    await assertRebaseCheckout(this.repoRoot, checkout);\n    this.preparedCheckout = checkout;\n    return {\n      branch,\n      checkout,\n      upstream: upstream || undefined,\n      base,\n      root,\n      onto,\n      baseReason,\n      commits,\n    };\n  }\n\n  /**\n   * 사용자가 짠 계획대로 인터랙티브 rebase 를 실행한다.\n   * - todo 와 메시지 큐를 임시 파일로 만들고, GIT_SEQUENCE_EDITOR/GIT_EDITOR 를\n   *   우리 헬퍼 스크립트로 지정해 비대화식으로 주입한다.\n   * - staged/unstaged 변경이 있어도 --autostash 로 잠시 보관한 뒤 rebase 를 진행한다.\n   * - 이미 rebase 중이면 새로 시작하지 않고 현재 Git todo 상태를 반환한다.\n   * @param base         편집 대상 직전 커밋(rebase 기준점)\n   * @param root         true 면 root commit 부터 편집한다.\n   * @param items        계획(최종 표시 순서, 오래된 것부터)\n   * @param editorScript 헬퍼 스크립트(rebaseEditor.js) 절대 경로\n   * @param onto         선택 사항. 있으면 `git rebase -i --onto onto base` 로 실행한다.\n   * @param expectedCheckout 계획 UI가 검증한 checkout. 실행 전 두 안전 경계에서 최신 상태와 대조한다.\n   */\n  async start(\n    base: string,\n    root: boolean,\n    items: RebaseItem[],\n    editorScript: string,\n    onto?: string,\n    expectedCheckout?: RebaseCheckoutIdentity\n  ): Promise<RebaseResult> {\n    return withGitStatePathScope(this.repoRoot, () => this.startScoped(base, root, items, editorScript, onto, expectedCheckout));\n  }\n\n  /**\n   * 한 Start 호출 안에서 검증된 Git 디렉터리와 private 큐 경로만 공유한다.\n   * - 매 접근마다 metadata/실행 환경이 같은지 확인하며 HEAD·todo·충돌 파일 내용은 재사용하지 않는다.\n   * - 완료·충돌·오류 반환 뒤 scope를 해제하므로 다음 Start/Continue는 현재 경로를 새로 읽는다.\n   * @param base/root/items/editorScript/onto/expectedCheckout 공개 Start가 받은 실행 계획과 안전 식별자\n   * @returns 실제 native rebase의 완료·정지·충돌 상태\n   */\n  private async startScoped(\n    base: string, root: boolean, items: RebaseItem[], editorScript: string,\n    onto?: string, expectedCheckout?: RebaseCheckoutIdentity\n  ): Promise<RebaseResult> {\n    const context = await readRebaseStartContext(this.repoRoot, expectedCheckout ?? this.preparedCheckout);\n    if (context.operation === \"rebase\") {\n      const paused = await this.getPausedEditState();\n      const stopped = await this.getStoppedState();\n      if (paused) return { status: \"paused\", paused };\n      return await this.hasUnmergedFiles()\n        ? { status: \"conflicts\", stopped }\n        : { status: \"stopped\", stopped };\n    }\n    if (context.operation !== \"none\") {\n      return { status: \"failed\", message: `Cannot start rebase while ${context.operation} is in progress.` };\n    }\n    const checkout = context.checkout;\n    const todoItems = items.slice();\n    if (todoItems.length === 0) {\n      return { status: \"noop\" };\n    }\n    const rangeStarted = Date.now(), range = await readLinearRebaseRange(this.repoRoot, base, root);\n    logInfo(\"rebase range metadata read\", { repoRoot: this.repoRoot, commits: range.length, elapsedMs: Date.now() - rangeStarted });\n    const validation = validateRebaseTodoCoverage(range, todoItems);\n    if (!validation.ok) {\n      let message = validation.message;\n      if (validation.missing.length) {\n        // 설명 조회가 다른 HEAD를 보더라도 이미 실패한 coverage를 성공으로 바꾸지 않는다.\n        const details = await readRebaseCommits(this.repoRoot, base, root, false);\n        if (details.length === range.length && details.every((commit, index) => commit.hash === range[index].hash)) {\n          const labeled = validateRebaseTodoCoverage(details, todoItems);\n          if (!labeled.ok) message = labeled.message;\n        }\n      }\n      return {\n        status: \"failed\",\n        message,\n      };\n    }\n    // 첫 replay 항목은 squash/fixup 대상이 없으므로 pick 으로 보정한다.\n    const firstKeptIndex = todoItems.findIndex((item) => item.action !== \"drop\");\n    if (firstKeptIndex >= 0 && (todoItems[firstKeptIndex].action === \"squash\" || todoItems[firstKeptIndex].action === \"fixup\")) {\n      todoItems[firstKeptIndex] = { ...todoItems[firstKeptIndex], action: \"pick\" };\n    }\n\n    const todoLines: string[] = [];\n    const todoStarted = Date.now();\n    const opFiles: string[] = [];\n    const historyExcludePaths = collectHistoryExcludePaths(items);\n    const rewriteItems = todoItems.filter((item) => item.action !== \"drop\");\n    const rewritePlanner = new RebaseFileRewritePlanner(this.repoRoot, rewriteItems, historyExcludePaths, process.execPath, editorScript);\n    for (const item of todoItems) {\n      todoLines.push(`${item.action} ${item.hash}`);\n      const rewrite = await rewritePlanner.execLine(item);\n      if (rewrite) {\n        opFiles.push(rewrite.opFile);\n        todoLines.push(rewrite.line);\n      }\n    }\n    logInfo(\"rebase todo prepared\", { repoRoot: this.repoRoot, items: todoItems.length,\n      fileRewriteExecs: opFiles.length, elapsedMs: Date.now() - todoStarted });\n\n    const todoFile = tempPath(\"todo\");\n    let keepTempFiles = false;\n    let discardInputOnPause = false;\n    fs.writeFileSync(todoFile, todoLines.join(\"\\n\") + \"\\n\", \"utf8\");\n\n    try {\n      const messageEditorEnv = await initializeRebaseMessageQueue(this.repoRoot, todoItems, editorScript);\n      const sequenceEditor = await rebaseSequenceEditor(todoFile, editorScript, process.execPath, this.options.nativeEditors === true);\n      logInfo(\"rebase sequence editor selected\", { repoRoot: this.repoRoot, editor: sequenceEditor.kind });\n      const env: Record<string, string> = {\n        ...messageEditorEnv,\n        GIT_SEQUENCE_EDITOR: sequenceEditor.command,\n        GSC_TODO: todoFile,\n      };\n      await assertRebaseCheckout(this.repoRoot, checkout);\n      await runGit(\n        [\n          \"rebase\",\n          \"-i\",\n          \"--autostash\",\n          ...(onto ? [\"--onto\", onto] : []),\n          ...(root ? [\"--root\"] : [base]),\n        ],\n        this.repoRoot,\n        env\n      );\n      discardInputOnPause = sequenceEditor.kind === \"copy\";\n      const paused = await this.getPausedEditState();\n      if (paused) {\n        keepTempFiles = true;\n        return { status: \"paused\", paused };\n      }\n      if (await detectOperation(this.repoRoot) === \"rebase\") {\n        keepTempFiles = true;\n        return { status: \"stopped\", stopped: await this.getStoppedState() };\n      }\n      if (await this.hasUnmergedFiles()) {\n        return { status: \"conflicts\", restoringLocalChanges: true, message: REBASE_RESTORE_CONFLICT_MESSAGE };\n      }\n      return { status: \"completed\" };\n    } catch (err) {\n      // 비정상 종료 시, rebase 가 진행 중이면 충돌로 멈춘 것이다.\n      const op = await detectOperation(this.repoRoot);\n      if (op === \"rebase\") {\n        keepTempFiles = true;\n        const stopped = await this.getStoppedState();\n        if (await this.hasUnmergedFiles()) {\n          return { status: \"conflicts\", stopped };\n        }\n        const paused = await this.getPausedEditState();\n        if (paused) {\n          return { status: \"paused\", paused };\n        }\n        return { status: \"stopped\", stopped, message: stopMessage(err) };\n      }\n      return {\n        status: \"failed\",\n        message: err instanceof Error ? err.message : String(err),\n      };\n    } finally {\n      // 성공한 번들 복사 뒤의 pause에는 exec 파일만 남긴다. custom helper나 초기 실패의 입력 수명은 보존한다.\n      if (!keepTempFiles || discardInputOnPause) safeUnlink(todoFile);\n      if (!keepTempFiles) {\n        // metadata 교체로 큐 접근이 중단돼도 이 호출이 만든 외부 임시 파일은 반드시 회수한다.\n        try { await cleanupRebaseMessageQueue(this.repoRoot); }\n        finally { for (const opFile of opFiles) safeUnlink(opFile); }\n      }\n    }\n  }\n\n  /**\n   * 진행 중인 rebase 가 현재 어느 todo 항목에서 멈췄는지 읽는다.\n   * - 충돌 중에는 HEAD 가 실패 커밋 자체가 아니라 직전 커밋을 가리킬 수 있으므로,\n   *   `.git/rebase-merge/stopped-sha` 의 원본 해시를 함께 반환해 그래프의 원래 row 와 연결한다.\n   * @returns rebase 가 진행 중이고 위치를 읽을 수 있으면 현재 HEAD/원본 todo 해시\n   */\n  async getStoppedState(): Promise<RebaseStoppedState | undefined> {\n    if (await detectOperation(this.repoRoot) !== \"rebase\") {\n      return undefined;\n    }\n    const [hash, originalHash] = await Promise.all([\n      optionalGit([\"rev-parse\", \"HEAD\"], this.repoRoot),\n      this.currentOriginalHash(),\n    ]);\n    return hash || originalHash ? { hash, originalHash } : undefined;\n  }\n\n  /**\n   * rebase 가 edit 지점에서 멈춘 상태를 읽는다.\n   * - 충돌이 없더라도 todo 의 현재 action 이 `edit` 일 때만 파일 편집 pause 로 본다.\n   * - `.git/rebase-merge/stopped-sha` 는 원래 커밋 해시이므로 그래프 계획의 row 와 다시 연결하는 데 쓴다.\n   */\n  async getPausedEditState(): Promise<RebasePausedState | undefined> {\n    if (await detectOperation(this.repoRoot) !== \"rebase\") {\n      return undefined;\n    }\n    if (await this.hasUnmergedFiles()) {\n      return undefined;\n    }\n    const operation = await captureGitOperation(this.repoRoot);\n    const progress = await readRebaseTodoProgress(this.repoRoot, operation.gitDir).catch(() => undefined);\n    const currentAction = progress?.items.find((item) => item.role === \"current\")?.action;\n    if (currentAction !== \"edit\") {\n      return undefined;\n    }\n    const originalHash = await this.currentOriginalHash(operation.gitDir, Promise.resolve(progress));\n    const state = await this.readPausedEditDetails(operation, originalHash);\n    await assertGitOperation(this.repoRoot, operation);\n    return state;\n  }\n\n  /**\n   * 복원에 필요한 HEAD·index·todo·정지 위치를 같은 호출의 작업 identity에서 함께 읽는다.\n   * - 호출 사이의 캐시는 두지 않으며 설명 조회가 실패해도 정지 위치/진행률은 반환한다.\n   * - index 조회 실패는 충돌 없음으로 확정하지 않아 edit 상태를 추정하지 않는다.\n   * @param expected 복원 시작 때 확인한 identity. 제공되면 읽기 시작 전에 실제 작업과 재검증한다.\n   * @returns 작업이 끝까지 일치한 복원 상태. 읽는 도중 Native Continue/Abort가 바뀌면 실패한다.\n   */\n  async getRuntimeState(expected?: GitOperationIdentity): Promise<RebaseRuntimeState> {\n    const operation = expected ? { ...expected } : await captureGitOperation(this.repoRoot);\n    if (expected) await assertGitOperation(this.repoRoot, operation);\n    const rebase = operation.operation === \"rebase\";\n    const progressRead = rebase\n      ? readRebaseTodoProgress(this.repoRoot, operation.gitDir).catch(() => undefined) : Promise.resolve(undefined);\n    /**\n     * 각 단계의 index를 독립적으로 읽어 충돌 목록과 조회 성공 여부를 함께 보존한다.\n     * @param phase 첫 조회인지 최종 확인인지 나타내는 오류 로그 구분\n     * @returns 성공한 경로 목록과 known=true, 실패하면 빈 목록과 known=false\n     */\n    const readConflicts = (phase: \"initial\" | \"final\") => listUnmergedFiles(this.repoRoot).then(files => ({ files, known: true })).catch(error => {\n      logError(\"rebase runtime conflict read failed\", error, { repoRoot: this.repoRoot, phase });\n      return { files: [] as string[], known: false };\n    });\n    const [conflicts, progress, originalHash] = await Promise.all([\n      readConflicts(\"initial\"), progressRead,\n      rebase ? this.currentOriginalHash(operation.gitDir, progressRead) : Promise.resolve(undefined),\n    ]);\n    let paused: RebasePausedState | undefined;\n    if (rebase && conflicts.known && !conflicts.files.length\n      && progress?.items.find(item => item.role === \"current\")?.action === \"edit\") {\n      paused = await this.readPausedEditDetails(operation, originalHash).catch(error => {\n        logError(\"rebase runtime paused details read failed\", error, { repoRoot: this.repoRoot });\n        return undefined;\n      });\n    }\n    // 파일 metadata를 기다리는 동안 외부 도구가 index를 바꿨을 수 있어 마지막 목록은 새로 확인한다.\n    const latest = rebase ? await readConflicts(\"final\") : conflicts;\n    if (!latest.known || latest.files.length) paused = undefined;\n    await assertGitOperation(this.repoRoot, operation);\n    return { operation, conflicts: latest.known ? latest.files : conflicts.files, progress, paused,\n      stopped: rebase ? { hash: operation.head, originalHash } : undefined };\n  }\n\n  /**\n   * edit 으로 멈춘 커밋에서 사용자가 수정한 파일을 현재 커밋에 반영한다.\n   * - rebase edit 중 VS Code diff 로 바꾼 내용은 우선 작업트리 변경으로 남는다.\n   * - Continue 전에 해당 커밋의 변경 파일만 stage 한 뒤 `commit --amend --no-edit` 로 커밋 자체를 갱신한다.\n   * - rebase 중 다른 파일에 충돌 마커가 남아 있을 수 있으므로, 내부 amend 는 hook 검증을 건너뛴다.\n   * @param paused 이미 읽어 둔 edit 정지 상태. 없으면 현재 상태를 다시 읽는다.\n   * @returns amend 할 staged 변경이 있어 커밋을 갱신했으면 true\n   */\n  async amendPausedEditChanges(paused?: RebasePausedState): Promise<boolean> {\n    if (await detectOperation(this.repoRoot) !== \"rebase\") {\n      return false;\n    }\n    if (await this.hasUnmergedFiles()) {\n      return false;\n    }\n    const state = paused ?? await this.getPausedEditState();\n    if (!state) {\n      return false;\n    }\n    return amendRebaseEdit(this.repoRoot, state);\n  }\n\n  /**\n   * 현재 edit 커밋의 첫 부모와 파일을 같은 metadata 조회에서 읽는다.\n   * @param operation 이번 호출에서 실제로 확인한 작업 identity @param originalHash 원래 todo 항목의 OID\n   * @returns identity가 포함된 edit 상태. 호출자가 전체 읽기를 마친 뒤 작업 일치를 다시 확인한다.\n   */\n  private async readPausedEditDetails(operation: GitOperationIdentity, originalHash: string | undefined): Promise<RebasePausedState> {\n    const { parent, files } = await readRebaseCommitDetails(this.repoRoot, operation.head);\n    return { hash: operation.head, originalHash, parent, files, operation };\n  }\n\n  /**\n   * 지정 커밋의 첫 부모를 반환한다.\n   * @param hash 부모를 찾을 커밋 해시\n   * @returns 첫 부모 해시. 루트 커밋이면 undefined\n   */\n  private async parentOf(hash: string): Promise<string | undefined> {\n    try {\n      return (await runGit([\"rev-parse\", `${hash}^`], this.repoRoot)).trim();\n    } catch {\n      return undefined;\n    }\n  }\n\n  /**\n   * 그래프에서 선택한 커밋이 현재 checkout 브랜치의 HEAD 이력에 포함되는지 확인한다.\n   * - 다른 브랜치 커밋의 부모가 우연히 현재 브랜치의 공통 조상이면 `parent..HEAD`가 현재 브랜치\n   *   시작 구간 전체로 확장될 수 있으므로, 기준점을 계산하기 전에 선택 커밋 자체를 검증한다.\n   * @param hash 그래프 row/node에서 전달된 시작 커밋 해시\n   * @throws 선택 커밋이 현재 HEAD의 조상이 아니거나 유효한 커밋으로 확인되지 않을 때\n   */\n  private async assertHeadAncestor(hash: string): Promise<void> {\n    try {\n      await runGit([\"merge-base\", \"--is-ancestor\", hash, \"HEAD\"], this.repoRoot);\n    } catch {\n      throw new Error(\n        \"The selected commit is not on the checked-out branch. Check out that branch before starting interactive rebase.\"\n      );\n    }\n  }\n\n  /** rebase 충돌로 unmerged index entry 가 있는지 확인한다. */\n  private async hasUnmergedFiles(): Promise<boolean> {\n    return (await listUnmergedFiles(this.repoRoot)).length > 0;\n  }\n\n  /** 이미 확인한 Git directory가 있으면 경로 조회만 재사용하고 rebase 상태 파일은 새로 읽는다. */\n  private async readRebaseStateFile(name: string, knownGitDir?: string): Promise<string | undefined> {\n    const gitDir = knownGitDir ?? path.resolve(this.repoRoot, (await runGit([\"rev-parse\", \"--git-dir\"], this.repoRoot)).trim());\n    for (const dir of [\"rebase-merge\", \"rebase-apply\"]) {\n      const file = path.join(gitDir, dir, name);\n      const value = await fs.promises.readFile(file, \"utf8\").catch(() => \"\");\n      if (value.trim()) {\n        return value.trim();\n      }\n    }\n    return undefined;\n  }\n\n  /**\n   * stopped-sha가 없으면 같은 호출의 진행률을 공유하거나 새로 읽어 원래 항목을 확인한다.\n   * @param knownGitDir 이번 호출에서 확인한 worktree 전용 Git directory\n   * @param freshProgress 이번 호출에서 시작한 진행률 조회. 이전 호출의 결과/캐시는 전달하지 않는다.\n   * @returns 원래 todo 항목의 OID. 상태 파일과 진행률 모두 없으면 undefined\n   */\n  private async currentOriginalHash(knownGitDir?: string, freshProgress?: Promise<RebaseTodoProgress | undefined>): Promise<string | undefined> {\n    return (await this.readRebaseStateFile(\"stopped-sha\", knownGitDir)) ??\n      (await (freshProgress ?? readRebaseTodoProgress(this.repoRoot, knownGitDir).catch(() => undefined)))?.currentHash;\n  }\n\n}\n\n/** 실패해도 undefined 로 삼을 수 있는 git 조회를 실행한다. */\nasync function optionalGit(\n  args: string[],\n  repoRoot: string\n): Promise<string | undefined> {\n  try { return (await runGit(args, repoRoot)).trim() || undefined; } catch { return undefined; }\n}\n\n/** 임시 파일 경로를 만든다(충돌 방지를 위해 난수 접미사 사용). */\nfunction tempPath(kind: string): string {\n  const suffix = Math.random().toString(36).slice(2);\n  return path.join(os.tmpdir(), `gsc-rebase-${kind}-${suffix}`);\n}\n\n/** rebase 가 충돌 없이 멈춘 이유를 Git stderr/stdout 에서 짧게 뽑는다. */\nfunction stopMessage(err: unknown): string | undefined {\n  const text = err instanceof GitError\n    ? `${err.stderr}\\n${err.stdout}`.trim()\n    : err instanceof Error ? err.message : String(err);\n  return text.split(/\\r?\\n/).map((line) => line.trim()).filter(Boolean).slice(0, 4).join(\" \");\n}\n\n/** 파일을 조용히 삭제한다(없어도 무시). */\nfunction safeUnlink(file: string): void {\n  try {\n    fs.unlinkSync(file);\n  } catch {\n    /* 무시 */\n  }\n}\n",
+      "beforeSha256": "fd7d5c1e1e1ab2801fa0a0b96d16633ae4acc54ea6050e1a73d1bcf49e4b4a80",
+      "afterSha256": "19fc374c4e2263ddb339a8ab2a368b766a4aa188eb720cd464f9781a3e8f3215"
+    },
+    {
+      "file": "src/git/rebaseCommitReader.ts",
+      "before": "// rebase 계획용 커밋/파일 정보를 일괄 조회한다. 커밋 수만큼 Git 프로세스를 만들지 않는다.\nimport { runGit, runGitWithInput } from \"./gitExec\";\nimport type { RebaseCommit, RebaseCommitFile } from \"./rebaseService\";\n\n/** 파일 diff 없이 범위 검증에 필요한 커밋 식별 정보만 담는 내부 레코드다. */\ninterface CommitRecord {\n  hash: string;\n  parent?: string;\n  subject: string;\n  body: string;\n}\n\n/** 확정된 커밋의 첫 부모와 같은 조회에서 계산한 변경 파일 목록이다. */\nexport interface RebaseCommitDetails {\n  parent?: string;\n  files: RebaseCommitFile[];\n}\n\n/**\n * rebase 범위의 커밋을 오래된 순서로 읽고 필요할 때만 파일 정보를 보강한다.\n * - 첫 log에서 확정한 OID를 diff-tree stdin으로 전달하므로 두 조회 사이 HEAD 이동에도 서로 섞이지 않는다.\n * - Start의 정상 coverage는 rebaseStartRange가 hash/parent만 읽고, 이 경로는 UI·복원·실패 설명에 사용한다.\n * @param repoRoot 저장소 루트\n * @param base 대상 범위 직전 커밋. root=true이면 사용하지 않는다.\n * @param root HEAD의 전체 조상 범위를 읽을지 여부\n * @param includeFiles UI 표시용 파일 상태/라인 통계를 읽을지 여부\n * @returns 누락 없이 순서를 유지한 커밋 목록\n */\nexport async function readRebaseCommits(\n  repoRoot: string,\n  base: string,\n  root: boolean,\n  includeFiles = true\n): Promise<RebaseCommit[]> {\n  const records = parseCommitRecords(await runGit([\n    \"log\", \"--reverse\", \"--format=%H%x00%P%x00%s%x00%b\", \"-z\",\n    root ? \"HEAD\" : `${base}..HEAD`, \"--\",\n  ], repoRoot));\n  const files = includeFiles ? await readCommitFiles(repoRoot, records) : new Map<string, RebaseCommitFile[]>();\n  return records.map(({ hash, subject, body }) => ({ hash, subject, body, files: files.get(hash) ?? [] }));\n}\n\n/**\n * 한 커밋의 파일 정보를 같은 batch 경로로 읽는다. root와 merge도 첫 부모 기준을 유지한다.\n * @param repoRoot 저장소 루트\n * @param hash edit 정지 지점의 확정된 커밋 OID\n * @returns 해당 커밋의 파일 상태/라인 통계\n */\nexport async function readRebaseCommitFiles(repoRoot: string, hash: string): Promise<RebaseCommitFile[]> {\n  return (await readRebaseCommitDetails(repoRoot, hash)).files;\n}\n\n/**\n * 기존 파일 조회가 이미 읽는 첫 부모를 함께 반환해 별도 hash^ 조회를 피한다.\n * @param repoRoot 저장소 루트 @param hash 파일 목록과 부모를 읽을 확정 커밋 OID\n * @returns 같은 커밋의 첫 부모와 변경 파일. 루트 커밋에는 parent가 없다.\n */\nexport async function readRebaseCommitDetails(repoRoot: string, hash: string): Promise<RebaseCommitDetails> {\n  const records = parseCommitRecords(await runGit([\n    \"log\", \"-1\", \"--format=%H%x00%P%x00%s%x00%b\", \"-z\", hash, \"--\",\n  ], repoRoot));\n  const files = await readCommitFiles(repoRoot, records);\n  return { parent: records[0]?.parent, files: files.get(records[0]?.hash) ?? [] };\n}\n\n/**\n * NUL로 분리된 고정 네 필드를 파싱한다. 본문의 줄바꿈/제어 문자로 커밋을 잘못 나누지 않는다.\n * @param raw hash, parents, subject, body를 순서대로 출력한 log 결과\n * @returns 첫 부모를 포함한 커밋 메타데이터\n */\nfunction parseCommitRecords(raw: string): CommitRecord[] {\n  const tokens = raw.split(\"\\0\");\n  const records: CommitRecord[] = [];\n  for (let index = 0; index + 3 < tokens.length; index += 4) {\n    const [hash, parents, subject, body] = tokens.slice(index, index + 4);\n    if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(hash)) throw new Error(\"Invalid rebase commit metadata.\");\n    records.push({ hash, parent: parents.split(\" \")[0] || undefined, subject, body: body.trim() });\n  }\n  return records;\n}\n\n/**\n * 모든 커밋의 raw 상태와 numstat을 단일 프로세스에서 읽는다.\n * - stdin의 `commit first-parent`는 merge의 다른 부모 diff를 제외하고 기존 첫 부모 비교를 유지한다.\n * - root는 --root로 빈 트리와 비교하므로 저장소의 SHA 형식에 의존하지 않는다.\n * @param repoRoot 저장소 루트\n * @param records 앞서 확정한 커밋/부모 OID 목록\n * @returns 커밋 OID별 파일 목록. 빈 커밋의 파일 목록은 비어 있다.\n */\nasync function readCommitFiles(repoRoot: string, records: CommitRecord[]): Promise<Map<string, RebaseCommitFile[]>> {\n  if (!records.length) return new Map();\n  const input = records.map(({ hash, parent }) => parent ? `${hash} ${parent}` : hash).join(\"\\n\") + \"\\n\";\n  const raw = await runGitWithInput([\n    \"diff-tree\", \"--stdin\", \"--root\", \"-r\", \"-M\", \"--raw\", \"--numstat\", \"-z\", \"--no-ext-diff\",\n  ], repoRoot, input);\n  return parseCommitFileBatch(raw, new Set(records.map(record => record.hash)));\n}\n\n/**\n * raw/numstat의 경로 토큰을 문법에 따라 소비해 파일명과 커밋 경계를 구분한다.\n * - rename은 두 경로를 소비하고, 공백/탭/줄바꿈/해시 모양 파일명을 그대로 보존한다.\n * @param raw diff-tree의 NUL 구분 출력\n * @param expected 이번 batch에서 요청한 전체 커밋 OID 집합\n * @returns 파일 상태와 numstat이 합쳐진 커밋별 목록\n * @throws 예상 밖 출력은 빈 계획으로 숨기지 않고 조회 오류로 전달한다.\n */\nfunction parseCommitFileBatch(raw: string, expected: Set<string>): Map<string, RebaseCommitFile[]> {\n  const result = new Map<string, RebaseCommitFile[]>();\n  const tokens = raw.split(\"\\0\");\n  let files: RebaseCommitFile[] | undefined;\n  let byPath = new Map<string, RebaseCommitFile>();\n  for (let index = 0; index < tokens.length; index++) {\n    const token = tokens[index];\n    if (!token) continue;\n    if (expected.has(token)) {\n      files = [];\n      result.set(token, files);\n      byPath = new Map();\n      continue;\n    }\n    if (!files) throw new Error(\"Missing rebase commit file header.\");\n    const status = /^:\\d{6} \\d{6} [0-9a-f]+ [0-9a-f]+ ([A-Z])\\d*$/.exec(token)?.[1];\n    if (status) {\n      const firstPath = tokens[++index];\n      const renamed = status === \"R\" || status === \"C\";\n      const filePath = renamed ? tokens[++index] : firstPath;\n      if (!filePath || !firstPath) throw new Error(\"Missing rebase commit file path.\");\n      const file = { status, path: filePath, oldPath: renamed ? firstPath : undefined, additions: 0, deletions: 0 };\n      files.push(file);\n      byPath.set(filePath, file);\n      continue;\n    }\n    const stat = /^(-|\\d+)\\t(-|\\d+)\\t([\\s\\S]*)$/.exec(token);\n    if (!stat) throw new Error(\"Invalid rebase commit file statistics.\");\n    const filePath = stat[3] || tokens[index += 2];\n    const file = byPath.get(filePath);\n    if (!file) throw new Error(\"Unmatched rebase commit file statistics.\");\n    file.additions = stat[1] === \"-\" ? 0 : Number(stat[1]);\n    file.deletions = stat[2] === \"-\" ? 0 : Number(stat[2]);\n  }\n  return result;\n}\n",
+      "beforeSha256": "32cda5a92ebd0eba85af2a0d759881b4639116f7c71ec8e295197b30291b91c6",
+      "afterSha256": "7bae47b9439e2e7732448c8578ada71d8b5b901ed465530bd2fecfcc0c249828"
+    },
+    {
+      "file": "src/git/rebaseOntoTarget.ts",
+      "before": "// 그래프 드래그 대상 커밋을 interactive rebase 의 --onto 인자로 사용할지 판단한다.\n// - rebase 계획 생성에서만 필요한 git 범위 판단을 RebaseService 밖으로 분리해 서비스 책임을 줄인다.\nimport { runGit } from \"./gitExec\";\n\n/**\n * 드래그 drop 대상 커밋을 --onto 로 사용할 수 있는지 판단한다.\n * - 대상이 base 이거나 base..HEAD 재작성 범위 내부면 reorder 의도로 보고 --onto 를 생략한다.\n * - 대상이 다른 브랜치/과거 커밋처럼 범위 밖이면 현재 브랜치를 그 커밋 위로 옮기는 계획이 된다.\n * @param repoRoot 저장소 루트\n * @param ontoHash 사용자가 드래그를 놓은 대상 커밋 해시\n * @param base     rebase 기준점\n * @param root     root rebase 여부\n * @returns --onto 로 넘길 정규화된 커밋 해시. 사용할 수 없으면 undefined\n */\nexport async function usableRebaseOntoTarget(\n  repoRoot: string,\n  ontoHash: string | undefined,\n  base: string,\n  root: boolean\n): Promise<string | undefined> {\n  if (!ontoHash) {\n    return undefined;\n  }\n  const onto = await normalizeCommit(repoRoot, ontoHash);\n  if (!root && onto === base) {\n    return undefined;\n  }\n  const insideRewrittenRange = root\n    ? await isAncestor(repoRoot, onto, \"HEAD\")\n    : (await isAncestor(repoRoot, base, onto)) &&\n      (await isAncestor(repoRoot, onto, \"HEAD\"));\n  return insideRewrittenRange ? undefined : onto;\n}\n\n/**\n * 사용자가 그래프에서 넘긴 해시가 실제 commit 인지 확인하고 전체 해시로 정규화한다.\n * @param repoRoot 저장소 루트\n * @param hash     그래프 row/node 에서 넘어온 커밋 식별자\n * @returns git 이 확인한 commit 해시\n */\nasync function normalizeCommit(repoRoot: string, hash: string): Promise<string> {\n  return (\n    await runGit([\"rev-parse\", \"--verify\", `${hash}^{commit}`], repoRoot)\n  ).trim();\n}\n\n/**\n * ancestor 가 target 의 조상인지 확인한다.\n * @param repoRoot 저장소 루트\n * @param ancestor 조상인지 확인할 커밋\n * @param target   대상 커밋\n */\nasync function isAncestor(\n  repoRoot: string,\n  ancestor: string,\n  target: string\n): Promise<boolean> {\n  try {\n    await runGit([\"merge-base\", \"--is-ancestor\", ancestor, target], repoRoot);\n    return true;\n  } catch {\n    return false;\n  }\n}\n",
+      "beforeSha256": "77ce4f8bac6b45c1c1ec7d983556126546fbca330ed31373c05845e1606817ce",
+      "afterSha256": "2b27be9407c18fa8537f76a7962a41851c53045ceb96570965182127f86a8b80"
+    }
+  ],
+  "fingerprint": {
+    "files": 530,
+    "sha256": "af80ee38017575bdcc4ad1517e72e5792a3e7bcdcd2249faaf321744a35d0574"
+  },
+  "bundleSha256": {
+    "before": "604916df7317dfce9b216022a99fd4d1a7124952757fb6e7953cac5bb62f2026",
+    "after": "0c9fdb9a69a5723dd6daac46884fe2646ea888f1a9074bf204539cbfc97b4a1a"
+  },
+  "scope": "Only rebaseService, rebaseCommitReader and rebaseOntoTarget differ. Real service preparation; one filesystem-warm fixture per scenario; ABBA repeated three times after one warmup per source. Actual Native Start is verified separately. No browser, network, Git CPU or RSS timing claim.",
+  "results": [
+    {
+      "scenario": {
+        "name": "selected-reorder",
+        "commits": 6,
+        "upstream": false,
+        "outside": false
+      },
+      "medians": {
+        "before": {
+          "elapsedMs": 432.8810204999995,
+          "gitCalls": 11,
+          "nodeCpuMs": 28.064
+        },
+        "after": {
+          "elapsedMs": 301.1140624999998,
+          "gitCalls": 7,
+          "nodeCpuMs": 20.374499999999998
+        }
+      },
+      "samples": [
+        {
+          "source": "before",
+          "elapsedMs": 509.1320420000002,
+          "gitCalls": 11,
+          "nodeCpuMs": 32.926,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 37
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 45
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 39
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 47
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 38
+            },
+            {
+              "command": "log",
+              "elapsedMs": 48
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 65
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 50
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 45
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 50
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 341.6897920000001,
+          "gitCalls": 7,
+          "nodeCpuMs": 22.619,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 67
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 48
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 56
+            },
+            {
+              "command": "log",
+              "elapsedMs": 39
+            },
+            {
+              "command": "log",
+              "elapsedMs": 47
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 40
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 327.34445800000003,
+          "gitCalls": 7,
+          "nodeCpuMs": 21.567,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 47
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 59
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 50
+            },
+            {
+              "command": "log",
+              "elapsedMs": 39
+            },
+            {
+              "command": "log",
+              "elapsedMs": 47
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 40
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 519.1274170000002,
+          "gitCalls": 11,
+          "nodeCpuMs": 31.531,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 44
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 56
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 53
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 61
+            },
+            {
+              "command": "log",
+              "elapsedMs": 49
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 42
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 47
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 40
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 40
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 432.5197499999995,
+          "gitCalls": 11,
+          "nodeCpuMs": 27.51,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 40
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 38
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 38
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 43
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 29
+            },
+            {
+              "command": "log",
+              "elapsedMs": 42
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 36
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 44
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 38
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 39
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 289.9973749999999,
+          "gitCalls": 7,
+          "nodeCpuMs": 19.278,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 37
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 48
+            },
+            {
+              "command": "log",
+              "elapsedMs": 38
+            },
+            {
+              "command": "log",
+              "elapsedMs": 45
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 41
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 37
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 312.2307499999997,
+          "gitCalls": 7,
+          "nodeCpuMs": 19.216,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 39
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 64
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 52
+            },
+            {
+              "command": "log",
+              "elapsedMs": 39
+            },
+            {
+              "command": "log",
+              "elapsedMs": 42
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 37
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 36
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 413.5725419999999,
+          "gitCalls": 11,
+          "nodeCpuMs": 26.17,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 37
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 37
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 39
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 44
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 35
+            },
+            {
+              "command": "log",
+              "elapsedMs": 41
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 36
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 34
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 38
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 35
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 36
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 405.6309170000004,
+          "gitCalls": 11,
+          "nodeCpuMs": 28.618,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 34
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 37
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 34
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 43
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 31
+            },
+            {
+              "command": "log",
+              "elapsedMs": 39
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 32
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 38
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 43
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 37
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 34
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 278.9021250000005,
+          "gitCalls": 7,
+          "nodeCpuMs": 21.471,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 46
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 46
+            },
+            {
+              "command": "log",
+              "elapsedMs": 30
+            },
+            {
+              "command": "log",
+              "elapsedMs": 40
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 37
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 34
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 287.74633300000005,
+          "gitCalls": 7,
+          "nodeCpuMs": 16.881,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 34
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 37
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 43
+            },
+            {
+              "command": "log",
+              "elapsedMs": 37
+            },
+            {
+              "command": "log",
+              "elapsedMs": 45
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 35
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 53
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 433.24229099999957,
+          "gitCalls": 11,
+          "nodeCpuMs": 27.116,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 37
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 38
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 36
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 40
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 33
+            },
+            {
+              "command": "log",
+              "elapsedMs": 40
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 33
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 39
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 52
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 45
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 40
+            }
+          ],
+          "nativePlanVerified": true
+        }
+      ],
+      "identicalPlans": true,
+      "execution": {
+        "before": {
+          "nativeTreeMatches": true,
+          "parentAndOrderMatch": true,
+          "cleanWorkingTree": true
+        },
+        "after": {
+          "nativeTreeMatches": true,
+          "parentAndOrderMatch": true,
+          "cleanWorkingTree": true
+        }
+      }
+    },
+    {
+      "scenario": {
+        "name": "upstream-reorder",
+        "commits": 6,
+        "upstream": true,
+        "outside": false
+      },
+      "medians": {
+        "before": {
+          "elapsedMs": 520.2865830000001,
+          "gitCalls": 11,
+          "nodeCpuMs": 34.484
+        },
+        "after": {
+          "elapsedMs": 293.02133350000076,
+          "gitCalls": 6,
+          "nodeCpuMs": 18.2785
+        }
+      },
+      "samples": [
+        {
+          "source": "before",
+          "elapsedMs": 750.4997500000009,
+          "gitCalls": 11,
+          "nodeCpuMs": 34.432,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 43
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 41
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 40
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 51
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 62
+            },
+            {
+              "command": "log",
+              "elapsedMs": 89
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 77
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 59
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 98
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 111
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 75
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 335.63679199999933,
+          "gitCalls": 6,
+          "nodeCpuMs": 20.419,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 70
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 77
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 72
+            },
+            {
+              "command": "log",
+              "elapsedMs": 40
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 40
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 35
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 254.31591599999956,
+          "gitCalls": 6,
+          "nodeCpuMs": 18.608,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 40
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 45
+            },
+            {
+              "command": "log",
+              "elapsedMs": 42
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 41
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 478.552334,
+          "gitCalls": 11,
+          "nodeCpuMs": 29.609,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 58
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 41
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 43
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 46
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 43
+            },
+            {
+              "command": "log",
+              "elapsedMs": 39
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 39
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 34
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 45
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 46
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 543.1495830000003,
+          "gitCalls": 11,
+          "nodeCpuMs": 34.536,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 36
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 52
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 51
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 49
+            },
+            {
+              "command": "log",
+              "elapsedMs": 43
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 44
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 54
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 66
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 61
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 322.2932920000003,
+          "gitCalls": 6,
+          "nodeCpuMs": 18.024,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 58
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 62
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 55
+            },
+            {
+              "command": "log",
+              "elapsedMs": 51
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 46
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 49
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 341.0999580000007,
+          "gitCalls": 6,
+          "nodeCpuMs": 18.503,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 55
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 56
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 64
+            },
+            {
+              "command": "log",
+              "elapsedMs": 68
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 51
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 47
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 551.4706249999999,
+          "gitCalls": 11,
+          "nodeCpuMs": 35.104,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 102
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 49
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 48
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 51
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 44
+            },
+            {
+              "command": "log",
+              "elapsedMs": 46
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 41
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 44
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 48
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 39
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 36
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 484.86954200000037,
+          "gitCalls": 11,
+          "nodeCpuMs": 40.024,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 39
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 45
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 48
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 40
+            },
+            {
+              "command": "log",
+              "elapsedMs": 41
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 40
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 45
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 54
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 49
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 263.74937500000124,
+          "gitCalls": 6,
+          "nodeCpuMs": 18.054,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 43
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 44
+            },
+            {
+              "command": "log",
+              "elapsedMs": 47
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 45
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 244.9925830000011,
+          "gitCalls": 6,
+          "nodeCpuMs": 15.379,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 39
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 43
+            },
+            {
+              "command": "log",
+              "elapsedMs": 41
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 38
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 497.4235829999998,
+          "gitCalls": 11,
+          "nodeCpuMs": 29.779,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 36
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 45
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 49
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 47
+            },
+            {
+              "command": "log",
+              "elapsedMs": 41
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 51
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 38
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 49
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 45
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 52
+            }
+          ],
+          "nativePlanVerified": true
+        }
+      ],
+      "identicalPlans": true,
+      "execution": {
+        "before": {
+          "nativeTreeMatches": true,
+          "parentAndOrderMatch": true,
+          "cleanWorkingTree": true
+        },
+        "after": {
+          "nativeTreeMatches": true,
+          "parentAndOrderMatch": true,
+          "cleanWorkingTree": true
+        }
+      }
+    },
+    {
+      "scenario": {
+        "name": "selected-outside",
+        "commits": 6,
+        "upstream": false,
+        "outside": true
+      },
+      "medians": {
+        "before": {
+          "elapsedMs": 506.617249500001,
+          "gitCalls": 11,
+          "nodeCpuMs": 31.148000000000003
+        },
+        "after": {
+          "elapsedMs": 362.8978960000004,
+          "gitCalls": 8,
+          "nodeCpuMs": 22.345
+        }
+      },
+      "samples": [
+        {
+          "source": "before",
+          "elapsedMs": 570.4514999999992,
+          "gitCalls": 11,
+          "nodeCpuMs": 31.859,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 168
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 42
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 39
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 41
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 35
+            },
+            {
+              "command": "log",
+              "elapsedMs": 43
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 47
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 38
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 40
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 40
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 36
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 346.3976670000011,
+          "gitCalls": 8,
+          "nodeCpuMs": 20.079,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 44
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 54
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 46
+            },
+            {
+              "command": "log",
+              "elapsedMs": 53
+            },
+            {
+              "command": "log",
+              "elapsedMs": 42
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 34
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 37
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 35
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 379.3981249999997,
+          "gitCalls": 8,
+          "nodeCpuMs": 23.37,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 53
+            },
+            {
+              "command": "log",
+              "elapsedMs": 43
+            },
+            {
+              "command": "log",
+              "elapsedMs": 56
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 48
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 48
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 46
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 481.65537499999846,
+          "gitCalls": 11,
+          "nodeCpuMs": 32.806,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 51
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 50
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 44
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 47
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 36
+            },
+            {
+              "command": "log",
+              "elapsedMs": 46
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 39
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 43
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 44
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 39
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 447.77237500000047,
+          "gitCalls": 11,
+          "nodeCpuMs": 33.483,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 38
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 38
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 45
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 39
+            },
+            {
+              "command": "log",
+              "elapsedMs": 43
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 39
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 39
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 44
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 44
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 32
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 302.50187500000175,
+          "gitCalls": 8,
+          "nodeCpuMs": 22.359,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 40
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 36
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 42
+            },
+            {
+              "command": "log",
+              "elapsedMs": 36
+            },
+            {
+              "command": "log",
+              "elapsedMs": 41
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 32
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 34
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 39
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 291.3555000000015,
+          "gitCalls": 8,
+          "nodeCpuMs": 18.853,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 36
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 33
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 39
+            },
+            {
+              "command": "log",
+              "elapsedMs": 30
+            },
+            {
+              "command": "log",
+              "elapsedMs": 43
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 33
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 35
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 38
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 530.0589580000014,
+          "gitCalls": 11,
+          "nodeCpuMs": 30.437,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 37
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 36
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 38
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 48
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 52
+            },
+            {
+              "command": "log",
+              "elapsedMs": 69
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 42
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 67
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 51
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 44
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 663.8404169999994,
+          "gitCalls": 11,
+          "nodeCpuMs": 27.568,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 56
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 64
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 38
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 54
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 52
+            },
+            {
+              "command": "log",
+              "elapsedMs": 63
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 48
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 46
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 61
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 92
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 88
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 505.3725000000013,
+          "gitCalls": 8,
+          "nodeCpuMs": 23.265,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 77
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 69
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 73
+            },
+            {
+              "command": "log",
+              "elapsedMs": 55
+            },
+            {
+              "command": "log",
+              "elapsedMs": 60
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 55
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 54
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 60
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 490.2943749999977,
+          "gitCalls": 8,
+          "nodeCpuMs": 22.331,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 57
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 53
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 68
+            },
+            {
+              "command": "log",
+              "elapsedMs": 53
+            },
+            {
+              "command": "log",
+              "elapsedMs": 77
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 74
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 48
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 56
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 483.1755410000005,
+          "gitCalls": 11,
+          "nodeCpuMs": 26.488,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 53
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 61
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 62
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 44
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 33
+            },
+            {
+              "command": "log",
+              "elapsedMs": 43
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 35
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 37
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 40
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 38
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 31
+            }
+          ],
+          "nativePlanVerified": true
+        }
+      ],
+      "identicalPlans": true,
+      "execution": {
+        "before": {
+          "nativeTreeMatches": true,
+          "parentAndOrderMatch": true,
+          "cleanWorkingTree": true
+        },
+        "after": {
+          "nativeTreeMatches": true,
+          "parentAndOrderMatch": true,
+          "cleanWorkingTree": true
+        }
+      }
+    },
+    {
+      "scenario": {
+        "name": "selected-long-reorder",
+        "commits": 60,
+        "upstream": false,
+        "outside": false
+      },
+      "medians": {
+        "before": {
+          "elapsedMs": 428.8123540000015,
+          "gitCalls": 11,
+          "nodeCpuMs": 28.996499999999997
+        },
+        "after": {
+          "elapsedMs": 267.6363330000004,
+          "gitCalls": 7,
+          "nodeCpuMs": 21.6115
+        }
+      },
+      "samples": [
+        {
+          "source": "before",
+          "elapsedMs": 418.06691599999976,
+          "gitCalls": 11,
+          "nodeCpuMs": 27.989,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 36
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 37
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 36
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 44
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            },
+            {
+              "command": "log",
+              "elapsedMs": 55
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 40
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 23
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 39
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 31
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 32
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 257.9772499999999,
+          "gitCalls": 7,
+          "nodeCpuMs": 18.714,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 33
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 40
+            },
+            {
+              "command": "log",
+              "elapsedMs": 33
+            },
+            {
+              "command": "log",
+              "elapsedMs": 40
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 47
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 22
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 252.04291699999885,
+          "gitCalls": 7,
+          "nodeCpuMs": 17.293,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 36
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 35
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 40
+            },
+            {
+              "command": "log",
+              "elapsedMs": 32
+            },
+            {
+              "command": "log",
+              "elapsedMs": 40
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 42
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 23
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 442.8015830000004,
+          "gitCalls": 11,
+          "nodeCpuMs": 28.99,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 38
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 40
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 40
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 49
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 35
+            },
+            {
+              "command": "log",
+              "elapsedMs": 46
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 45
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 29
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 42
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 36
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 38
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 429.2769999999982,
+          "gitCalls": 11,
+          "nodeCpuMs": 29.741,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 44
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 40
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 43
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 32
+            },
+            {
+              "command": "log",
+              "elapsedMs": 42
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 43
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 27
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 41
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 37
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 36
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 259.5854580000014,
+          "gitCalls": 7,
+          "nodeCpuMs": 19.465,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 36
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 37
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 44
+            },
+            {
+              "command": "log",
+              "elapsedMs": 32
+            },
+            {
+              "command": "log",
+              "elapsedMs": 40
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 45
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 23
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 275.6872079999994,
+          "gitCalls": 7,
+          "nodeCpuMs": 32.243,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 38
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 34
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 47
+            },
+            {
+              "command": "log",
+              "elapsedMs": 40
+            },
+            {
+              "command": "log",
+              "elapsedMs": 46
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 45
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 23
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 406.6275829999977,
+          "gitCalls": 11,
+          "nodeCpuMs": 29.003,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 34
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 40
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 34
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 46
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 30
+            },
+            {
+              "command": "log",
+              "elapsedMs": 40
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 45
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 25
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 41
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 31
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 38
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 428.3477080000048,
+          "gitCalls": 11,
+          "nodeCpuMs": 28.047,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 38
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 37
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 36
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 48
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 33
+            },
+            {
+              "command": "log",
+              "elapsedMs": 44
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 42
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 27
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 40
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 36
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 41
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 418.6251669999983,
+          "gitCalls": 7,
+          "nodeCpuMs": 27.114,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 51
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 42
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 55
+            },
+            {
+              "command": "log",
+              "elapsedMs": 40
+            },
+            {
+              "command": "log",
+              "elapsedMs": 51
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 92
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 83
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "after",
+          "elapsedMs": 351.3214999999982,
+          "gitCalls": 7,
+          "nodeCpuMs": 23.758,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 48
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 45
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 55
+            },
+            {
+              "command": "log",
+              "elapsedMs": 55
+            },
+            {
+              "command": "log",
+              "elapsedMs": 50
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 63
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 32
+            }
+          ],
+          "nativePlanVerified": true
+        },
+        {
+          "source": "before",
+          "elapsedMs": 546.5824589999975,
+          "gitCalls": 11,
+          "nodeCpuMs": 39.652,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 52
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 37
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 61
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 56
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 40
+            },
+            {
+              "command": "log",
+              "elapsedMs": 51
+            },
+            {
+              "command": "diff-tree",
+              "elapsedMs": 63
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 37
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 53
+            },
+            {
+              "command": "merge-base",
+              "elapsedMs": 52
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 40
+            }
+          ],
+          "nativePlanVerified": true
+        }
+      ],
+      "identicalPlans": true,
+      "execution": {
+        "before": {
+          "nativeTreeMatches": true,
+          "parentAndOrderMatch": true,
+          "cleanWorkingTree": true
+        },
+        "after": {
+          "nativeTreeMatches": true,
+          "parentAndOrderMatch": true,
+          "cleanWorkingTree": true
+        }
+      }
+    }
+  ],
+  "completed": true
+}

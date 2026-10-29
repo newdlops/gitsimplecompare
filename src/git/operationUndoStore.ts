@@ -4,7 +4,7 @@ import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 import { detectOperationInGitDir, type MergeOperation } from "./conflictService";
 import { readConflictOperationEpochAt } from "./conflictOperationEpoch";
-import { readGitCheckoutIdentity, readGitDirectory } from "./repositoryIdentity";
+import { readGitCheckoutIdentity, readGitCheckoutIdentityWithSnapshot, readGitDirectory } from "./repositoryIdentity";
 import { controlGitOperation } from "./operationControl";
 import { GitError, runGit } from "./gitExec";
 import { logInfo } from "../ui/outputLog";
@@ -84,8 +84,7 @@ export class OperationUndoStore {
     // 업데이트 전 시작한 rebase는 계속할 수 있지만 출처 없는 자동 Undo 기록은 새로 만들지 않는다.
     if (!binding && allowMissing) return;
     if (!binding || binding.snapshotRef !== snapshotRef) throw staleUndo();
-    await this.assertSnapshot(binding);
-    const state = await this.readState(gitDir);
+    const state = await this.readState(binding);
     if (expectedHead !== undefined && state.head !== expectedHead) {
       logInfo("operation recovery capture skipped", { repoRoot: this.repoRoot, family: this.family, branch, phase,
         reason: "resultHeadChanged", expectedHead, actualHead: state.head });
@@ -119,8 +118,7 @@ export class OperationUndoStore {
     if (!target) throw staleUndo();
     const binding = await this.read(target);
     if (!binding || !binding.state || binding.phase === "prepared") throw staleUndo();
-    await this.assertSnapshot(binding);
-    const state = await this.readState();
+    const state = await this.readState(binding);
     const offBranch = state.branch !== target;
     const targetHead = offBranch
       ? (await runGit(["rev-parse", "--verify", `refs/heads/${target}^{commit}`], this.repoRoot)).trim()
@@ -211,20 +209,15 @@ export class OperationUndoStore {
     if ((await this.read(plan.branch))?.id === plan.id) await rm(await this.file(plan.branch), { force: true });
   }
 
-  /** snapshot ref가 이 작업의 시작 commit을 가리키는지 확인한다. */
-  private async assertSnapshot(binding: Binding): Promise<void> {
-    const hash = (await runGit(["rev-parse", "--verify", `${binding.snapshotRef}^{commit}`], this.repoRoot)).trim();
-    if (hash !== binding.beforeHead) throw staleUndo();
-  }
-
   /**
    * HEAD, index와 Git 작업 표식의 세대를 읽는다. 조회 실패는 빈 결과로 바꾸지 않는다.
-   * @param expectedGitDir 같은 capture에서 복구 기록을 읽은 디렉터리. 현재 Git identity와 다르면 중단한다.
+   * @param binding 검증할 복구 기록. snapshot commit과 현재 checkout을 함께 새로 읽어 출처를 확인한다.
    * @returns Undo의 출처 및 변경 여부를 확인하는 현재 상태
    */
-  private async readState(expectedGitDir?: string): Promise<RepositoryState> {
-    const { gitDir, branch, head } = await readGitCheckoutIdentity(this.repoRoot);
-    if (expectedGitDir && gitDir !== expectedGitDir) throw staleUndo();
+  private async readState(binding?: Binding): Promise<RepositoryState> {
+    const snapshot = binding ? await readGitCheckoutIdentityWithSnapshot(this.repoRoot, binding.snapshotRef) : undefined;
+    const { gitDir, branch, head } = snapshot?.identity ?? await readGitCheckoutIdentity(this.repoRoot);
+    if (binding && (gitDir !== binding.gitDir || snapshot!.snapshotHead !== binding.beforeHead)) throw staleUndo();
     const operation = detectOperationInGitDir(gitDir);
     const [indexState, epoch, headLog, squash, rebase, sequencer] = await Promise.all([
       // 확정 index의 mode/OID/stage만 필요하므로 fsmonitor IPC와 작업트리 검색을 생략한다.

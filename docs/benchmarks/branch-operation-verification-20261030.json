@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-30",
+  "baselineCommit": "7911b3c84c8d3f1e5b6178c0811650995f756f05",
+  "sourceFiles": {
+    "src/git/branchOperationService.ts": "b1b01ec6e36e9a1f164de7dfbfe484f49006b9c2508eb6dddae54862f22edab1",
+    "src/git/branchRebaseMerge.ts": "7c86149734ca8f83075d2cff08bc18c202863e0c7b098c4e6904e3d421a9ee65",
+    "src/git/operationResultReset.ts": "eee3bafc3a426fd63610f371cdea8fc12de223d4b5ced84967d9849e3704c5c7",
+    "src/git/pullRequestResultReset.ts": "a451a7fdb675a5b94a753f6ba5699471fc480c2d1d15890a194938d49579bb26",
+    "src/git/replayWorktree.ts": "99d8d2f9b1480a9a8212cb55aa943d7c02ef186b7b73f178e82ab8e650b3206b",
+    "src/git/replayWorktreePolicy.ts": "423f8dd272c292095195d546c9c54862d50535ef5b445cc6ae52bc99028d04b4",
+    "src/git/temporaryWorktree.ts": "89d0bd074b33f9121711f096e65cde532cbe6bc2430ec6d2597233e787fbbf22"
+  },
+  "checks": {
+    "npm run check-types": { "exitCode": 0 },
+    "npm run compile": { "exitCode": 0 },
+    "git diff --check": { "exitCode": 0 },
+    "npm run lint": {
+      "exitCode": 127,
+      "status": "unavailable: ESLint dependency and configuration are absent in the existing repository"
+    }
+  },
+  "unitRuns": [
+    {
+      "commandPrefix": "npm test --",
+      "files": [
+        "test/branchSquashWorktree.test.ts",
+        "test/operationResultReset.test.ts",
+        "test/branchSquashIndex.test.ts",
+        "test/branchOperationSafety.test.ts",
+        "test/branchSyncSafety.test.ts",
+        "test/branchSyncPerformance.test.ts",
+        "test/branchRebasePreparation.test.ts",
+        "test/branchRebaseCompletion.test.ts",
+        "test/rebaseControlLifecycleSafety.test.ts",
+        "test/complexGitOperationSafety.test.ts",
+        "test/pullRequestResultReset.test.ts",
+        "test/pullRequestWorktreeRecovery.test.ts",
+        "test/pullRequestUndoSafety.test.ts",
+        "test/prRecoveryCheckpointSafety.test.ts",
+        "test/replayWorktree.test.ts",
+        "test/replayWorktreeHookPolicy.test.ts",
+        "test/replayWorktreePaths.test.ts",
+        "test/rebaseExecutionPerformance.test.ts",
+        "test/rebaseNativeEditors.test.ts",
+        "test/graphOperationNative.test.ts",
+        "test/preparedIndexCommit.test.ts",
+        "test/remainingGitRecoverySafety.test.ts",
+        "test/operationReadiness.test.ts",
+        "test/rebaseFailureRecovery.test.ts",
+        "test/rebaseTodoSafety.test.ts"
+      ],
+      "tests": 244,
+      "passed": 242,
+      "failed": 2,
+      "skipped": 0,
+      "durationMs": 521329.541333,
+      "note": "Two PR Undo expectations relied on reset discarding pre-existing staged modifications. Both were updated to assert preserved staging, refusal without data changes, and Undo after explicit unstaging."
+    },
+    {
+      "commandPrefix": "npm test --",
+      "files": [
+        "test/branchRebaseFinalize.test.ts",
+        "test/branchRebaseCompletion.test.ts",
+        "test/operationResultReset.test.ts",
+        "test/pullRequestResultReset.test.ts",
+        "test/pullRequestUndoSafety.test.ts"
+      ],
+      "tests": 52,
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 73952.9095,
+      "note": "Final rebase restoration lookup, staged-path overlap implementation, and revised PR Undo behavior revalidated, including three added cases."
+    }
+  ],
+  "uniqueTestFiles": 26,
+  "uniqueCasesCoveredAfterFollowup": 247,
+  "limitations": [
+    "Timing covers isolated Native Git service completion, not VS Code rendering or network latency.",
+    "Node CPU excludes Native Git and OS CPU. No total CPU or RSS improvement is claimed.",
+    "No browser visual checks or installed-extension performance measurements were performed."
+  ]
+}

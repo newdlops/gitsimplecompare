@@ -7,7 +7,7 @@ import * as path from "node:path";
 import { GitError, runGit } from "./gitExec";
 import { withGitStatePathScope } from "./gitStatePathScope";
 import { detectOperation } from "./conflictService";
-import { readRebaseCommits, readRebaseCommitDetails } from "./rebaseCommitReader";
+import { readRebaseCommits, readRebaseCommitDetails, readRebasePlanCommits } from "./rebaseCommitReader";
 import { listUnmergedFiles } from "./unmergedFiles";
 import { amendRebaseEdit } from "./rebaseEditApply";
 import { assertGitOperation, captureGitOperation, type GitOperationIdentity } from "./operationControl";
@@ -154,47 +154,37 @@ export class RebaseService {
     ontoHash?: string
   ): Promise<RebasePlanInfo> {
     const checkout = await captureRebaseCheckout(this.repoRoot);
-    const branch = (
-      await runGit(["branch", "--show-current"], this.repoRoot)
-    ).trim();
-    if (!branch) {
-      throw new Error("Interactive rebase requires a checked-out local branch.");
-    }
+    const branch = checkout.branch.slice("refs/heads/".length);
     const upstream = await optionalGit(
-      ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+      // HEAD가 다른 브랜치로 갔다 돌아와도 준비를 시작한 브랜치의 설정만 읽는다.
+      ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "--verify", "--end-of-options", `${branch}@{u}`],
       this.repoRoot
     );
     let base = "";
     let root = false;
     let baseReason: RebasePlanInfo["baseReason"] = "selected";
     if (startHash) {
-      await this.assertHeadAncestor(startHash);
+      await this.assertHeadAncestor(startHash, checkout.head);
       base = (await this.parentOf(startHash)) ?? "";
       root = !base;
     } else if (upstream) {
-      const mergeBase = (
-        await runGit(["merge-base", "HEAD", upstream], this.repoRoot)
+      base = (
+        await runGit(["merge-base", checkout.head, upstream], this.repoRoot)
       ).trim();
-      const localCount = Number(
-        (
-          await runGit(["rev-list", "--count", `${mergeBase}..HEAD`], this.repoRoot)
-        ).trim()
-      );
-      if (localCount > 0) {
-        base = mergeBase;
-        baseReason = "upstream";
-      }
+      baseReason = "upstream";
     }
     if (!base && !root) {
       throw new Error("Drag a commit to choose the rebase start point.");
     }
 
-    const commits = await this.getCommits(base, root);
+    const { commits, linear } = await readRebasePlanCommits(this.repoRoot, base, root, checkout.head);
+    if (!startHash && !commits.length) throw new Error("Drag a commit to choose the rebase start point.");
     const onto = await usableRebaseOntoTarget(
       this.repoRoot,
       ontoHash,
       base,
-      root
+      root,
+      { head: checkout.head, linear, commits }
     );
     await assertRebaseCheckout(this.repoRoot, checkout);
     this.preparedCheckout = checkout;
@@ -491,14 +481,11 @@ export class RebaseService {
   /**
    * 지정 커밋의 첫 부모를 반환한다.
    * @param hash 부모를 찾을 커밋 해시
-   * @returns 첫 부모 해시. 루트 커밋이면 undefined
+   * @returns 첫 부모 해시. Native가 부모가 없다고 확인한 루트만 undefined이며 조회 실패는 전파한다.
    */
   private async parentOf(hash: string): Promise<string | undefined> {
-    try {
-      return (await runGit(["rev-parse", `${hash}^`], this.repoRoot)).trim();
-    } catch {
-      return undefined;
-    }
+    const parents = (await runGit(["log", "-1", "--format=%P", hash, "--"], this.repoRoot)).trim();
+    return parents.split(" ")[0] || undefined;
   }
 
   /**
@@ -506,11 +493,12 @@ export class RebaseService {
    * - 다른 브랜치 커밋의 부모가 우연히 현재 브랜치의 공통 조상이면 `parent..HEAD`가 현재 브랜치
    *   시작 구간 전체로 확장될 수 있으므로, 기준점을 계산하기 전에 선택 커밋 자체를 검증한다.
    * @param hash 그래프 row/node에서 전달된 시작 커밋 해시
+   * @param head 계획 시작 시 고정한 HEAD. 준비 중 움직이는 symbolic HEAD로 범위를 섞지 않는다.
    * @throws 선택 커밋이 현재 HEAD의 조상이 아니거나 유효한 커밋으로 확인되지 않을 때
    */
-  private async assertHeadAncestor(hash: string): Promise<void> {
+  private async assertHeadAncestor(hash: string, head: string): Promise<void> {
     try {
-      await runGit(["merge-base", "--is-ancestor", hash, "HEAD"], this.repoRoot);
+      await runGit(["merge-base", "--is-ancestor", hash, head], this.repoRoot);
     } catch {
       throw new Error(
         "The selected commit is not on the checked-out branch. Check out that branch before starting interactive rebase."
