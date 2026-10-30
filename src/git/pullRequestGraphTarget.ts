@@ -35,9 +35,11 @@ export async function resolvePullRequestGraphTarget(root: string, pr: PullReques
 /**
  * 일반 fetch에 포함되지 않는 PR의 객체만 가져온다. named ref·FETCH_HEAD·작업트리·index는 갱신하지 않는다.
  * @param root 저장소 루트 @param pr 단건 조회로 확인한 PR URL/OID @param signal Graph 이동 수명
+ * @param options preferHead면 개별 PR commit의 위쪽 이력도 탐색하도록 원본 PR head를 먼저 가져온다.
  * @returns 객체 전송이 끝나면 완료한다. 취소 또는 30초 제한 뒤에는 후속 조회를 시작하지 않는다.
  */
-export async function fetchPullRequestGraphObjects(root: string, pr: PullRequestInfo, signal?: AbortSignal): Promise<void> {
+export async function fetchPullRequestGraphObjects(root: string, pr: PullRequestInfo, signal?: AbortSignal,
+  options: { preferHead?: boolean } = {}): Promise<void> {
   signal?.throwIfAborted();
   if (!Number.isSafeInteger(pr.number) || pr.number <= 0) throw new Error("Invalid pull request number.");
   const remote = await matchingRemote(root, pr.url, signal);
@@ -48,8 +50,9 @@ export async function fetchPullRequestGraphObjects(root: string, pr: PullRequest
   const timer = setTimeout(cancel, 30_000);
   timer.unref();
   try {
-    const sources = [...new Set([pr.state === "MERGED" && isOid(pr.mergeHash) ? pr.mergeHash : undefined,
-      `refs/pull/${pr.number}/head`].filter((source): source is string => !!source))];
+    const merge = pr.state === "MERGED" && isOid(pr.mergeHash) ? pr.mergeHash : undefined;
+    const head = `refs/pull/${pr.number}/head`;
+    const sources = [...new Set((options.preferHead ? [head, merge] : [merge, head]).filter((source): source is string => !!source))];
     for (let index = 0; index < sources.length; index++) {
       controller.signal.throwIfAborted();
       try {

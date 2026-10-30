@@ -368,7 +368,7 @@
 
   /** commit hash 로 graph row 를 찾아 이동하고 하이라이트한다. */
   function focusCommitRow(hash) {
-    window.GscGraphPrMatching?.focusCommitRow?.(hash, false);
+    window.GscGraphPrMatching?.focusCommitRow?.(hash, false, activeDetail.kind === "pr" ? findPr(activeDetail.number) : undefined);
   }
 
   /** 선택한 PR 상세를 drawer 에 렌더링한다. */
@@ -431,15 +431,16 @@
         `<button type="button" class="gsc-button" data-pr-detail-retry ${tooltipAttrs(window.GscPrStackI18n?.retryPrDetails || "Retry loading changed files")}>${esc(window.GscPrStackI18n?.retryPrDetails || "Retry loading changed files")}</button></section>`;
     }
     const detail = state.detail || { files: [], fileCount: 0, fileCommentCount: 0 };
+    const progress = window.GscGraphPrFiles?.renderProgress?.(detail) || "";
     const note = detail.filesTruncated || detail.reviewThreadsTruncated
       ? `<p class="pr-empty">Some files or comments were omitted because this PR is very large.</p>`
       : "";
-    return `<section class="pr-detail-section pr-files-section">` +
+    return `<section class="pr-detail-section pr-files-section" aria-busy="${detail.filesLoading ? "true" : "false"}">` +
       sectionHeading("files", "Changed files",
         (detail.files && detail.files.length ? filesViewToggle() : "") +
         iconCount("files", detail.fileCount || detail.files.length, "Changed files") +
-        iconCount("comment-discussion", detail.fileCommentCount || 0, "File comments")) +
-      (window.GscGraphPrFiles?.render?.(detail.files || []) || `<p class="pr-empty">Changed files renderer is unavailable.</p>`) +
+        iconCount("comment-discussion", detail.reviewThreadsLoading ? "…" : detail.reviewThreadsError ? "—" : detail.fileCommentCount || 0, "File comments")) +
+      progress + (window.GscGraphPrFiles?.render?.(detail.files || []) || `<p class="pr-empty">Changed files renderer is unavailable.</p>`) +
       note +
       `</section>`;
   }

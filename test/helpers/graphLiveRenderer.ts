@@ -148,6 +148,20 @@ export class GraphLiveRenderer {
     return this.page.locator(selector).count();
   }
 
+  /** 실제 Graph 스크롤 컨테이너에서 키보드로 끝/처음에 이동해 양방향 자동 페이지 요청을 발생시킨다. */
+  async scrollGraph(direction: "older" | "newer"): Promise<void> {
+    await this.queue;
+    await this.page.locator("#graph").focus();
+    await this.page.keyboard.press(direction === "older" ? "End" : "Home");
+  }
+
+  /** 실제 DOM의 전체 OID 순서를 읽어 Native 날짜순 페이지와 중복·누락까지 비교하게 한다. */
+  async readRenderedHashes(): Promise<string[]> {
+    await this.queue;
+    return this.page.locator("#graph-content .row[data-hash]").evaluateAll(rows => rows
+      .map(row => (row as HTMLElement).dataset.hash || "").filter(hash => /^[a-f0-9]{40,64}$/.test(hash)));
+  }
+
   /** 접근성 이름으로 실제 버튼을 눌러 rebase 계획처럼 동적으로 만들어지는 컨트롤도 검사한다. */
   async clickNamedControl(name: string): Promise<void> {
     await this.queue;

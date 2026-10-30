@@ -5,6 +5,7 @@ import type { GhExecute } from "./ghRunner";
 import { readGitHubInteractive } from "./githubReadCache";
 import { splitRepositoryName } from "./githubRepository";
 import { reviewThreadCommentCount } from "./pullRequestCommentCounts";
+import { logWarn } from "../ui/outputLog";
 
 /** changed file의 변경량과 파일별 리뷰 댓글 수다. */
 export interface PullRequestChangedFileInfo extends CommitFileChange { commentCount: number; }
@@ -17,6 +18,12 @@ export interface PullRequestDetailInfo {
   files: PullRequestChangedFileInfo[];
   filesTruncated: boolean;
   reviewThreadsTruncated: boolean;
+  /** true면 표시한 파일은 사용할 수 있으며 다음 파일 페이지를 계속 읽고 있다. */
+  filesLoading?: boolean;
+  /** 파일 목록과 독립적으로 리뷰 댓글을 읽는 중임을 나타낸다. */
+  reviewThreadsLoading?: boolean;
+  /** 파일을 모두 읽었어도 댓글 조회가 실패할 수 있으므로 별도 오류를 유지한다. */
+  reviewThreadsError?: string;
 }
 
 const MAX_DETAIL_PAGES = 20;
@@ -29,6 +36,13 @@ const DETAIL_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
     ${ANCHOR_FIELDS} comments(first: 1) { totalCount }
     files(first: 100) { totalCount ${FILE_FIELDS} }
     reviewThreads(first: 100) { ${THREAD_FIELDS} }
+  } }
+}`;
+/** 직접 연 파일 목록은 비싼 reviewThreads 연결 없이 첫 페이지부터 표시한다. */
+const FILES_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) { pullRequest(number: $number) {
+    ${ANCHOR_FIELDS} comments(first: 1) { totalCount }
+    files(first: 100) { totalCount ${FILE_FIELDS} }
   } }
 }`;
 
@@ -46,13 +60,16 @@ interface Response { errors?: unknown[]; data?: { repository?: { pullRequest?: D
 type ConnectionKind = "files" | "reviewThreads";
 
 /**
- * PR 하나의 파일과 리뷰 댓글을 읽는다. 두 꼬리는 병렬로 읽고 한쪽 실패 시 다른 쪽도 취소한다.
+ * PR 하나의 파일과 리뷰 댓글을 같은 head/base에서 읽는다. 진행 조회는 파일을 먼저 게시한다.
+ * - 파일 실패는 나머지 조회를 취소하며, 진행 조회의 댓글 실패는 사용할 수 있는 파일과 별도로 반환한다.
  * @param cwd 실행 저장소, repository owner/name(gh placeholder 포함), number PR 번호
  * @param signal 소비자 취소 신호, runner 테스트 또는 production 조회 실행기
- * @returns 같은 head/base에서 읽은 상세. 누락·잘못된 페이지는 불완전한 성공 대신 오류다.
+ * @param onProgress 있으면 파일 전용 첫 조회와 페이지별 결과를 먼저 게시하고 댓글은 별도로 보완한다.
+ * @returns 검증한 상세. 파일 누락·혼합 페이지는 오류이며 독립 댓글 오류는 reviewThreadsError로 구분한다.
  */
 export async function fetchPullRequestDetail(
-  cwd: string, repository: string, number: number, signal?: AbortSignal, runner: GhExecute = readGitHubInteractive
+  cwd: string, repository: string, number: number, signal?: AbortSignal, runner: GhExecute = readGitHubInteractive,
+  onProgress?: (detail: PullRequestDetailInfo) => void
 ): Promise<PullRequestDetailInfo> {
   signal?.throwIfAborted();
   const controller = new AbortController();
@@ -60,33 +77,61 @@ export async function fetchPullRequestDetail(
   signal?.addEventListener("abort", abort, { once: true });
   const [owner, name] = splitRepositoryName(repository);
   try {
-    const out = await runner(graphQlArgs(owner, name, number, DETAIL_QUERY), cwd,
+    const out = await runner(graphQlArgs(owner, name, number, onProgress ? FILES_QUERY : DETAIL_QUERY), cwd,
       { operation: "pr-detail", signal: controller.signal });
     controller.signal.throwIfAborted();
     const pr = parseDetail(out, number);
     const firstFiles = connection<ChangedFile>(pr, "files");
-    const firstThreads = connection<ReviewThread>(pr, "reviewThreads");
+    const firstThreads = onProgress ? undefined : connection<ReviewThread>(pr, "reviewThreads");
     const total = count(firstFiles.totalCount, "file count");
     const conversation = count(pr.comments?.totalCount, "conversation count");
-    const files = [...firstFiles.nodes], threads = [...firstThreads.nodes];
+    const files = [...firstFiles.nodes], threads = [...(firstThreads?.nodes || [])];
+    let filesLoading = firstFiles.pageInfo.hasNextPage, reviewThreadsLoading = Boolean(onProgress);
+    let filesTruncated = false, reviewThreadsTruncated = false, reviewThreadsError: string | undefined;
+    /** 완료된 파일은 댓글 대기와 독립적으로 게시한다. 모든 응답은 같은 head/base 앵커를 유지한다. */
+    const progress = () => {
+      controller.signal.throwIfAborted();
+      onProgress?.({ ...detailValue(number, conversation, total, files, threads, filesTruncated, reviewThreadsTruncated),
+        filesLoading, reviewThreadsLoading, ...(reviewThreadsError ? { reviewThreadsError } : {}) });
+    };
+    progress();
+    controller.signal.throwIfAborted();
     let failure: unknown;
     /** 처음 실패한 원인을 보존하면서 이미 필요 없는 다른 페이지 조회를 해제한다. */
     const guard = <T>(promise: Promise<T>) => promise.catch(error => { failure ??= error; controller.abort(); throw error; });
+    /** 파일 꼬리는 도착한 페이지마다 사용 가능하게 하고 댓글 실패가 파일 조회를 취소하지 않게 한다. */
+    const readFiles = async () => {
+      filesTruncated = await appendPages(cwd, owner, name, pr, "files", firstFiles, files, runner, controller.signal,
+        page => { filesLoading = page.pageInfo.hasNextPage; progress(); });
+      if (!filesTruncated && files.length !== total) throw new Error("Pull request file pagination is incomplete. Refresh to try again.");
+      filesLoading = false; progress();
+    };
+    /** 댓글 첫 페이지도 같은 PR 앵커로 검증하며 부분 집계가 정확한 개수처럼 표시되지 않게 한다. */
+    const readThreads = async () => {
+      try {
+        let initial = firstThreads;
+        if (!initial) {
+          const next = parseDetail(await runner(graphQlArgs(owner, name, number, pageQuery("reviewThreads")), cwd,
+            { operation: "pr-detail-threads", signal: controller.signal }), number);
+          assertAnchor(next, pr);
+          initial = connection<ReviewThread>(next, "reviewThreads"); threads.push(...initial.nodes);
+        }
+        reviewThreadsTruncated = await appendPages(cwd, owner, name, pr, "reviewThreads", initial, threads, runner, controller.signal);
+      } catch (error) {
+        if (!onProgress || controller.signal.aborted) throw error;
+        threads.length = 0; reviewThreadsError = error instanceof Error ? error.message : String(error);
+        logWarn("pull request file comments failed; changed files retained", { repoRoot: cwd, number, message: reviewThreadsError });
+      }
+      reviewThreadsLoading = false; progress();
+    };
     const tails = [
-      guard(appendPages(cwd, owner, name, pr, "files", firstFiles, files, runner, controller.signal)),
-      guard(appendPages(cwd, owner, name, pr, "reviewThreads", firstThreads, threads, runner, controller.signal)),
+      guard(readFiles()), guard(readThreads()),
     ];
-    let states: boolean[];
-    try { states = await Promise.all(tails); }
+    try { await Promise.all(tails); }
     catch (error) { await Promise.allSettled(tails); throw failure ?? error; }
     controller.signal.throwIfAborted();
-    if (!states[0] && files.length !== total) throw new Error("Pull request file pagination is incomplete. Refresh to try again.");
-    const fileCounts = reviewCommentCountsByPath(threads);
-    const fileCommentCount = [...fileCounts.values()].reduce((sum, value) => sum + value, 0);
-    return {
-      number, commentCount: conversation + fileCommentCount, fileCommentCount, fileCount: total,
-      files: normalizeFiles(files, fileCounts), filesTruncated: states[0], reviewThreadsTruncated: states[1],
-    };
+    return { ...detailValue(number, conversation, total, files, threads, filesTruncated, reviewThreadsTruncated),
+      ...(reviewThreadsError ? { reviewThreadsError } : {}) };
   } catch (error) { controller.abort(); throw error; }
   finally { signal?.removeEventListener("abort", abort); }
 }
@@ -97,7 +142,7 @@ export async function fetchPullRequestDetail(
  * @returns 기존 20페이지 상한 때문에 남은 페이지가 있는지 여부
  */
 async function appendPages<T>(cwd: string, owner: string, name: string, anchor: Detail, kind: ConnectionKind,
-  initial: Connection<T>, output: T[], runner: GhExecute, signal: AbortSignal): Promise<boolean> {
+  initial: Connection<T>, output: T[], runner: GhExecute, signal: AbortSignal, onPage?: (page: Connection<T>) => void): Promise<boolean> {
   let page = initial, pages = 1;
   const cursors = new Set<string>();
   while (page.pageInfo.hasNextPage && pages < MAX_DETAIL_PAGES) {
@@ -110,13 +155,26 @@ async function appendPages<T>(cwd: string, owner: string, name: string, anchor: 
       { operation: kind === "files" ? "pr-detail-files" : "pr-detail-threads", signal });
     signal.throwIfAborted();
     const pr = parseDetail(out, anchor.number);
-    if (pr.headRefOid !== anchor.headRefOid || pr.baseRefOid !== anchor.baseRefOid) {
-      throw new Error("Pull request head/base changed while loading details. Refresh to try again.");
-    }
+    assertAnchor(pr, anchor);
     page = connection<T>(pr, kind);
     output.push(...page.nodes); pages++;
+    onPage?.(page);
   }
   return page.pageInfo.hasNextPage;
+}
+
+/** 파일과 댓글의 서로 다른 응답이 같은 PR head/base를 읽었는지 확인한다. */
+function assertAnchor(pr: Detail, anchor: Detail): void {
+  if (pr.headRefOid !== anchor.headRefOid || pr.baseRefOid !== anchor.baseRefOid)
+    throw new Error("Pull request head/base changed while loading details. Refresh to try again.");
+}
+
+/** 검증한 파일을 새 DTO로 변환해 후속 페이지가 이미 게시한 값을 변경하지 않게 한다. */
+function detailValue(number: number, conversation: number, total: number, files: ChangedFile[], threads: ReviewThread[],
+  filesTruncated: boolean, reviewThreadsTruncated: boolean): PullRequestDetailInfo {
+  const counts = reviewCommentCountsByPath(threads), fileCommentCount = [...counts.values()].reduce((sum, value) => sum + value, 0);
+  return { number, commentCount: conversation + fileCommentCount, fileCommentCount, fileCount: total,
+    files: normalizeFiles(files, counts), filesTruncated, reviewThreadsTruncated };
 }
 
 /** PR 존재 여부·GraphQL 오류·ref 식별자를 검사해 null/부분 응답을 빈 목록으로 오해하지 않는다. */

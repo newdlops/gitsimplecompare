@@ -139,6 +139,21 @@ test("a merged PR downloads its actual squash result before considering its orig
   assert.equal(window?.hash, merged); assert.deepEqual(await protectedState(f.root), before);
 });
 
+test("an exact older PR commit fetches its head and keeps newer PR commits in the whole timeline", async t => {
+  const f = await remoteFixture(t), tree = await git(f.remote, "rev-parse", `${f.head}^{tree}`);
+  const latest = await git(f.remote, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.test",
+    "commit-tree", tree, "-p", f.head, "-m", "Newer PR commit");
+  await git(f.remote, "update-ref", "refs/pull/42/head", latest);
+  const r = await refsFixture(t, f.directory, latest), before = await protectedState(f.root);
+  const window = await loadFilteredGraphCommitWindow(f.root, [f.head], all(), 20, undefined, r.pr, { exactHash: f.head });
+  assert.equal(window?.hash, f.head, "an exact commit must not be replaced by the current PR head");
+  assert.ok(window?.scope?.roots.includes(latest), "later PR commits must stay reachable by newer pagination");
+  const native = (await git(f.root, "rev-list", "--date-order", "--branches", "--remotes", "--tags", latest)).split("\n");
+  assert.deepEqual(window?.commits.map(commit => commit.hash), native);
+  assert.ok(window?.commits.some(commit => commit.hash === latest));
+  assert.deepEqual(await protectedState(f.root), before);
+});
+
 test("custom and empty branch filters never fetch or silently widen their selected range", async t => {
   const f = await remoteFixture(t), r = await refsFixture(t, f.directory, f.head);
   const filter = resolveBranchFilter({ mode: "custom", selected: ["main"], compact: true }, [{ name: "main", kind: "local" }]);

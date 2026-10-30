@@ -4,6 +4,7 @@
 import * as vscode from "vscode";
 import { GitLogService } from "../git/gitLogService";
 import type { PullRequestInfo } from "../git/pullRequestInfo";
+import type { GraphHistoryScope } from "../git/graphHistoryScope";
 import { graphRemoteRefVersion, readGraphRefreshSnapshot } from "../git/graphRefreshFingerprint";
 import type { GraphRemoteBranchTip } from "../git/graphBranchCatalog";
 import { graphReferenceIdentity, matchesGraphReferenceIdentity, type GraphReferenceIdentity } from "../git/graphReferenceIdentity";
@@ -21,7 +22,7 @@ import { canIncludeGraphBranchMetadata } from "../git/graphRefSnapshot";
 import type { GraphActionRefreshKind } from "./graphActionRefresh";
 import { completeGraphRemoteBranches, createGraphBranchFilterSnapshot, GraphBranchLoadingCoordinator, GraphRemoteCatalogStatus, isCurrentGraphLoad, readGraphLocalBranchData, mergeGraphBranchRefs, resolveGraphBranchFilter } from "./graphBranchLoading";
 import { beginGraphPerformanceTrace, GraphPerformanceTrace, logGraphBranchSnapshot } from "./graphPerformance";
-import { loadFilteredGraphCommitWindow, loadReflogGraphWindow } from "./graphCommitWindowLoading";
+import { loadFilteredGraphCommitWindow, loadReflogGraphWindow, type GraphCommitWindowResult } from "./graphCommitWindowLoading";
 import { postGraphWebviewMessage, publishGraphRender, withGraphBusy } from "./graphPanelRendering";
 import { GraphRenderCache } from "./graphRenderCache";
 import { GraphRefreshContext, GraphRefreshLifecycleCoordinator, GraphRefreshMode, graphInvalidationPlan } from "./graphRefreshCoordinator";
@@ -45,6 +46,7 @@ export class GitGraphPanel {
   private exhausted = false;
   private rangeStartIndex = 0;
   private rangeTotalCount: number | undefined;
+  private historyScope: GraphHistoryScope | undefined;
   private loadGeneration = 0;
   private reconcilePageOrder = false;
   private branchFilter: GraphBranchFilterState = { mode: "all", selected: [], compact: true };
@@ -142,7 +144,7 @@ export class GitGraphPanel {
       loadedCommitHash: (hashes) => hashes
         .map((hash) => hash.trim())
         .find((hash) => this.commits.some((commit) => commit.hash === hash)),
-      loadCommitWindow: (hashes, requestId, pr) => this.loadCommitWindow(hashes, requestId, pr), cancelCommitFocus: id => this.graphReads.cancelCommitFocus(id),
+      loadCommitWindow: (hashes, requestId, pr, exactHash) => this.loadCommitWindow(hashes, requestId, pr, exactHash), cancelCommitFocus: id => this.graphReads.cancelCommitFocus(id),
       loadReflogCommitWindow: (hash) => this.loadReflogCommitWindow(hash),
       refreshAfterGraphAction: (kind) => this.refreshAfterGraphAction(kind),
       refreshAfterFetchAction: () => this.refreshAfterFetchAction(),
@@ -446,6 +448,7 @@ export class GitGraphPanel {
     const performanceTrace = trace ?? beginGraphPerformanceTrace(pageService.repoRoot, reset ? "reload" : `pagination:${direction}`, generation);
     if (reset) direction = "older";
     const filter = this.currentBranchFilter();
+    if (this.historyScope && filter.mode === "all") { filter.empty = false; filter.filtersRefs = false; }
     await executeGraphPageRequest({
       repoRoot: pageService.repoRoot, reset, direction, pageSize: GRAPH_PAGE_SIZE, loading: this.loading,
       reconcile: this.reconcilePageOrder, filter, trace: performanceTrace,
@@ -454,7 +457,7 @@ export class GitGraphPanel {
       read: (skip, readLimit) => this.graphReads.run(pageService.repoRoot, "page", signal => this.graphReads.readPageData(pageService, {
         skip, readLimit, refs: filter.refs, trace: performanceTrace,
         readVirtualCommits: false, signal,
-      }, this.lastLocalBranches)),
+      }, this.lastLocalBranches, this.historyScope)),
       state: () => this.postLoadState(reset, direction),
       empty: () => {
         this.virtualCommits = []; this.exhausted = true; this.rangeStartIndex = 0; this.rangeTotalCount = 0;
@@ -484,16 +487,12 @@ export class GitGraphPanel {
       () => this.postGraph(false, direction, trace, "localOnly"));
   }
   /** 특정 commit 후보 주변 window 를 새 graph 로 그려 오래된 PR 점프 때 중간 페이지 누적을 피한다. */
-  private loadCommitWindow(hashes: string[], requestId?: string, pr?: PullRequestInfo): Promise<string | undefined> {
+  private loadCommitWindow(hashes: string[], requestId?: string, pr?: PullRequestInfo, exactHash?: string): Promise<string | undefined> {
     return this.showCommitWindow("commitWindow", signal => loadFilteredGraphCommitWindow(
-      this.logService.repoRoot, hashes, this.currentBranchFilter(), GRAPH_PAGE_SIZE, signal, pr
+      this.logService.repoRoot, hashes, this.currentBranchFilter(), GRAPH_PAGE_SIZE, signal, pr, { previousScope: this.historyScope, exactHash }
     ), requestId);
   }
-  /**
-   * reflog commit 을 현재 ref 필터와 무관한 복구용 graph window 로 표시한다.
-   * @param hash reflog 항목이 가리키는 commit hash
-   * @returns 그래프에 표시한 commit hash. Git 이 찾지 못하면 undefined
-   */
+  /** reflog OID를 필터와 무관한 복구 window로 표시하고 실제 표시한 hash를 반환한다. */
   private loadReflogCommitWindow(hash: string): Promise<string | undefined> {
     return this.showCommitWindow("reflogWindow", async signal => {
       const window = await loadReflogGraphWindow(this.logService.repoRoot, hash, GRAPH_PAGE_SIZE, signal);
@@ -505,7 +504,7 @@ export class GitGraphPanel {
    */
   private async showCommitWindow(
     cause: "commitWindow" | "reflogWindow",
-    load: (signal: AbortSignal) => Promise<{ commits: Commit[]; startIndex: number; totalCount: number; hash: string } | undefined>, requestId?: string
+    load: (signal: AbortSignal) => Promise<GraphCommitWindowResult | undefined>, requestId?: string
   ): Promise<string | undefined> {
     this.workingTree.pause(cause); this.tagLoading.cancel(cause);
     if (this.branchDetails.identity) this.resumeReloadOnFocus = true;
@@ -522,7 +521,7 @@ export class GitGraphPanel {
         // window는 현재 Native 순서로 다시 읽었다. 이전 ref-only 갱신의 재정렬 예약을 남기면
         // 첫 자동 pagination이 이력 맨 앞을 재조회해 방금 이동한 PR 행을 제거한다.
         this.reconcilePageOrder = false;
-        this.rangeStartIndex = window.startIndex; this.rangeTotalCount = window.totalCount; this.loading = false;
+        this.historyScope = window.scope; this.rangeStartIndex = window.startIndex; this.rangeTotalCount = window.totalCount; this.loading = false;
         this.exhausted = this.rangeStartIndex + this.commits.length >= window.totalCount;
         this.postGraph(true, "older", trace, "window");
         this.tagLoading.resume(this.logService.repoRoot, message => this.post(message));
@@ -539,7 +538,7 @@ export class GitGraphPanel {
     this.commits = []; this.virtualCommits = [];
     this.reconcilePageOrder = false;
     this.loading = false; this.exhausted = false;
-    this.rangeStartIndex = 0; this.rangeTotalCount = undefined;
+    this.historyScope = undefined; this.rangeStartIndex = 0; this.rangeTotalCount = undefined;
     this.loadGeneration++;
   }
   /**

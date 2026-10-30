@@ -348,7 +348,14 @@ export async function sendGraphPullRequestDetail(
 ): Promise<void> {
   const service = new PullRequestService(repoRoot);
   try {
-    const detail = await service.getDetail(number, signal);
+    const started = Date.now();
+    let first = true;
+    const detail = await service.getDetail(number, signal, progress => {
+      if (signal?.aborted) return;
+      post({ type: "pullRequestDetail", number, detail: progress, partial: true, ...(requestId ? { requestId } : {}) });
+      if (first) logInfo("graph pull request files first page sent", { repoRoot, number, files: progress.files.length, elapsedMs: Date.now() - started });
+      first = false;
+    });
     signal?.throwIfAborted();
     post({ type: "pullRequestDetail", number, detail, ...(requestId ? { requestId } : {}) });
     logInfo("graph pull request detail sent", {
@@ -356,6 +363,7 @@ export async function sendGraphPullRequestDetail(
       number,
       files: detail.files.length,
       fileCommentCount: detail.fileCommentCount,
+      elapsedMs: Date.now() - started,
     });
   } catch (error) {
     if (signal?.aborted) { logInfo("graph pull request detail cancelled", { repoRoot, number }); return; }

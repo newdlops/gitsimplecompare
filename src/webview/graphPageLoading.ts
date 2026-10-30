@@ -8,6 +8,7 @@ import { logInfo } from "../ui/outputLog";
 import { GraphFirstPageRead, type GraphFirstPageService } from "./graphFirstPageRead";
 import type { GraphRefreshContext } from "./graphRefreshCoordinator";
 import type { LocalBranchStatus } from "../graph/graphTypes";
+import { readGraphHistoryPage, type GraphHistoryScope } from "../git/graphHistoryScope";
 
 /** 로컬 상태·페이지·점프 조회 중 현재 Graph가 사용하는 한 작업만 소유한다. */
 export class GraphReadLifecycleCoordinator {
@@ -58,7 +59,14 @@ export class GraphReadLifecycleCoordinator {
 
   /** 확정한 페이지 범위가 맞으면 선행 이력을 채택하고, 다른 범위이면 기존 한 번의 조회를 실행한다. */
   async readPageData(service: Pick<GitLogService, "getCommitPage" | "getVirtualCommits"> & GraphFirstPageService,
-    options: Parameters<typeof readGraphPageData>[1], branches: readonly LocalBranchStatus[]): Promise<GraphPageData> {
+    options: Parameters<typeof readGraphPageData>[1], branches: readonly LocalBranchStatus[], scope?: GraphHistoryScope): Promise<GraphPageData> {
+    if (scope) {
+      const started = Date.now();
+      const page = await readGraphHistoryPage(service.repoRoot, scope, options.skip, options.readLimit, options.signal);
+      const gitLogMs = Date.now() - started;
+      logGraphPerformancePhase(options.trace, "gitLog", gitLogMs, { skip: options.skip, limit: options.readLimit, fetchedCount: page.length, scope: "timeline" });
+      return { page, gitLogMs };
+    }
     return await this.firstPage.consume(service, options, branches) ?? readGraphPageData(service, options);
   }
 

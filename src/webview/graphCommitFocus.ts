@@ -11,8 +11,9 @@ export interface EnsureGraphCommitVisibleOptions {
   requestId: string;
   hashes: string[];
   pullRequest?: PullRequestInfo;
+  exactHash?: string;
   loadedHash(hashes: string[]): string | undefined;
-  loadWindow(hashes: string[], requestId?: string, pullRequest?: PullRequestInfo): Promise<string | undefined>;
+  loadWindow(hashes: string[], requestId?: string, pullRequest?: PullRequestInfo, exactHash?: string): Promise<string | undefined>;
   post(message: ToWebviewMessage): void;
 }
 
@@ -23,13 +24,13 @@ export interface EnsureGraphCommitVisibleOptions {
 export async function ensureGraphCommitVisible(
   options: EnsureGraphCommitVisibleOptions
 ): Promise<void> {
-  const hashes = Array.from(new Set(options.hashes.filter(Boolean)));
+  const hashes = options.exactHash ? [options.exactHash] : Array.from(new Set(options.hashes.filter(Boolean)));
   if (!hashes.length && !options.pullRequest) {
     options.post({ type: "commitVisibility", requestId: options.requestId, found: false });
     return;
   }
   let found: string | undefined;
-  try { found = options.loadedHash(hashes) || await options.loadWindow(hashes, options.requestId, options.pullRequest); }
+  try { found = options.loadedHash(hashes) || await options.loadWindow(hashes, options.requestId, options.pullRequest, options.exactHash); }
   catch (error) {
     // 일반 error 메시지는 drawer 전체를 교체한다. PR 문맥과 재시도 버튼은 남기고 OUTPUT에 원인을 기록한다.
     logError("graph commit visibility failed", error, { repoRoot: options.repoRoot, requestId: options.requestId });

@@ -39,7 +39,7 @@ for (const ref of ["refs/remotes/origin/unrelated", "refs/heads/unrelated"]) {
     assert.equal(window?.hash, f.head);
     assert.deepEqual(window?.commits.map(commit => commit.hash), [f.head]);
     assert.deepEqual(await state(), before, "navigation must not repair refs or alter the working tree");
-    assert.ok(__outputLines.slice(start).some(line => line.includes("graph commit window history unavailable; checking selected target")));
+    assert.ok(__outputLines.slice(start).some(line => line.includes("graph commit window history unavailable; recovering valid references")));
   });
 }
 
@@ -78,7 +78,7 @@ test("cancellation while the invalid history read finishes never starts a direct
   t.after(stop);
   await assert.rejects(loadFilteredGraphCommitWindow(f.root, [f.head],
     resolveBranchFilter({ mode: "all", selected: [], compact: true }, []), 10, controller.signal));
-  assert.deepEqual(commands, ["rev-list"]);
+  assert.deepEqual(commands, ["cat-file", "rev-list"]);
 });
 
 test("a failed full-history read never turns a missing or noncommit target into a successful jump", async t => {
@@ -90,7 +90,7 @@ test("a failed full-history read never turns a missing or noncommit target into 
   const window = await loadFilteredGraphCommitWindow(f.root, ["b".repeat(40), tree],
     resolveBranchFilter({ mode: "all", selected: [], compact: true }, []), 10);
   assert.equal(window, undefined);
-  assert.deepEqual(commands, ["rev-list", "cat-file"]);
+  assert.deepEqual(commands, ["cat-file"]);
   stop();
   assert.deepEqual(await state(), before);
 });

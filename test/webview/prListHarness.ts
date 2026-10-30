@@ -31,6 +31,11 @@ export async function mountList(page: Page, korean: boolean) {
       commitNotAvailableInGraph: ko ? "현재 그래프에서 커밋을 찾지 못했습니다. 소스 브랜치를 가져오거나 브랜치 필터를 조정한 뒤 다시 시도하세요." : "Could not locate the commit in the current graph. Fetch the source branch or adjust branch filters, then try again.",
       retryPullRequests: ko ? "PR 다시 불러오기" : "Retry loading pull requests",
       retryPrDetails: ko ? "변경 파일 다시 불러오기" : "Retry loading changed files",
+      loadingPrFiles: ko ? "변경 파일을 불러오는 중 ({0}/{1})…" : "Loading changed files ({0} of {1})…",
+      loadingPrFileComments: ko ? "파일 댓글을 불러오는 중…" : "Loading file comments…",
+      prFileCommentsUnavailable: ko ? "파일 댓글을 불러오지 못했습니다." : "File comments could not be loaded.",
+      retryPrDetailsAll: ko ? "PR 상세 다시 불러오기" : "Retry loading pull request details",
+      loadingGraphCommit: ko ? "그래프에서 커밋 {0}을 찾는 중…" : "Locating commit {0} in the graph…",
       openPullRequest: "Open pull request #{0} in browser",
     };
   }, korean);

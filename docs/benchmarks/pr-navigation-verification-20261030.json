@@ -1,0 +1,162 @@
+{
+  "verifiedAtUtc": "2026-10-30T08:46:14.306667+00:00",
+  "baselineCommit": "5f6246f99b4819f4500f43c8c7d1d2bf59c7686a",
+  "sourceFingerprint": {
+    "files": 657,
+    "sha256": "a7c59dd3598f717340d72c6242e0fa4706ba570355f3811ab6e9f4670137a89b"
+  },
+  "modifiedSourceSha256": {
+    "l10n/bundle.l10n.ko.json": "d7b719558db46715626e64c86f0cb7707fbd87b2f262f857cac55c61d40f1b84",
+    "media/graph/graphPr.js": "80a817e1f5028fe1c3504ec7ccc4557a7d818c5e8b73ddf22d2df90e0b81963d",
+    "media/graph/graphPrFiles.js": "a38de9930fd4e71d852f2f0b8d5b95afa124605733e3f3457a7e7ac1cbf47ceb",
+    "media/graph/graphPrMatching.js": "411474e75f871e94f12ca98aec6a3837fbbdaf6d88985f5e1c4ded26d60fe400",
+    "media/graph/graphPrViewState.js": "5d42f873752fa6d1f0dde012109471043810b1ab948e259b4fc43afc1abf78a3",
+    "src/git/gitLogWindow.ts": "28847559f46d986b95add7043d0ee4c9838214825f9f07d9b8c53368e2ff1b83",
+    "src/git/graphHistoryScope.ts": "0f36179dca97cea9a1914fbcb1dd0174c6665d1b5f43fce15d48b315f3f6b921",
+    "src/git/pullRequestDetail.ts": "11b45ae061d748d85d45cddfa61c4ed43b515ba356e6834f00de626dc5ea59f6",
+    "src/git/pullRequestGraphTarget.ts": "2c8405c8b9897e5712c87a8a99510a3f292483d8a72098cc4a4c9f18e75922db",
+    "src/git/pullRequestService.ts": "1f665d9a1efd8edf55fe4d7b93abf214a87cce7a148c193e3e147d9b4dad1234",
+    "src/webview/graphCommitFocus.ts": "35b74cc4c3e52442ee07a0a437a53e114d4cf81988cb7eed80c32df71afa9acf",
+    "src/webview/graphCommitWindowLoading.ts": "a9381e16bcb87320deac03c401ffc3238bf686f9f83b379d1b5903fdba781b8c",
+    "src/webview/graphHtml.ts": "ed7c0c6f6dba67dc502f69477ae6728917630ab48e332b851d1c6ca5f1d35f3f",
+    "src/webview/graphPageLoading.ts": "374bcacf40d677e87cfa8b25ce7fe9a5601a509ba0393fbd3868393993b31a34",
+    "src/webview/graphPanel.ts": "1cddb093e34d49753b95910e798bea50c1002827e28fbe049ec4a83196669f5e",
+    "src/webview/graphPanelMessageRouter.ts": "48b8f4835bad8693f9c40614ccf60303000b5866b1d91307602f08f5cca66973",
+    "src/webview/graphProtocol.ts": "08596cd6e1a15edae2597dd459b517b32ac7bac552444c73fa78535c3986ee0a",
+    "src/webview/graphPullRequests.ts": "5e8da7ccd42271ce134f3bcfee84a2a29c3b2bfbf77fa0df10318526af1e4b0e"
+  },
+  "builtArtifacts": {
+    "dist/extension.js": "a6479b04f48efc0e82b572c4acf9b64ea193837300e6fafca54192cdca692eab",
+    "media/bundled/graph.js": "58797390ee8409941f5bf055b945450fa106aa5a3488df75a0d6b6c92ff87402"
+  },
+  "requirements": [
+    {
+      "requirement": "Show PR changed files before slow review-comment pagination finishes.",
+      "verified": true,
+      "evidence": [
+        "pullRequestDetailProgressive.test.ts: first query excludes reviewThreads; immutable file pages publish before gated comments.",
+        "prFilesProgressive.spec.ts: Enter opens an available file before completion; subsequent pages preserve the focused DOM row."
+      ]
+    },
+    {
+      "requirement": "Navigate from PR rows and exact related commits absent from the loaded graph.",
+      "verified": true,
+      "evidence": [
+        "pullRequestGraphJump.test.ts: fetch missing objects without changing refs, FETCH_HEAD, index, configuration or edits.",
+        "Exact older-commit navigation retains both the selected OID and the PR head."
+      ]
+    },
+    {
+      "requirement": "Keep the complete dated graph and both pagination directions after jumping.",
+      "verified": true,
+      "evidence": [
+        "Native oracle: git rev-list --date-order --branches --remotes --tags <PR-head>.",
+        "graphPrTimelineNavigation.test.ts: deleted PR refs, interleaved branches, empty/pending UI catalogs, contiguous offsets and no duplicates.",
+        "Production HTML/compiled Graph bundle: real PR controls and scroll send both newer and older requests; actual DOM equals the Native slice."
+      ]
+    },
+    {
+      "requirement": "Open the correct commit history after navigation.",
+      "verified": true,
+      "evidence": [
+        "Real graph hash click finishes commit-detail loading; full message and parents equal independent Native Git output."
+      ]
+    },
+    {
+      "requirement": "Preserve request ownership, cancellation, errors and keyboard recovery.",
+      "verified": true,
+      "evidence": [
+        "Stale partial responses cannot survive close/reopen or replace newer requests.",
+        "Comment failures retain files and expose a visible retry; failed exact jumps restore keyboard focus.",
+        "Existing custom filters, ref recovery, Git lifecycle and page boundaries remain covered by the regression suite."
+      ]
+    }
+  ],
+  "checks": {
+    "typecheckExitCode": 0,
+    "compileExitCode": 0,
+    "gitDiffCheckExitCode": 0,
+    "lint": {
+      "exitCode": 127,
+      "reason": "eslint executable is not installed; existing repository setup was not expanded."
+    }
+  },
+  "regression": {
+    "passed": 150,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "logSha256": "e50c66debd838eae460aafe41b649eb09fd56ce1c47547fa4f94f14a24efdcd3"
+  },
+  "productionRendererFinalRun": {
+    "passed": 5,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "logSha256": "4a5983d7351233d7d9e12f6ce055b15a55526f510e9ba8c85bdc22e209fe2990",
+    "results": [
+      {
+        "check": "prTimelineNativeRenderer",
+        "action": "row",
+        "nativeCount": 1541,
+        "loadedCount": 1120,
+        "rangeStartIndex": 0,
+        "directions": [
+          "newer",
+          "older"
+        ],
+        "selectedCommitVerified": true
+      },
+      {
+        "check": "prTimelineNativeRenderer",
+        "action": "commit",
+        "nativeCount": 1801,
+        "loadedCount": 1280,
+        "rangeStartIndex": 100,
+        "directions": [
+          "newer",
+          "older"
+        ],
+        "selectedCommitVerified": true
+      }
+    ],
+    "overlapsRegression": true
+  },
+  "browser": {
+    "engine": "Chromium",
+    "uniqueTestsPassed": 35,
+    "finalAffectedTestsRerunPassed": 5,
+    "viewports": [
+      [
+        390,
+        844
+      ],
+      [
+        768,
+        1024
+      ],
+      [
+        1440,
+        900
+      ]
+    ],
+    "logSha256": "76adccb3e23dc85322a0ce8df5269a4c891faedcaa93398c86a75404cbc8e63a",
+    "finalAffectedLogSha256": "f4967058a5a986a4829403fa90bd4c410ef6cda529b439993e2860293c8e102c",
+    "axeViolationsInChangedPrDetailStates": 0,
+    "visualStatesInspected": [
+      "files available while comments load",
+      "comments unavailable with visible retry",
+      "whole graph after jump/pagination"
+    ]
+  },
+  "designChecks": {
+    "impeccableDetectorFindings": 0,
+    "guidelines": "https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md",
+    "resolvedFinding": "Put loading/comment error status above a long file tree; keep a stable wrapper to preserve focused rows."
+  },
+  "limitations": [
+    "GitHub responses use controlled fixtures; no live GitHub network latency or universal speedup percentage was measured.",
+    "Production Graph HTML/bundle was exercised in headless Chromium with Native Git and a VS Code transport fixture, not a native Extension Host window.",
+    "The pre-existing design.json sidecar is older than DESIGN.md; it was not regenerated."
+  ]
+}

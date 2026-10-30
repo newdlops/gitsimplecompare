@@ -22,6 +22,7 @@
     function get(pr) {
       const identity = key(pr), item = current?.key === identity ? current : cache.get(identity);
       if (!item || Date.now() - item.at >= 30000) return undefined;
+      if (item.partial && pending.get(Number(pr.number))?.requestId !== item.requestId) return undefined;
       if (cache.has(identity)) { cache.delete(identity); cache.set(identity, item); }
       return item.value;
     }
@@ -29,9 +30,9 @@
     function accept(message, pr, value) {
       const request = pending.get(Number(message.number));
       if (!request || (message.requestId && message.requestId !== request.requestId) || request.key !== key(pr)) return false;
-      pending.delete(Number(message.number));
-      current = { key: request.key, value, at: Date.now(), bytes: JSON.stringify(value).length * 2 };
-      if (value.status === "ready" && current.bytes <= 8 * 1024 * 1024) {
+      if (!message.partial) pending.delete(Number(message.number));
+      current = { key: request.key, requestId: request.requestId, value, partial: Boolean(message.partial), at: Date.now(), bytes: JSON.stringify(value).length * 2 };
+      if (!message.partial && value.status === "ready" && current.bytes <= 8 * 1024 * 1024) {
         const old = cache.get(current.key); if (old) bytes -= old.bytes;
         cache.delete(current.key); cache.set(current.key, current); bytes += current.bytes;
         while (cache.size > 32 || bytes > 8 * 1024 * 1024) {

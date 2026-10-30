@@ -165,13 +165,13 @@
    * @param {boolean} fromVisibility 이미 추가 로드 응답을 처리 중인지 여부
    * @returns {void}
    */
-  function focusCommitRow(hash, fromVisibility) {
+  function focusCommitRow(hash, fromVisibility, pr) {
     if (!fromVisibility) cancelFocus();
     const row = findCommitRow(hash);
     if (!row) {
       clearFocusedPullRequest();
       if (!fromVisibility) {
-        requestCommitVisibility([hash]);
+        requestCommitVisibility([hash], pr?.number, pr, hash);
       }
       return;
     }
@@ -185,16 +185,17 @@
    * @param {object|undefined} pr 최초 요약을 다시 눌러도 이미 찾은 행을 재사용할 PR 식별 정보
    * @returns {void}
    */
-  function requestCommitVisibility(hashes, number, pr) {
+  function requestCommitVisibility(hashes, number, pr, exactHash) {
     const candidates = uniqueHashes(hashes);
     if (!candidates.length && !number) {
       showFocusFailure(number); return;
     }
     const requestId = `pr-focus-${++focusRequestSequence}`;
-    pendingFocusRequest = { requestId, hashes: candidates, number, version: pr && pullRequestVersion(pr) };
-    focusStatus = { number, loading: true, restoreFocus: document.activeElement?.dataset.focusPr === String(number) }; applyFocusStatus();
+    pendingFocusRequest = { requestId, hashes: candidates, number, exactHash, version: pr && pullRequestVersion(pr) };
+    focusStatus = { number, hash: exactHash, loading: true, restoreFocus: exactHash ? document.activeElement?.dataset.focusCommit === exactHash
+      : document.activeElement?.dataset.focusPr === String(number) }; applyFocusStatus();
     window.GscGraphPostMessage?.({ type: "ensureCommitVisible", requestId, hashes: candidates,
-      ...(number ? { pullRequestNumber: number } : {}) });
+      ...(number ? { pullRequestNumber: number } : {}), ...(exactHash ? { exactHash } : {}) });
   }
 
   /**
@@ -207,7 +208,7 @@
       return;
     }
     const request = pendingFocusRequest;
-    if (!message.found || !(request.hashes.includes(message.hash) || request.number && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(message.hash))) {
+    if (!message.found || !(request.hashes.includes(message.hash) || !request.exactHash && request.number && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(message.hash))) {
       pendingFocusRequest = undefined; showFocusFailure(request.number); return;
     }
     // host 응답은 DOM 게시 뒤 오지만 너비/장식 갱신도 같은 frame에 예약될 수 있다.
@@ -216,7 +217,7 @@
       pendingFocusRequest = undefined;
       const row = findCommitRow(message.hash);
       if (row) {
-        if (request.version) resolvedPullRequest = { version: request.version, hash: message.hash };
+        if (request.version && !request.exactHash) resolvedPullRequest = { version: request.version, hash: message.hash };
         focusStatus = undefined; applyFocusStatus(); highlightCommitRow(row);
       }
       else showFocusFailure(request.number);
@@ -321,7 +322,7 @@
 
   /** 실패를 성공처럼 조용히 넘기지 않고 현재 PR 카드에서 다음 행동과 재시도를 안내한다. */
   function showFocusFailure(number) {
-    focusStatus = { number, loading: false, restoreFocus: focusStatus?.restoreFocus, message: window.GscPrStackI18n?.commitNotAvailableInGraph ||
+    focusStatus = { number, hash: focusStatus?.hash, loading: false, restoreFocus: focusStatus?.restoreFocus, message: window.GscPrStackI18n?.commitNotAvailableInGraph ||
       "Could not locate the commit in the current graph. Fetch the source branch or adjust branch filters, then try again." };
     applyFocusStatus();
   }
@@ -329,7 +330,7 @@
   /** 새 PR 목록 DOM에도 같은 진행 상태를 적용하고 제목·tooltip·aria 라벨을 함께 복원한다. */
   function applyFocusStatus() {
     document.querySelectorAll("#detail [data-focus-pr]").forEach(button => {
-      const busy = !!focusStatus?.loading && Number(button.dataset.focusPr) === Number(focusStatus.number);
+      const busy = !!focusStatus?.loading && !focusStatus.hash && Number(button.dataset.focusPr) === Number(focusStatus.number);
       button.dataset.prJumpIdleTitle ||= button.title;
       const title = busy ? String(window.GscPrStackI18n?.loadingPrJump || "Locating pull request #{0} in the graph…")
         .replace("{0}", button.dataset.focusPr) : button.dataset.prJumpIdleTitle;
@@ -341,7 +342,18 @@
       if (!busy && focusStatus?.restoreFocus && Number(button.dataset.focusPr) === Number(focusStatus.number)
         && document.activeElement === document.body) { button.focus({ preventScroll: true }); focusStatus.restoreFocus = false; }
     });
-    const host = focusStatus?.number ? document.querySelector(`#detail [data-show-pr="${cssEscape(focusStatus.number)}"]`)
+    document.querySelectorAll("#detail [data-focus-commit]").forEach(button => {
+      const busy = !!focusStatus?.loading && button.dataset.focusCommit === focusStatus.hash;
+      button.dataset.prJumpIdleTitle ||= button.title;
+      const title = busy ? String(window.GscPrStackI18n?.loadingGraphCommit || "Locating commit {0} in the graph…")
+        .replace("{0}", String(button.dataset.focusCommit).slice(0, 8)) : button.dataset.prJumpIdleTitle;
+      button.title = title; button.dataset.tooltip = title; button.setAttribute("aria-label", title); button.disabled = busy;
+      if (busy) button.setAttribute("aria-busy", "true"); else button.removeAttribute("aria-busy");
+      if (!busy && focusStatus?.restoreFocus && button.dataset.focusCommit === focusStatus.hash && document.activeElement === document.body) {
+        button.focus({ preventScroll: true }); focusStatus.restoreFocus = false;
+      }
+    });
+    const host = focusStatus?.number && !focusStatus.hash ? document.querySelector(`#detail [data-show-pr="${cssEscape(focusStatus.number)}"]`)
       : document.querySelector("#detail [data-focus-commit]")?.closest(".pr-detail-section");
     document.querySelectorAll(".pr-jump-message").forEach(node => { if (!focusStatus?.message || node.parentElement !== host) node.remove(); });
     if (host && focusStatus?.message) {

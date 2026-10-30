@@ -221,11 +221,13 @@ export class PullRequestService {
   /**
    * PR 상세 drawer 에 필요한 changed files 와 파일별 review comment 수를 읽는다.
    * @param number 조회할 PR 번호
+   * @param signal drawer 닫힘·선택 변경 시 소유 GitHub 조회를 취소할 신호
+   * @param onProgress 파일 페이지를 먼저 표시하고 댓글 상태를 뒤이어 보완할 선택 콜백
    * @returns PR 상세 drawer 데이터
    */
-  async getDetail(number: number, signal?: AbortSignal): Promise<PullRequestDetailInfo> {
+  async getDetail(number: number, signal?: AbortSignal, onProgress?: (detail: PullRequestDetailInfo) => void): Promise<PullRequestDetailInfo> {
     // gh가 현재 remote/GH_REPO를 직접 치환하므로 별도 repo view 네트워크 요청이 필요 없다.
-    return fetchPullRequestDetail(this.repoRoot, "{owner}/{repo}", number, signal);
+    return fetchPullRequestDetail(this.repoRoot, "{owner}/{repo}", number, signal, undefined, onProgress);
   }
 
   /**

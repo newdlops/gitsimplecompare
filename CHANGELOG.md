@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.72180] - 2026-10-30
+
+### Performance
+
+- Show pull request changed files page by page while review comments load
+  separately, keeping available files usable when comment loading fails.
+
+### Fixes
+
+- Include unloaded pull request commits in the complete date-based graph and
+  preserve the same history scope for newer and older pagination after jumping.
+- Keep exact related-commit targets and newer pull request commits available,
+  including when branch discovery is incomplete or the source branch was deleted.
+- Reject stale partial detail responses after closing or reopening a pull request,
+  and restore keyboard focus when a commit jump needs to be retried.
+
 ## [0.1.72179] - 2026-10-30
 
 ### Performance

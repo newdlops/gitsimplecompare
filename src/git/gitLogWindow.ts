@@ -95,16 +95,30 @@ export async function loadCommitWindowForCandidates(
 export async function loadLocalCommitWindowForCandidates(
   repoRoot: string, candidates: readonly string[], limit: number, signal?: AbortSignal
 ): Promise<CandidateCommitWindowResult | undefined> {
-  signal?.throwIfAborted();
-  const hashes = Array.from(new Set(candidates.map(hash => hash.trim().toLowerCase()).filter(hash => /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(hash))));
-  if (!hashes.length) return undefined;
-  const output = await runGitWithInput(["cat-file", "--batch-check=%(objectname) %(objecttype)"], repoRoot,
-    hashes.join("\n") + "\n", { signal, env: { GIT_NO_LAZY_FETCH: "1" } });
-  const lines = output.trim().split("\n");
-  const hash = hashes.find((candidate, index) => lines[index] === `${candidate} commit`);
+  const hash = await findLocalCommitCandidate(repoRoot, candidates, signal);
   if (!hash) return undefined;
   const commits = await loadCommitSlice(repoRoot, 0, Math.max(1, Math.floor(limit)), [hash], signal, true);
   return { hash, commits, startIndex: 0, targetIndex: commits.findIndex(commit => commit.hash === hash), totalCount: commits.length };
+}
+
+/**
+ * 후보 전체를 한 batch 조회로 검증하고 우선순위가 가장 높은 로컬 commit OID만 반환한다.
+ * @param repoRoot 저장소 @param candidates 전체 SHA-1/SHA-256 후보 @param signal 조회 취소 수명
+ * @returns 실제 commit인 첫 OID. 객체를 자동 fetch하거나 특정 branch의 조상을 미리 읽지 않는다.
+ */
+export async function findLocalCommitCandidate(repoRoot: string, candidates: readonly string[], signal?: AbortSignal): Promise<string | undefined> {
+  return (await findLocalCommitCandidates(repoRoot, candidates, signal))[0];
+}
+
+/** 전체 OID 후보 중 실제로 존재하는 commit만 입력 순서로 반환해 PR의 head와 선택 OID를 함께 검증한다. */
+export async function findLocalCommitCandidates(repoRoot: string, candidates: readonly string[], signal?: AbortSignal): Promise<string[]> {
+  signal?.throwIfAborted();
+  const hashes = Array.from(new Set(candidates.map(hash => hash.trim().toLowerCase()).filter(hash => /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(hash))));
+  if (!hashes.length) return [];
+  const output = await runGitWithInput(["cat-file", "--batch-check=%(objectname) %(objecttype)"], repoRoot,
+    hashes.join("\n") + "\n", { signal, env: { GIT_NO_LAZY_FETCH: "1" } });
+  const lines = output.trim().split("\n");
+  return hashes.filter((candidate, index) => lines[index] === `${candidate} commit`);
 }
 
 /**

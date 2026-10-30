@@ -1,6 +1,7 @@
 // 검색·PR·reflog 점프가 사용할 bounded Graph window 조회를 패널 상태에서 분리한 모듈.
 // - Git 조회와 branch ref 필터링만 담당하고, 선택/스크롤/게시 여부는 GraphPanel이 결정한다.
-import { loadCommitWindowForCandidates, loadLocalCommitWindowForCandidates } from "../git/gitLogWindow";
+import { findLocalCommitCandidates } from "../git/gitLogWindow";
+import { loadGraphHistoryWindow, readAvailableGraphRoots, type GraphHistoryScope } from "../git/graphHistoryScope";
 import type { Commit } from "../graph/graphTypes";
 import { filterCommitRefs } from "./graphBranchFilter";
 import type { ResolvedGraphBranchFilter } from "./graphBranchFilter";
@@ -16,6 +17,7 @@ export interface GraphCommitWindowResult {
   commits: Commit[];
   startIndex: number;
   totalCount: number;
+  scope?: GraphHistoryScope;
 }
 
 /** reflog 복구 점프가 현재 ref 범위와 무관하게 표시할 결과다. */
@@ -32,7 +34,9 @@ export interface GraphReflogWindowResult {
  * @param branchFilter 현재 Graph의 ref·표시 필터
  * @param pageSize target 뒤쪽에 유지할 최대 기본 commit 수
  * @param signal 더 이상 표시하지 않을 점프 조회의 Git을 종료할 신호
- * @returns target을 포함한 filtered window, 찾지 못하면 undefined
+ * @param pullRequest API·객체 보완에 사용할 선택 PR의 식별 정보
+ * @param navigation previousScope는 앞서 표시한 PR roots, exactHash는 대표 head로 대체하지 않을 개별 OID다.
+ * @returns target을 포함한 날짜 기반 전체 window와 이후 페이지 범위. 찾지 못하면 undefined
  */
 export async function loadFilteredGraphCommitWindow(
   repoRoot: string,
@@ -40,60 +44,64 @@ export async function loadFilteredGraphCommitWindow(
   branchFilter: ResolvedGraphBranchFilter,
   pageSize: number,
   signal?: AbortSignal,
-  pullRequest?: PullRequestInfo
+  pullRequest?: PullRequestInfo,
+  navigation: { previousScope?: GraphHistoryScope; exactHash?: string } = {}
 ): Promise<GraphCommitWindowResult | undefined> {
   signal?.throwIfAborted();
+  if (navigation.exactHash && !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(navigation.exactHash)) return undefined;
   if (branchFilter.empty && branchFilter.mode !== "all") return undefined;
   let pr = pullRequest && await resolvePullRequestGraphTarget(repoRoot, pullRequest, signal);
-  if (pr) hashes = pullRequestGraphHashes(pr);
+  if (navigation.exactHash) hashes = [navigation.exactHash];
+  else if (pr) hashes = pullRequestGraphHashes(pr);
   if (!hashes.length) return undefined;
-  // 아직 검증된 ref가 없으면 암묵적인 전체 ref 조회를 건너뛰고 선택한 OID만 확인한다.
-  let window: Awaited<ReturnType<typeof loadCommitWindowForCandidates>> = {
-    commits: [], startIndex: 0, targetIndex: -1, totalCount: 0,
-  };
-  if (!branchFilter.empty) {
-    try {
-      window = await loadCommitWindowForCandidates(repoRoot, hashes,
-        { before: 80, after: pageSize, refs: branchFilter.refs, signal });
-    } catch (error) {
-      signal?.throwIfAborted();
-      // catalog 이후 손상된 별도 ref가 선택한 정상 PR까지 막지 않게 한다. 실제 Native 종료 오류만
-      // 복구하며 취소·시간 제한·프로세스 정리와 사용자의 custom 범위 오류는 재조회하지 않는다.
-      if (branchFilter.mode !== "all" || !(error instanceof GitError) || isGitLifecycleError(error)
-        || typeof error.code !== "number" || error.killed || error.signal) throw error;
-      logWarn("graph commit window history unavailable; checking selected target", {
-        repoRoot, code: error.code, candidateCount: hashes.length,
-      });
+  let scope: GraphHistoryScope = { allRefs: branchFilter.mode === "all" && !branchFilter.filtersRefs,
+    refs: [...branchFilter.refs], roots: [] };
+  if (branchFilter.mode === "all") {
+    let local = await findLocalCommitCandidates(repoRoot, [...hashes, pr?.headHash || ""], signal);
+    let target = hashes.find(hash => local.includes(hash));
+    if ((!target || navigation.exactHash && pr?.headHash && !local.includes(pr.headHash)) && pr) {
+      // PR 행은 새 head로 복구할 수 있지만 개별 commit 클릭은 요청한 OID를 끝까지 유지한다.
+      if (pr === pullRequest) {
+        const previousHead = pr.headHash;
+        pr = await resolvePullRequestGraphTarget(repoRoot, pr, signal, true);
+        const latestHashes = navigation.exactHash ? hashes : pullRequestGraphHashes(pr);
+        if (pr.headHash !== previousHead || hashes.length !== latestHashes.length || hashes.some((hash, index) => hash !== latestHashes[index]))
+          local = await findLocalCommitCandidates(repoRoot, [...latestHashes, pr.headHash || ""], signal);
+        hashes = latestHashes;
+        target = hashes.find(hash => local.includes(hash));
+      }
+      if (!target || navigation.exactHash && pr.headHash && !local.includes(pr.headHash)) {
+        await fetchPullRequestGraphObjects(repoRoot, pr, signal, { preferHead: Boolean(navigation.exactHash) });
+        local = await findLocalCommitCandidates(repoRoot, [...hashes, pr.headHash || ""], signal);
+        target = hashes.find(hash => local.includes(hash));
+      }
+    }
+    if (!target) return undefined;
+    hashes = [target];
+    scope.roots = [...new Set([...(navigation.previousScope?.roots || []), target,
+      ...(pr?.headHash && local.includes(pr.headHash) ? [pr.headHash] : [])])];
+    if (branchFilter.filtersRefs) {
+      // PR 목록이 먼저 도착해도 All 화면을 PR 조상만으로 고정하지 않는다. 아직 UI catalog에
+      // 없는 정상 로컬/원격/tag OID도 직접 검증하고 같은 범위로 이후 페이지를 읽는다.
+      scope.refs = []; scope.roots = [...new Set([...await readAvailableGraphRoots(repoRoot, signal), ...scope.roots])];
     }
   }
-  if (!window.hash && branchFilter.mode === "all") {
-    if (branchFilter.filtersRefs) logInfo("graph commit window checking direct target outside catalog", {
-      repoRoot, candidateCount: hashes.length, validatedRefCount: branchFilter.refs.length,
-    });
-    let local = await loadLocalCommitWindowForCandidates(repoRoot, hashes, pageSize, signal);
-    if (!local && pr) {
-      // 선택한 PR만 보완한다. 명시적 branch filter에서는 범위를 넓히거나 fetch하지 않는다.
-      if (pr === pullRequest) {
-        pr = await resolvePullRequestGraphTarget(repoRoot, pr, signal, true);
-        const latestHashes = pullRequestGraphHashes(pr);
-        // 같은 OID를 방금 확인했다면 Git을 반복하지 않는다. 갱신된 head만 새로 검증한다.
-        if (hashes.length !== latestHashes.length || hashes.some((hash, index) => hash !== latestHashes[index]))
-          local = await loadLocalCommitWindowForCandidates(repoRoot, latestHashes, pageSize, signal);
-        hashes = latestHashes;
-      }
-      if (!local) {
-        await fetchPullRequestGraphObjects(repoRoot, pr, signal);
-        local = await loadLocalCommitWindowForCandidates(repoRoot, hashes, pageSize, signal);
-      }
-    }
-    if (local) {
-      window = local;
-      logInfo("graph commit window loaded from local object", { repoRoot, candidateCount: hashes.length, commitCount: local.commits.length });
-    }
+  let window;
+  try { window = await loadGraphHistoryWindow(repoRoot, scope, hashes, 80, pageSize, signal); }
+  catch (error) {
+    signal?.throwIfAborted();
+    if (branchFilter.mode !== "all" || !(error instanceof GitError) || isGitLifecycleError(error)
+      || typeof error.code !== "number" || error.killed || error.signal) throw error;
+    // 별도 손상 ref 때문에 PR의 조상 전용 화면으로 바꾸지 않는다. 정상 refs와 PR을 함께 유지한다.
+    logWarn("graph commit window history unavailable; recovering valid references", { repoRoot, code: error.code });
+    scope = { allRefs: false, refs: [], roots: [...new Set([...await readAvailableGraphRoots(repoRoot, signal), ...scope.roots])] };
+    window = await loadGraphHistoryWindow(repoRoot, scope, hashes, 80, pageSize, signal);
   }
   if (!window.hash || !window.commits.some(commit => commit.hash === window.hash)) return undefined;
-  return { hash: window.hash, commits: filterCommitRefs(window.commits, branchFilter),
-    startIndex: window.startIndex, totalCount: window.totalCount };
+  logInfo("graph commit window timeline ready", { repoRoot, hash: window.hash, allRefs: scope.allRefs,
+    refCount: scope.refs.length, additionalRoots: scope.roots.length, startIndex: window.startIndex, totalCount: window.totalCount });
+  return { hash: window.hash, commits: branchFilter.mode === "all" ? window.commits : filterCommitRefs(window.commits, branchFilter),
+    startIndex: window.startIndex, totalCount: window.totalCount, scope };
 }
 
 /**

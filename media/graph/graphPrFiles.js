@@ -49,6 +49,22 @@
     return `<ul class="pr-file-tree" role="tree">${treeNodesHtml(tree.nodes, 0)}</ul>`;
   }
 
+  /**
+   * 사용 가능한 파일은 유지하면서 파일 페이지·댓글의 서로 다른 진행과 재시도를 표시한다.
+   * @param detail 같은 PR head/base에서 받은 변경 파일과 독립 댓글 조회 상태
+   * @returns 파일 트리 아래에 넣을 상태 HTML. 완료·오류를 0개 또는 빈 파일 목록으로 오해하지 않는다.
+   */
+  function renderProgress(detail) {
+    const labels = window.GscPrStackI18n || {};
+    const files = detail.filesLoading ? `<p class="pr-empty" role="status">${esc(String(labels.loadingPrFiles || "Loading changed files ({0} of {1})…")
+      .replace("{0}", detail.files.length).replace("{1}", detail.fileCount))}</p>` : "";
+    const comments = detail.reviewThreadsLoading ? `<p class="pr-empty" role="status">${esc(labels.loadingPrFileComments || "Loading file comments…")}</p>` : "";
+    const retry = labels.retryPrDetailsAll || "Retry loading pull request details";
+    const error = detail.reviewThreadsError ? `<p class="pr-empty" role="status">${esc(labels.prFileCommentsUnavailable || "File comments could not be loaded.")}</p>` +
+      `<button type="button" class="gsc-button" data-pr-detail-retry ${tooltipAttrs(retry)}>${esc(retry)}</button>` : "";
+    return `<div class="pr-files-progress"${files || comments || error ? "" : " hidden"}>${files}${comments}${error}</div>`;
+  }
+
   /** 파일 경로 배열을 공통 상위 경로부터 시작하는 폴더/파일 트리로 변환한다. */
   function buildTree(files) {
     const base = commonDirectory(files);
@@ -195,5 +211,5 @@
     return `title="${value}" data-tooltip="${value}" aria-label="${value}"`;
   }
 
-  window.GscGraphPrFiles = { render, reset, toggle, setMode, getMode };
+  window.GscGraphPrFiles = { render, renderProgress, reset, toggle, setMode, getMode };
 })();

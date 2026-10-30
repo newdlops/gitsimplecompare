@@ -134,7 +134,7 @@ export type ToWebviewMessage =
   | { type: "pullRequestStackActionState"; busy: boolean }
   | { type: "pullRequestSearchResult"; requestId: string; result: PullRequestSearchResult }
   | { type: "pullRequestSearchError"; requestId: string; query: string; message: string }
-  | { type: "pullRequestDetail"; number: number; detail: PullRequestDetailInfo; requestId?: string }
+  | { type: "pullRequestDetail"; number: number; detail: PullRequestDetailInfo; requestId?: string; partial?: boolean }
   | { type: "pullRequestDetailError"; number: number; message: string; requestId?: string }
   | { type: "graphDetailCancelled"; number?: number; reason: string; requestId?: string }
   | { type: "graphDetailResume" }
@@ -189,7 +189,7 @@ export type FromWebviewMessage =
   | { type: "loadMorePullRequests" }
   | { type: "refreshPullRequestDetail"; number: number; requestId?: string }
   | { type: "cancelGraphDetail" }
-  | { type: "ensureCommitVisible"; requestId: string; hashes: string[]; pullRequestNumber?: number }
+  | { type: "ensureCommitVisible"; requestId: string; hashes: string[]; pullRequestNumber?: number; exactHash?: string }
   | { type: "cancelCommitFocus"; requestId: string }
   | { type: "showReflogCommit"; requestId: string; hash: string }
   | { type: "ensureHeadVisible"; requestId: string }
