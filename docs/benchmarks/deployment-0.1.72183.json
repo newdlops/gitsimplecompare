@@ -1,0 +1,63 @@
+{
+  "version": "0.1.72183",
+  "verifiedAtUtc": "2026-10-30T12:18:34.530Z",
+  "extensionId": "newdlops.gitsimplecompare",
+  "productCommit": "14090bd0093f9afb42cd354fadbbc6e4db6cdaa5",
+  "branch": "main",
+  "pushedToOrigin": true,
+  "artifact": "gitsimplecompare-0.1.72183.vsix",
+  "bytes": 943631,
+  "sha256": "b9fb15ab3ddd81fc565358134a50263611dc0230df0b4933c368543338d51dd7",
+  "publish": {
+    "exitCode": 0,
+    "method": "vsce publish --packagePath (the verified VSIX, without rebuilding)",
+    "logSha256": "c668c76f4de349c8c403f28824777947eed15dbe48585149226bc8238b799c1e",
+    "url": "https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare"
+  },
+  "marketplace": {
+    "versionedPublicDownloadVerified": true,
+    "latestPublicDownloadVerified": true,
+    "bothArchivesByteIdenticalToRelease": true,
+    "downloads": {
+      "versioned": {
+        "version": "0.1.72183",
+        "bytes": 943631,
+        "sha256": "b9fb15ab3ddd81fc565358134a50263611dc0230df0b4933c368543338d51dd7"
+      },
+      "latest": {
+        "version": "0.1.72183",
+        "bytes": 943631,
+        "sha256": "b9fb15ab3ddd81fc565358134a50263611dc0230df0b4933c368543338d51dd7"
+      }
+    },
+    "catalogObservedVersion": "0.1.72182",
+    "catalogVersionMatchesRelease": false,
+    "catalogResponseSha256": "65b53c137bb3bb789d5959ef8643deb61c9259086974f28c6f942cbb779ce470"
+  },
+  "install": {
+    "exitCode": 0,
+    "registeredVersion": "0.1.72183",
+    "registeredEntries": 1,
+    "runtimeFilesVerified": 84,
+    "allRuntimeBytesMatched": true,
+    "existingRepositoryWindowsReloadedAndVerified": 1,
+    "nativeActivationVersion": "0.1.72183",
+    "otherExistingWindowsReloaded": false,
+    "activationNote": "The tested existing repository window is running this version. Other already-open VS Code windows need Reload Window to activate the installed update."
+  },
+  "validation": {
+    "artifactRecord": "release-artifact-0.1.72183.json",
+    "regressionEvidence": "pr-details-history-verification-20261030.json",
+    "typecheckExitCode": 0,
+    "productionPackageExitCode": 0,
+    "extractedVsixExtensionHostSmokeExitCode": 0,
+    "relatedRegressionTestsPassed": 96,
+    "browserTestsPassed": 42,
+    "productionRendererTestsPassed": 7,
+    "nativeChangedFilesObserved": 105,
+    "nativeDirectCommitChangedFilesObserved": 6,
+    "nativeCompletedFilesRetainedWhileRefreshing": true,
+    "lintExitCode": 127,
+    "lintReason": "ESLint is not installed."
+  }
+}
