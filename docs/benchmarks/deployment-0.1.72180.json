@@ -1,0 +1,45 @@
+{
+  "version": "0.1.72180",
+  "verifiedAtUtc": "2026-10-30T08:55:56.004354+00:00",
+  "extensionId": "newdlops.gitsimplecompare",
+  "productCommit": "875882f8fb7b64447e3e279decd83e49dd2de68d",
+  "branch": "main",
+  "pushedToOrigin": true,
+  "artifact": "gitsimplecompare-0.1.72180.vsix",
+  "bytes": 940980,
+  "sha256": "bb6ecb99d492c8934205bf018710ba06051acb39c38501392e8b26890a902eb6",
+  "publish": {
+    "exitCode": 0,
+    "method": "vsce publish --packagePath (the verified VSIX, without rebuilding)",
+    "logSha256": "fd998786870e2479a93b7118e458fd8570015c348f600f630ce51e757c41dc7b",
+    "url": "https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare"
+  },
+  "marketplace": {
+    "versionedPublicDownloadVerified": true,
+    "latestPublicDownloadVerified": true,
+    "latestDownloadedVersion": "0.1.72180",
+    "bothArchivesByteIdenticalToRelease": true,
+    "catalogObservedVersion": "0.1.72179",
+    "catalogVersionMatchesRelease": false,
+    "catalogResponseSha256": "61fa64c12de3e41f6356221a001ad55cee36c9f13257957b6a5042cdf8ed5d1a"
+  },
+  "install": {
+    "exitCode": 0,
+    "registeredVersion": "0.1.72180",
+    "registeredEntries": 1,
+    "runtimeFilesVerified": 84,
+    "allRuntimeBytesMatched": true,
+    "existingUserWindowsReloaded": false,
+    "activationNote": "Restart Extensions or Reload Window activates the update in existing VS Code windows."
+  },
+  "validation": {
+    "artifactRecord": "release-artifact-0.1.72180.json",
+    "typecheckExitCode": 0,
+    "productionPackageExitCode": 0,
+    "unitRegressionTestsPassed": 150,
+    "browserUniqueTestsPassed": 35,
+    "unitSourceMatchesExceptVersion": true,
+    "productionMinifiedRendererTestsPassed": 5,
+    "extractedVsixExtensionHostSmokeExitCode": 0
+  }
+}
