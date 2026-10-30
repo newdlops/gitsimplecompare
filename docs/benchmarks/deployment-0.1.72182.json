@@ -1,0 +1,58 @@
+{
+  "version": "0.1.72182",
+  "verifiedAtUtc": "2026-10-30T10:50:07.955Z",
+  "extensionId": "newdlops.gitsimplecompare",
+  "productCommit": "036e2c5c82cff6800eda206e723af3ca2f9ceb17",
+  "branch": "main",
+  "pushedToOrigin": true,
+  "artifact": "gitsimplecompare-0.1.72182.vsix",
+  "bytes": 941253,
+  "sha256": "b837a70feb8706e73c6d18fef0b5459000a1f11f6edad1c8b1f94bffbc77ec75",
+  "publish": {
+    "exitCode": 0,
+    "method": "vsce publish --packagePath (the verified VSIX, without rebuilding)",
+    "logSha256": "ef601cc04e2be82c2ffe5c7066c4707bfe95e33fd34f6b291d0009a5393bf882",
+    "url": "https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare"
+  },
+  "marketplace": {
+    "versionedPublicDownloadVerified": true,
+    "latestPublicDownloadVerified": true,
+    "bothArchivesByteIdenticalToRelease": true,
+    "downloads": {
+      "versioned": {
+        "version": "0.1.72182",
+        "bytes": 941253,
+        "sha256": "b837a70feb8706e73c6d18fef0b5459000a1f11f6edad1c8b1f94bffbc77ec75"
+      },
+      "latest": {
+        "version": "0.1.72182",
+        "bytes": 941253,
+        "sha256": "b837a70feb8706e73c6d18fef0b5459000a1f11f6edad1c8b1f94bffbc77ec75"
+      }
+    },
+    "catalogObservedVersion": "0.1.72181",
+    "catalogVersionMatchesRelease": false,
+    "catalogResponseSha256": "09f6b0397c0e3360c7a1b88a47f527f3f7ad10455797abe62ea5b188a0997588"
+  },
+  "install": {
+    "exitCode": 0,
+    "registeredVersion": "0.1.72182",
+    "registeredEntries": 1,
+    "runtimeFilesVerified": 84,
+    "allRuntimeBytesMatched": true,
+    "existingUserWindowsReloaded": false,
+    "activationNote": "Restart Extensions or Reload Window activates the update in existing VS Code windows."
+  },
+  "validation": {
+    "artifactRecord": "release-artifact-0.1.72182.json",
+    "regressionEvidence": "pr-detail-loading-verification-20261030.json",
+    "typecheckExitCode": 0,
+    "productionPackageExitCode": 0,
+    "extractedVsixExtensionHostSmokeExitCode": 0,
+    "relatedRegressionTestsPassed": 25,
+    "browserTestsPassed": 11,
+    "liveGitHubPrCasesPassed": 2,
+    "lintExitCode": 127,
+    "lintReason": "ESLint is not installed."
+  }
+}
