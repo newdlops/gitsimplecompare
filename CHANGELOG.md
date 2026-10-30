@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.72181] - 2026-10-30
+
+### Maintenance
+
+- Publish a new patch package of 0.1.72180 with updated release metadata.
+  Runtime behavior is unchanged.
+
 ## [0.1.72180] - 2026-10-30
 
 ### Performance
