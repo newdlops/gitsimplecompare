@@ -1,10 +1,11 @@
-// Graph 이동에 필요한 PR 식별자와 누락된 객체만 준비한다. 전체 PR 목록·댓글·파일은 조회하지 않는다.
+// Graph 이동·커밋 상세에 필요한 PR 식별자와 누락 객체만 준비한다. 전체 PR 목록·댓글·파일은 조회하지 않는다.
 import { GitError, runGit } from "./gitExec";
 import { fetchPullRequestRefs } from "./pullRequestRefLookup";
 import { readGitHubInteractive } from "./githubReadCache";
 import type { PullRequestInfo } from "./pullRequestInfo";
 import { logInfo } from "../ui/outputLog";
 import { PULL_REQUEST_GRAPH_FETCH_OPTIONS } from "./pullRequestGraphFetch";
+import { findLocalCommitCandidates } from "./gitLogWindow";
 
 /**
  * merge 결과·head·마지막 PR commit 순서로 이동 후보를 만든다.
@@ -30,6 +31,34 @@ export async function resolvePullRequestGraphTarget(root: string, pr: PullReques
   if (!latest || latest.number !== pr.number || !isOid(latest.headHash)) throw new Error("Pull request refs are unavailable.");
   logInfo("graph pull request jump refs resolved", { repoRoot: root, number: pr.number });
   return latest;
+}
+
+/**
+ * 선택한 PR 커밋의 내용을 Graph 페이지·브랜치 필터와 무관하게 읽을 수 있도록 객체만 준비한다.
+ * @param root 현재 저장소, pr host가 조회해 둔 PR 또는 목록 갱신으로 사라진 PR 번호, hash 정확한 커밋 OID
+ * @param signal 상세 선택·창 수명에 연결한 취소 신호
+ * @returns 로컬 객체가 있으면 즉시 완료한다. 없으면 PR head 또는 선택한 머지 결과만 가져와 정확한 OID를 재확인한다.
+ */
+export async function preparePullRequestCommit(root: string, pr: PullRequestInfo | number, hash: string, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
+  if (!isOid(hash)) throw new Error("Invalid pull request commit OID.");
+  const number = typeof pr === "number" ? pr : pr.number;
+  if (!Number.isSafeInteger(number) || number <= 0) throw new Error("Invalid pull request number.");
+  logInfo("graph pull request commit preparing", { repoRoot: root, number, hash });
+  const available = async () => (await findLocalCommitCandidates(root, [hash], signal)).length > 0;
+  if (await available()) {
+    logInfo("graph pull request commit object ready", { repoRoot: root, number, hash, source: "local" });
+    return;
+  }
+  const latest = typeof pr === "number" ? await fetchPullRequestRefs(root, number,
+    (args, cwd, options) => readGitHubInteractive(args, cwd, { ...options, signal }))
+    : await resolvePullRequestGraphTarget(root, pr, signal, true);
+  signal?.throwIfAborted();
+  if (!latest || latest.number !== number || !isOid(latest.headHash)) throw new Error("Pull request refs are unavailable.");
+  await fetchPullRequestGraphObjects(root, latest, signal, { preferHead: hash.toLowerCase() !== latest.mergeHash?.toLowerCase() });
+  signal?.throwIfAborted();
+  if (!await available()) throw new Error("The selected pull request commit is unavailable. Refresh pull requests and try again.");
+  logInfo("graph pull request commit object ready", { repoRoot: root, number, hash, source: "fetched" });
 }
 
 /**

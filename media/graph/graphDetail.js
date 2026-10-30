@@ -44,6 +44,12 @@
     draw();
   }
 
+  /** 객체 준비 중에는 이전 커밋/PR 내용을 지우고 현재 선택의 명시적인 로딩 상태를 보여준다. */
+  function loading(root, hash) {
+    lastDetail = null; lastHost = null;
+    root.innerHTML = `<p class="placeholder" role="status">${esc(window.GscPrStackI18n?.loadingCommitDetails || "Loading commit details…")}<br><code>${esc(hash.slice(0, 10))}</code></p>`;
+  }
+
   /** 마지막 detail/host 상태로 상세 패널을 다시 그린다. */
   function draw() {
     if (!lastDetail || !lastHost?.root) {
@@ -426,5 +432,5 @@
     draw();
   }
 
-  window.GscGraphDetail = { render, refresh: draw };
+  window.GscGraphDetail = { render, loading, refresh: draw };
 })();

@@ -49,6 +49,28 @@ function pagedPullRequest(number: number): GhPullRequestNode {
   } };
 }
 
+test("commit titles, authors and dates survive first and subsequent PR pages without a graph lookup", async () => {
+  const node: GhPullRequestNode = { number: 17, headRefOid: "head", baseRefOid: "base", commits: {
+    nodes: [{ commit: { oid: "first", messageHeadline: "First actual change", author: { name: "First author" }, committedDate: "2026-10-01T00:00:00Z" } }],
+    pageInfo: { hasNextPage: true, endCursor: "next-commit" } } };
+  const requests: Array<{ operation?: string; query: string }> = [];
+  const fixture = withPullRequestMetadata(async (_args, _root, options) => options.operation === "graph-pr-list-page" ? firstPage([node])
+    : JSON.stringify({ data: { repository: { pullRequest: { headRefOid: "head", baseRefOid: "base", commits: {
+      nodes: [{ commit: { oid: "head", messageHeadline: "Last actual change", author: { name: "Second author" }, committedDate: "2026-10-02T00:00:00Z" } }],
+      pageInfo: { hasNextPage: false } } } } } }));
+  const result = await readPullRequestListPage("/repo", undefined, undefined, (args, root, options) => {
+    requests.push({ operation: options.operation, query: args.find(arg => arg.startsWith("query=")) || "" });
+    return fixture(args, root, options);
+  });
+  assert.deepEqual(result.pullRequests[0].commitSummaries, [
+    { hash: "first", title: "First actual change", author: "First author", dateIso: "2026-10-01T00:00:00Z" },
+    { hash: "head", title: "Last actual change", author: "Second author", dateIso: "2026-10-02T00:00:00Z" },
+  ]);
+  assert.deepEqual(result.pullRequests[0].commitHashes, ["first", "head"]);
+  assert.equal(requests.length, 3, "metadata reuses the existing list, node and commit-tail requests");
+  for (const request of requests.filter(item => item.operation !== "graph-pr-list-page")) assert.match(request.query, /messageHeadline committedDate author/);
+});
+
 test("a light root query and bounded node reads preserve 80 PR records without repo view", async () => {
   const requested: string[][] = [];
   const nodes = Array.from({ length: 80 }, (_, index) => ({

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.72183] - 2026-10-30
+
+### Fixes
+
+- Keep available changed files visible during background refreshes and retries,
+  including refresh failures and partial responses.
+- Reuse an active file request when lightweight pull request metadata gains its
+  head and base hashes, avoiding another loading cycle.
+- Display actual pull request commit titles, authors, and dates independently
+  of the loaded graph page.
+- Open commit details directly from a pull request, preparing missing objects
+  without changing the graph filter or history window. Keep graph navigation
+  as a separate action and preserve PR context when details resume.
+
 ## [0.1.72182] - 2026-10-30
 
 ### Fixes

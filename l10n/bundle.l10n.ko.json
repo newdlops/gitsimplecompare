@@ -1933,5 +1933,13 @@
   "Loading file comments…": "파일 댓글을 불러오는 중…",
   "File comments could not be loaded.": "파일 댓글을 불러오지 못했습니다.",
   "Retry loading pull request details": "PR 상세 다시 불러오기",
-  "Locating commit {0} in the graph…": "그래프에서 커밋 {0}을 찾는 중…"
+  "Locating commit {0} in the graph…": "그래프에서 커밋 {0}을 찾는 중…",
+  "Refreshing changed files…": "변경 파일을 갱신하는 중…",
+  "Changed files could not be refreshed.": "변경 파일을 갱신하지 못했습니다.",
+  "Open commit {0} details": "커밋 {0} 상세 열기",
+  "Jump to commit {0} in the graph": "그래프의 커밋 {0}으로 이동",
+  "View commit details": "커밋 상세 보기",
+  "Loading commit details…": "커밋 상세를 불러오는 중…",
+  "(No commit message)": "(커밋 메시지 없음)",
+  "No related commits.": "관련 커밋이 없습니다."
 }

@@ -14,6 +14,7 @@ import {
 } from "./graphActions";
 import { ensureGraphCommitVisible, ensureGraphHeadVisible } from "./graphCommitFocus";
 import { GraphCommitDetailSender } from "./graphCommitDetails";
+import { preparePullRequestCommit } from "../git/pullRequestGraphTarget";
 import type { PullRequestInfo } from "../git/pullRequestInfo";
 import { deferGraphActionRefresh, GraphActionRefreshQueue, type GraphActionRefreshKind } from "./graphActionRefresh";
 import { createGraphRefreshErrorNotice } from "./graphHealth";
@@ -265,7 +266,9 @@ export class GraphPanelMessageRouter {
         await this.deps.setBranchFilter(message);
       } else if (message.type === "selectCommit") {
         this.cancelDetailLoading("selectionChanged");
-        await this.commitDetails.send(message.hash, this.deps.logService(), this.deps.post);
+        const target = this.pullRequestPager.findGraphTarget(message.pullRequestNumber) ?? message.pullRequestNumber;
+        await this.commitDetails.send(message.hash, this.deps.logService(), this.deps.post,
+          target !== undefined ? signal => preparePullRequestCommit(this.repoRoot, target, message.hash, signal) : undefined);
       } else if (message.type === "cancelGraphDetail") {
         this.cancelDetailLoading("closed");
       } else if (await this.handlePullRequestMessage(message)) {

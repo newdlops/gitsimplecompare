@@ -167,6 +167,8 @@
       return;
     }
     if (event.target.closest?.("[data-pr-retry]")) { showOverviewDetail(true); return; }
+    const openCommit = event.target.closest?.("[data-open-pr-commit]");
+    if (openCommit) { window.GscGraphDetailHost?.selectCommit?.(openCommit.dataset.openPrCommit, activeDetail.number); return; }
     const commit = event.target.closest?.("[data-focus-commit]");
     if (commit) {
       focusCommitRow(commit.dataset.focusCommit || "");
@@ -468,26 +470,8 @@
   /** PR 상세 drawer 의 related commits 리스트 HTML 을 만든다. */
   function relatedCommitsSection(pr) {
     const hashes = window.GscGraphPrMatching?.rowHashes?.(pr) || pr.commitHashes || [];
-    const rows = window.GscGraphPrMatching?.findCommitRows?.(hashes);
-    return `<section class="pr-detail-section">` +
-      sectionHeading("git-commit", "Related commits", iconCount("git-commit", pr.commitHashesComplete === false ? "…" : hashes.length, "Related commits")) +
-      (pr.commitHashesComplete === false ? `<p class="pr-empty" role="status">${esc(window.GscPrStackI18n?.loadingPrCommits)}</p>` : "") +
-      (hashes.length ? `<div class="pr-commit-list">${hashes.map(hash => relatedCommitButton(hash, rows)).join("")}</div>` : `<p class="pr-empty">No related commits.</p>`) +
-      `</section>`;
-  }
-
-  /** @param hash 관련 commit OID @param rows 이번 render의 Graph 행 map @returns 최신 제목·로드 상태를 담은 이동 버튼 HTML */
-  function relatedCommitButton(hash, rows) {
-    const row = rows ? rows.get(hash) : window.GscGraphPrMatching?.findCommitRow?.(hash);
-    const subject = row?.dataset.subject || "Commit is not loaded in the graph yet.";
-    const meta = row?.querySelector?.(".meta")?.textContent || "";
-    const title = row ? `Jump to commit ${shortHash(hash)}` : `Commit ${shortHash(hash)} is not loaded in the graph`;
-    return `<button type="button" class="pr-commit-item${row ? "" : " unloaded"}" data-focus-commit="${esc(hash)}" ` +
-      tooltipAttrs(title) + `>` +
-      `<span class="codicon codicon-git-commit" aria-hidden="true"></span>` +
-      `<span class="pr-commit-hash">${esc(shortHash(hash))}</span>` +
-      `<span class="pr-commit-text"><span>${esc(subject)}</span>${meta ? `<small>${esc(meta)}</small>` : ""}</span>` +
-      `</button>`;
+    return window.GscGraphPrCommits.render(pr, hashes,
+      sectionHeading("git-commit", "Related commits", iconCount("git-commit", pr.commitHashesComplete === false ? "…" : hashes.length, "Related commits")));
   }
 
   /** PR 메타 한 줄 HTML 을 만든다. */

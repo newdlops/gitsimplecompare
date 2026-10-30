@@ -134,8 +134,10 @@
 }
 
 .pr-file-row[data-status="D"] .name,
-.pr-file-row[data-status="D"] .icon {
-  color: var(--vscode-gitDecoration-deletedResourceForeground);
+.pr-file-row[data-status="D"] .icon,
+.pr-file-row .stat .del {
+  /* hover 배경에서도 작은 삭제 수치를 읽을 수 있도록 같은 역할색에 본문색을 섞는다. */
+  color: color-mix(in srgb, var(--vscode-gitDecoration-deletedResourceForeground) 65%, var(--vscode-foreground) 35%);
 }
 
 .pr-file-row[data-status="R"] .name,

@@ -12,6 +12,9 @@ export interface PullRequestChangedFileInfo extends CommitFileChange { commentCo
 /** 상세 drawer에 표시할 전체 파일·댓글 데이터와 명시적인 페이지 상한 상태다. */
 export interface PullRequestDetailInfo {
   number: number;
+  /** 점진적 표시의 실제 head/base. 얕은 PR 목록의 OID 보완만으로 같은 파일을 다시 읽지 않게 한다. */
+  headHash?: string;
+  baseHash?: string;
   commentCount: number;
   fileCommentCount: number;
   fileCount: number;
@@ -92,6 +95,7 @@ export async function fetchPullRequestDetail(
     const progress = () => {
       controller.signal.throwIfAborted();
       onProgress?.({ ...detailValue(number, conversation, total, files, threads, filesTruncated, reviewThreadsTruncated),
+        headHash: pr.headRefOid, baseHash: pr.baseRefOid,
         filesLoading, reviewThreadsLoading, ...(reviewThreadsError ? { reviewThreadsError } : {}) });
     };
     progress();
@@ -131,6 +135,7 @@ export async function fetchPullRequestDetail(
     catch (error) { await Promise.allSettled(tails); throw failure ?? error; }
     controller.signal.throwIfAborted();
     return { ...detailValue(number, conversation, total, files, threads, filesTruncated, reviewThreadsTruncated),
+      ...(onProgress ? { headHash: pr.headRefOid, baseHash: pr.baseRefOid } : {}),
       ...(reviewThreadsError ? { reviewThreadsError } : {}) };
   } catch (error) { controller.abort(); throw error; }
   finally { signal?.removeEventListener("abort", abort); }

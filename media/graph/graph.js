@@ -29,7 +29,7 @@
   let currentRows = []; // 마지막으로 렌더링한 행 데이터(선택/상세 요청에 사용)
   let currentEdges = [];
   let currentLaneCount = 1;
-  let selectedHash = null;
+  let selectedHash = null, selectedPullRequestNumber;
   let detailLabel = "commit details";
   let loadState = { loadedCount: 0, hasMore: false, hasMoreBefore: false, loading: false, reset: true };
   let graphHealthNotice = null;
@@ -79,7 +79,7 @@
     const viewport = preserveView ? window.GscGraphViewport?.capture(graphEl, graphContentEl, ROW_H) : null;
     applyLoadState(state, false);
     if (resetView && !viewport) {
-      selectedHash = null;
+      selectedHash = null; selectedPullRequestNumber = undefined;
       graphEl.scrollTop = 0;
     }
 
@@ -298,11 +298,12 @@
   }
 
   /** 해시에 해당하는 커밋을 선택하고 상세를 요청한다. 이전/현재 선택 행만 갱신한다. */
-  function selectCommit(hash) {
+  function selectCommit(hash, pullRequestNumber) {
     window.dispatchEvent(new CustomEvent("gsc-detail-selection", { detail: { hash } }));
     setDetailLabel("commit details");
+    if (pullRequestNumber) window.GscGraphDetail?.loading?.(detailEl, hash);
     const previousHash = selectedHash;
-    selectedHash = hash;
+    selectedHash = hash; selectedPullRequestNumber = pullRequestNumber;
     // 선택 상태가 바뀐 두 행만 갱신한다. 큰 그래프에서 모든 ref 배지를 다시 계산하지 않는다.
     for (const changedHash of new Set([previousHash, hash])) {
       if (!changedHash) continue;
@@ -312,7 +313,7 @@
       const row = currentRows[Number(el.dataset.index)];
       if (row) el.dataset.renderKey = rowRenderKey(row);
     }
-    vscode.postMessage({ type: "selectCommit", hash: hash });
+    vscode.postMessage({ type: "selectCommit", hash, ...(pullRequestNumber ? { pullRequestNumber } : {}) });
     if (isDrawerMode()) {
       setDetailVisible(true, false);
     }
@@ -346,7 +347,7 @@
     }
     loadState = Object.assign({}, loadState, state);
     if (state.reset && state.loading && currentRows.length === 0) {
-      selectedHash = null;
+      selectedHash = null; selectedPullRequestNumber = undefined;
       currentRows = [];
       currentLaneCount = 1;
       graphContentEl.innerHTML = '<p class="empty">Loading...</p>';
@@ -482,7 +483,7 @@
    */
   function setDetailVisible(visible, notify = true) {
     window.GscGraphDetailVisibility.setVisible(visible, {
-      button: toggleDetailBtn, label: detailLabel, hash: selectedHash, post: message => vscode.postMessage(message)
+      button: toggleDetailBtn, label: detailLabel, hash: selectedHash, pullRequestNumber: selectedPullRequestNumber, post: message => vscode.postMessage(message)
     }, notify);
   }
 
@@ -571,7 +572,7 @@
     } else if (msg.type === "commitDetail") {
       renderDetail(msg.detail);
     } else if (msg.type === "graphDetailResume" && detailLabel === "commit details" && selectedHash && document.body.classList.contains("detail-open")) {
-      vscode.postMessage({ type: "selectCommit", hash: selectedHash });
+      vscode.postMessage({ type: "selectCommit", hash: selectedHash, ...(selectedPullRequestNumber ? { pullRequestNumber: selectedPullRequestNumber } : {}) });
     } else if (msg.type === "error") {
       detailEl.innerHTML = `<p class="placeholder">Error: ${esc(msg.message)}</p>`;
       setDetailVisible(true);
@@ -581,6 +582,7 @@
   initEvents();
   window.GscGraphDetailHost = {
     root: detailEl,
+    selectCommit,
     show(label) {
       setDetailLabel(label || "details");
       setDetailVisible(true, false);

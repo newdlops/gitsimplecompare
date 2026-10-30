@@ -224,8 +224,13 @@ export async function fetchPullRequestListPage(
       const node = reference!;
       const known = previous.get(node.number!);
       if (reuseMetadata && canReuseStableConnections(node, known)) {
+        const knownSummaries = new Map(known!.commitSummaries?.map(summary => [summary.hash, summary]));
         reused.push({ ...node, files: { totalCount: known!.fileCount }, commits: {
-          nodes: known!.commitHashes.map(oid => ({ commit: { oid } })), pageInfo: { hasNextPage: false },
+          nodes: known!.commitHashes.map(oid => {
+            const summary = knownSummaries.get(oid);
+            return { commit: { oid, messageHeadline: summary?.title, committedDate: summary?.dateIso,
+              author: summary?.author ? { name: summary.author } : undefined } };
+          }), pageInfo: { hasNextPage: false },
         } });
         reusedPositions.push(index);
       } else { pending.push(node); pendingPositions.push(index); }
@@ -283,12 +288,15 @@ function reuseCommitSnapshot(pr: PullRequestInfo, known: PullRequestInfo | undef
   if (pr.commitHashesComplete !== false || known?.commitHashesComplete !== true
     || !pr.headHash || !pr.baseHash || pr.headHash !== known.headHash || pr.baseHash !== known.baseHash
     || pr.baseRefName !== known.baseRefName) return false;
-  pr.commitHashes = [...known.commitHashes]; pr.commitHashesComplete = true; return true;
+  if (!hasCompleteCommitSummaries(known)) return false;
+  pr.commitHashes = [...known.commitHashes]; pr.commitSummaries = (known.commitSummaries || []).map(summary => ({ ...summary }));
+  pr.commitHashesComplete = true; return true;
 }
 
 /** 복사한 진행 snapshot만 UI에 보내며 callback 실패가 실제 조회를 중단하지 않게 한다. */
 function publishProgress(page: PullRequestListPage, callback: PullRequestListOptions["onProgress"], repoRoot: string): void {
-  try { callback?.({ ...page, pullRequests: page.pullRequests.map(pr => ({ ...pr, commitHashes: [...pr.commitHashes], labels: pr.labels?.map(label => ({ ...label })) })) }); }
+  try { callback?.({ ...page, pullRequests: page.pullRequests.map(pr => ({ ...pr, commitHashes: [...pr.commitHashes],
+    commitSummaries: pr.commitSummaries?.map(summary => ({ ...summary })), labels: pr.labels?.map(label => ({ ...label })) })) }); }
   catch (error) { logError("graph pull request progress publication failed", error, { repoRoot }); }
 }
 
@@ -341,8 +349,14 @@ async function readPullRequestNodes(
  */
 function canReuseStableConnections(node: GhPullRequestNode, known: PullRequestInfo | undefined): boolean {
   return !!node.headRefOid && !!node.baseRefOid && known?.commitHashesComplete === true && known.fileCountComplete === true
-    && Number.isSafeInteger(known.fileCount) && known.fileCount >= 0
+    && Number.isSafeInteger(known.fileCount) && known.fileCount >= 0 && hasCompleteCommitSummaries(known)
     && node.headRefOid === known.headHash && node.baseRefOid === known.baseHash && node.baseRefName === known.baseRefName;
+}
+
+/** 이전 OID 전부에 표시 요약이 있는지 확인해 구버전의 hash-only 캐시가 제목 조회를 막지 않게 한다. */
+function hasCompleteCommitSummaries(pr: PullRequestInfo): boolean {
+  const hashes = new Set(pr.commitSummaries?.map(summary => summary.hash));
+  return pr.commitHashes.every(hash => hashes.has(hash));
 }
 
 /**

@@ -53,6 +53,17 @@ test("current detail failures remain visible to the caller and can be retried", 
   assert.equal(messages.length, 1);
 });
 
+test("closing a PR commit while its objects are preparing cancels the same consumer and starts no detail reads", async () => {
+  let signal!: AbortSignal, release!: () => void, reads = 0;
+  const service = { repoRoot: "/fixture", getCommitDetail: async () => { reads++; return detail(ONGOING_COMMIT_HASH); } } as unknown as GitLogService;
+  const sender = new GraphCommitDetailSender(), messages: ToWebviewMessage[] = [];
+  const pending = sender.send(ONGOING_COMMIT_HASH, service, message => messages.push(message), async current => {
+    signal = current; await new Promise<void>(resolve => { release = resolve; });
+  });
+  sender.cancel("hidden"); assert.equal(signal.aborted, true); release(); await pending;
+  assert.equal(reads, 0); assert.deepEqual(messages, []);
+});
+
 test("PR detail cancellation reaches its CLI reader and keeps failure cancellation local", async () => {
   const controller = new AbortController(); let signal!: AbortSignal;
   const runner: GhExecute = async (_args, _root, options) => {

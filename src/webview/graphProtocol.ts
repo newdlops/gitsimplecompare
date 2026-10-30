@@ -225,7 +225,7 @@ export type FromWebviewMessage =
         | "undo";
     }
   | { type: "loadMore"; direction?: GraphLoadDirection }
-  | { type: "selectCommit"; hash: string }
+  | { type: "selectCommit"; hash: string; pullRequestNumber?: number }
   | { type: "checkoutBranch"; branch: string }
   | { type: "checkoutRemoteBranch"; branch: string }
   | { type: "checkoutCommit"; hash: string }

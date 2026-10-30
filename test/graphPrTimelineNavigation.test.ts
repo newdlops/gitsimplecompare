@@ -30,6 +30,7 @@ async function timelineFixture(t: TestContext, onPost?: (message: ToWebviewMessa
   const pr = pullRequestInfoFromGraphQl({ number: 42, title: "Unreferenced pull request", state: "OPEN",
     headRefOid: navigationHead, headRefName: "removed-pr", baseRefName: "main" });
   pr.commitHashes = [...new Set([target, navigationHead])];
+  pr.commitSummaries = [{ hash: target, title: await git(f.root, "show", "-s", "--format=%s", target), author: "Fixture" }];
   t.mock.method(PullRequestService.prototype, "getOverview", async () => ({ available: true,
     repository: "owner/repo", defaultBranch: "main", hasMore: false, pullRequests: [pr] }));
   t.mock.method(PullRequestStackService.prototype, "getGraphSnapshot", async () => ({
@@ -152,4 +153,33 @@ for (const action of ["row", "commit"] as const) test(`production PR ${action} c
     selectedCommitVerified: true }));
   await renderer.waitForPendingFrame();
   await renderer.capture(`/private/tmp/gsc-pr-timeline-renderer-${action}`);
+});
+
+test("production PR commit details open an unloaded native commit without requiring a graph jump", {
+  skip: process.env.GSC_VERIFY_PR_RENDERER !== "1",
+}, async t => {
+  const renderer = await GraphLiveRenderer.create();
+  t.after(() => renderer.dispose());
+  const f = await timelineFixture(t, message => renderer.post(message), false);
+  t.mock.method(PullRequestService.prototype, "getDetail", async () => ({ number: 42, files: [], fileCount: 0,
+    commentCount: 0, fileCommentCount: 0, filesTruncated: false, reviewThreadsTruncated: false }));
+  const requests: Array<{ type: string }> = [];
+  renderer.onMessage(async message => { requests.push(message); await f.receiveMessage(message); });
+  await renderer.mount(f.surface.webview.html);
+  await until(() => f.messages.some(message => message.type === "pullRequestOverview") && !f.panel.loading, "initial graph and metadata");
+  await renderer.clickControl("#graph-pr-list"); await renderer.clickControl(".pr-card-heading");
+  const before = f.panel.commits.map((commit: { hash: string }) => commit.hash);
+  assert.ok(!before.includes(f.target));
+  assert.match((await renderer.readPullRequestDetail()).text, /removed-pr 339/);
+  await renderer.clickControl(`[data-open-pr-commit="${f.target}"]`);
+  await until(() => f.messages.some(message => message.type === "commitDetail" && message.detail.hash === f.target && !message.detail.loading),
+    "full native details from the PR's direct content control");
+  await renderer.waitForPendingFrame();
+  assert.equal(await renderer.countElements(".pr-detail-shell"), 0);
+  assert.match((await renderer.readPullRequestDetail()).text, /removed-pr 339/);
+  assert.deepEqual(f.panel.commits.map((commit: { hash: string }) => commit.hash), before);
+  assert.equal(requests.some(message => message.type === "ensureCommitVisible"), false);
+  const selected = f.messages.filter(message => message.type === "commitDetail" && !message.detail.loading).at(-1);
+  assert.ok(selected?.type === "commitDetail");
+  assert.equal(selected.detail.message.trim(), await git(f.root, "show", "-s", "--format=%B", f.target));
 });

@@ -5,6 +5,7 @@ import { mountGraphRenderer } from "./webviewHarness";
 /** 실제 Graph 상세 host·테마·PR JS/CSS로 목록과 상세의 점진적 표시를 재현한다. */
 export async function mountList(page: Page, korean: boolean) {
   await mountGraphRenderer(page);
+  await page.addScriptTag({ path: join(process.cwd(), "media/graph/graphDetail.js") });
   await page.evaluate(ko => {
     const w: any = window;
     const button = document.createElement("button"); button.id = "graph-pr-list"; button.className = "icon-button";
@@ -32,16 +33,24 @@ export async function mountList(page: Page, korean: boolean) {
       retryPullRequests: ko ? "PR 다시 불러오기" : "Retry loading pull requests",
       retryPrDetails: ko ? "변경 파일 다시 불러오기" : "Retry loading changed files",
       loadingPrFiles: ko ? "변경 파일을 불러오는 중 ({0}/{1})…" : "Loading changed files ({0} of {1})…",
+      refreshingPrFiles: ko ? "변경 파일을 갱신하는 중…" : "Refreshing changed files…",
+      prFilesRefreshFailed: ko ? "변경 파일을 갱신하지 못했습니다." : "Changed files could not be refreshed.",
       loadingPrFileComments: ko ? "파일 댓글을 불러오는 중…" : "Loading file comments…",
       prFileCommentsUnavailable: ko ? "파일 댓글을 불러오지 못했습니다." : "File comments could not be loaded.",
       retryPrDetailsAll: ko ? "PR 상세 다시 불러오기" : "Retry loading pull request details",
       loadingGraphCommit: ko ? "그래프에서 커밋 {0}을 찾는 중…" : "Locating commit {0} in the graph…",
+      openPrCommit: ko ? "커밋 {0} 상세 열기" : "Open commit {0} details",
+      jumpToCommit: ko ? "그래프의 커밋 {0}으로 이동" : "Jump to commit {0} in the graph",
+      viewCommitDetails: ko ? "커밋 상세 보기" : "View commit details",
+      loadingCommitDetails: ko ? "커밋 상세를 불러오는 중…" : "Loading commit details…",
+      noCommitMessage: ko ? "(커밋 메시지 없음)" : "(No commit message)",
+      noRelatedCommits: ko ? "관련 커밋이 없습니다." : "No related commits.",
       openPullRequest: "Open pull request #{0} in browser",
     };
   }, korean);
   await page.addStyleTag({ content: `html,body{--vscode-disabledForeground:#777;--vscode-button-secondaryForeground:#ddd;--vscode-button-secondaryBackground:#3a3d41;--vscode-input-background:#3c3c3c;--vscode-input-foreground:#ccc;--vscode-editor-font-family:var(--vscode-font-family);--vscode-gitDecoration-addedResourceForeground:#81b88b;--vscode-gitDecoration-deletedResourceForeground:#f14c4c;--vscode-gitDecoration-modifiedResourceForeground:#e2c08d;--vscode-gitDecoration-renamedResourceForeground:#73c991}` });
   for (const file of ["graphPr.css", "graphPrFiles.css", "graphControls.css"]) await page.addStyleTag({ path: join(process.cwd(), "media/graph", file) });
-  for (const file of ["graphPrActions.js", "graphPrSearch.js", "graphPrMatching.js", "graphPrFiles.js", "graphPrViewState.js", "graphPrPeople.js", "graphPr.js"]) {
+  for (const file of ["graphPrActions.js", "graphPrSearch.js", "graphPrMatching.js", "graphPrFiles.js", "graphPrViewState.js", "graphPrPeople.js", "graphPrCommits.js", "graphPr.js"]) {
     await page.addScriptTag({ path: join(process.cwd(), "media/graph", file) });
   }
 }

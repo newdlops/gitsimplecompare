@@ -27,6 +27,7 @@ import "./graphPrActions.js";
 import "./graphPrStacks.js";
 import "./graphPrViewState.js";
 import "./graphPrPeople.js";
+import "./graphPrCommits.js";
 import "./graphPr.js";
 import "./graphContextMenu.js";
 import "./graphDetail.js";

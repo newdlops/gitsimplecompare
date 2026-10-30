@@ -2,11 +2,12 @@
 import { runGh } from "./ghCli";
 import type { GhExecute } from "./ghRunner";
 import type { GhPullRequestNode, PullRequestInfo } from "./pullRequestInfo";
+import { PULL_REQUEST_COMMIT_FIELDS, pullRequestCommitSummary } from "./pullRequestInfo";
 
 const QUERY = `query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
   repository(owner: $owner, name: $name) { pullRequest(number: $number) {
     headRefOid baseRefOid
-    commits(first: 100, after: $cursor) { nodes { commit { oid } } pageInfo { hasNextPage endCursor } }
+    commits(first: 100, after: $cursor) { nodes { commit { ${PULL_REQUEST_COMMIT_FIELDS} } } pageInfo { hasNextPage endCursor } }
   } }
 }`;
 
@@ -28,6 +29,7 @@ export async function completePullRequestCommits(
     throw new Error("Cannot verify the pull request commit snapshot. Refresh pull requests.");
   }
   const hashes = new Set((node.commits?.nodes || []).map(entry => entry.commit?.oid || "").filter(Boolean));
+  const summaries = new Map((result.commitSummaries || []).map(summary => [summary.hash, summary]));
   const cursors = new Set<string>();
   while (page.hasNextPage) {
     signal?.throwIfAborted();
@@ -48,11 +50,14 @@ export async function completePullRequestCommits(
     for (const entry of connection.nodes) {
       if (!entry.commit?.oid) throw new Error("GitHub returned an invalid pull request commit.");
       hashes.add(entry.commit.oid);
+      const summary = pullRequestCommitSummary(entry.commit);
+      if (summary) summaries.set(summary.hash, summary);
     }
     page = connection.pageInfo;
   }
   hashes.add(node.headRefOid);
   result.commitHashes = [...hashes];
+  result.commitSummaries = [...summaries.values()];
   result.commitHashesComplete = true;
 }
 

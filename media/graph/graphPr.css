@@ -349,10 +349,14 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+  min-width: 0;
 }
 
-.pr-commit-item.unloaded {
-  opacity: 0.62;
+.pr-commit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 4px;
 }
 
 .pr-commit-hash {

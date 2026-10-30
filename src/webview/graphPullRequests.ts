@@ -522,7 +522,9 @@ function mergePullRequest(
     headHash: incoming.headHash || current.headHash,
     baseHash: incoming.baseHash || current.baseHash,
     mergeHash: incoming.mergeHash || current.mergeHash,
+    mergeCommitSummary: incoming.mergeCommitSummary || (incoming.mergeHash === current.mergeHash ? current.mergeCommitSummary : undefined),
     commitHashes: reuseCommits ? [...current.commitHashes] : [...incoming.commitHashes],
+    commitSummaries: (reuseCommits ? current.commitSummaries : incoming.commitSummaries)?.map(summary => ({ ...summary })),
     commitHashesComplete: reuseCommits ? true : incoming.commitHashesComplete,
   };
 }

@@ -3,7 +3,7 @@
   "use strict";
 
   /**
-   * 같은 저장소·PR head/base의 상세를 최대 32개/8MiB/30초만 보관한다.
+   * 같은 저장소·PR head/base의 완료 상세를 최대 32개/8MiB 보관하고 30초 뒤 백그라운드로 갱신한다.
    * @param post host 메시지 함수. 현재 화면의 큰 상세는 완료 캐시와 별도로 표시를 유지한다.
    */
   function create(post) {
@@ -18,18 +18,63 @@
     function key(pr) {
       return JSON.stringify([context, pr?.number, pr?.headHash, pr?.baseHash, pr?.baseRefName]);
     }
-    /** 완료 값을 LRU로 읽는다. 선택 중인 큰 결과는 화면 전환 전까지 별도로 유지한다. */
+    /** 같은 저장소·PR의 빠진 OID만 보완하는 변경인지 검사한다. 이미 알려진 ref 변경은 공유하지 않는다. */
+    function enriches(previous, next) {
+      const before = JSON.parse(previous), after = JSON.parse(next);
+      return before[0] === after[0] && before[1] === after[1] && before[4] === after[4]
+        && (!before[2] || before[2] === after[2]) && (!before[3] || before[3] === after[3]);
+    }
+    /** 같은 snapshot의 현재 값 또는 완료 캐시를 찾아 실패·부분 응답의 수명도 확인한다. */
+    function itemFor(pr) {
+      if (!pr) return undefined;
+      const identity = key(pr), request = pending.get(Number(pr.number));
+      const source = request && current?.requestId === request.requestId ? current.value.detail : undefined;
+      const sameSnapshot = (!source?.headHash || !pr.headHash || source.headHash === pr.headHash)
+        && (!source?.baseHash || !pr.baseHash || source.baseHash === pr.baseHash);
+      if (request && request.key !== identity && sameSnapshot && enriches(request.key, identity)) request.key = identity;
+      let item = current?.key === identity ? current : cache.get(identity);
+      if (!item && pr.headHash && pr.baseHash) {
+        const known = [current, ...cache.values()].find(candidate => candidate && enriches(candidate.key, identity)
+          && candidate.value.detail?.headHash === pr.headHash && candidate.value.detail?.baseHash === pr.baseHash);
+        if (known) {
+          item = { ...known, key: identity };
+          const stored = cache.get(known.key);
+          if (stored) {
+            cache.delete(known.key); bytes -= stored.bytes;
+            if (stored.value.detail?.headHash === pr.headHash && stored.value.detail?.baseHash === pr.baseHash) {
+              cache.set(identity, { ...stored, key: identity }); bytes += stored.bytes;
+            }
+          }
+          if (current === known) current = item;
+        }
+      }
+      if (!item) return undefined;
+      if (item.partial && pending.get(Number(pr.number))?.requestId !== item.requestId) return cache.get(identity);
+      return item;
+    }
+    /** TTL은 재조회 시점에만 사용한다. 이미 받은 같은 head/base의 파일은 갱신 중에도 표시한다. */
     function get(pr) {
-      const identity = key(pr), item = current?.key === identity ? current : cache.get(identity);
-      if (!item || Date.now() - item.at >= 30000) return undefined;
-      if (item.partial && pending.get(Number(pr.number))?.requestId !== item.requestId) return undefined;
-      if (cache.has(identity)) { cache.delete(identity); cache.set(identity, item); }
+      const identity = key(pr), item = itemFor(pr);
+      if (!item) return undefined;
+      if (item.value.detail?.refreshing && !pending.has(Number(pr.number))) {
+        item.value = { ...item.value, detail: { ...item.value.detail, refreshing: false, reviewThreadsLoading: false } };
+      }
+      if (cache.has(identity)) { const stored = cache.get(identity); cache.delete(identity); cache.set(identity, stored); }
       return item.value;
     }
-    /** 오래된 응답은 무시하고 성공 값만 제한된 완료 캐시에 저장한다. 실패는 현재 화면에서만 유지한다. */
+    /** 오래된 응답은 무시한다. 갱신 실패·부분 응답 때도 기존 완료 파일과 재시도 상태를 유지한다. */
     function accept(message, pr, value) {
+      itemFor(pr);
       const request = pending.get(Number(message.number));
       if (!request || (message.requestId && message.requestId !== request.requestId) || request.key !== key(pr)) return false;
+      const previous = itemFor(pr)?.value;
+      if (previous?.status === "ready" && !previous.detail.filesLoading) {
+        if (value.status === "error") value = { status: "ready", detail: { ...previous.detail,
+          refreshing: false, reviewThreadsLoading: false, refreshError: value.message } };
+        else if (message.partial && value.detail?.fileCount === previous.detail.fileCount && value.detail.files.length < previous.detail.files.length) {
+          value = { ...value, detail: { ...previous.detail, refreshing: true, reviewThreadsLoading: value.detail.reviewThreadsLoading } };
+        }
+      }
       if (!message.partial) pending.delete(Number(message.number));
       current = { key: request.key, requestId: request.requestId, value, partial: Boolean(message.partial), at: Date.now(), bytes: JSON.stringify(value).length * 2 };
       if (!message.partial && value.status === "ready" && current.bytes <= 8 * 1024 * 1024) {
@@ -41,11 +86,16 @@
       }
       return true;
     }
-    /** 같은 번호의 진행 요청을 공유하고 다른 ref의 요청은 새 ID로 교체한다. */
+    /** 진행 요청을 공유하고 TTL 만료는 기존 파일을 보이는 채 갱신한다. 다른 ref는 새 ID로 구분한다. */
     function request(pr) {
-      if (!pr || get(pr)) return;
+      if (!pr) return;
+      const item = itemFor(pr);
+      if (item && Date.now() - item.at < 30000) return;
       const number = Number(pr.number), identity = key(pr);
       if (pending.get(number)?.key === identity) return;
+      if (item?.value.status === "ready") current = { ...item,
+        value: { ...item.value, detail: { ...item.value.detail, refreshing: true, refreshError: undefined,
+          reviewThreadsError: undefined, reviewThreadsLoading: true } } };
       const requestId = `pr-detail-${++sequence}`;
       pending.set(number, { key: identity, requestId });
       post({ type: "refreshPullRequestDetail", number, requestId });
@@ -56,11 +106,14 @@
       const item = pending.get(Number(number));
       if (!requestId || item?.requestId === requestId) pending.delete(Number(number));
     }
-    /** 실패·만료를 사용자가 즉시 다시 조회할 수 있게 해당 PR 완료 값을 제거한다. */
+    /** 완료 캐시의 재사용을 해제해 즉시 재시도하되, 이미 표시한 정상 파일은 새 응답까지 보존한다. */
     function retry(pr) {
       const identity = key(pr), item = cache.get(identity);
       if (item) { bytes -= item.bytes; cache.delete(identity); }
-      if (current?.key === identity) current = undefined;
+      if (current?.key === identity) {
+        if (current.value.status === "ready") current = { ...current, at: 0, partial: false };
+        else current = undefined;
+      }
       cancel(pr?.number);
     }
     return { setContext, get, accept, request, cancel, retry,

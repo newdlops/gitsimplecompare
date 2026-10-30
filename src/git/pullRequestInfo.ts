@@ -16,6 +16,13 @@ import type {
 } from "./pullRequestLabels";
 import { normalizePullRequestReviewers, PULL_REQUEST_REVIEWERS_QUERY, type GhPullRequestReviewers, type PullRequestReviewer } from "./pullRequestReviewers";
 
+/** 그래프 페이지와 독립적으로 PR 원래 커밋의 제목·작성자·시각을 표시할 불변 요약이다. */
+export interface PullRequestCommitSummary { hash: string; title: string; author?: string; dateIso?: string; }
+/** GitHub commit connection에서 요약 표시와 OID 수집이 함께 사용하는 필드다. */
+export interface GhPullRequestCommit { oid?: string; messageHeadline?: string; committedDate?: string; author?: { name?: string } | null; }
+/** 첫 페이지와 후속 페이지가 같은 요약 필드를 요청해 그래프 밖 커밋도 내용을 읽을 수 있게 한다. */
+export const PULL_REQUEST_COMMIT_FIELDS = "oid messageHeadline committedDate author { name }";
+
 /** graph 에 표시하고 PR 작업에 전달할 Pull Request 한 건 */
 export interface PullRequestInfo {
   number: number;
@@ -30,6 +37,8 @@ export interface PullRequestInfo {
   baseHash?: string;
   /** merge/squash/rebase 뒤 base branch에 반영된 결과 commit OID */
   mergeHash?: string;
+  /** 머지 결과도 그래프 밖에서 읽을 수 있도록 원래 PR 커밋과 분리한 표시 요약이다. */
+  mergeCommitSummary?: PullRequestCommitSummary;
   author: string;
   reviewers?: PullRequestReviewer[];
   /** false면 제한된 reviewer 연결 뒤에 더 많은 사용자가 있다. 미조회는 reviewers 자체가 undefined다. */
@@ -45,6 +54,8 @@ export interface PullRequestInfo {
   fileCountComplete?: boolean;
   /** PR head branch에 포함된 원래 commit OID 목록. PR git 작업에서 사용한다. */
   commitHashes: string[];
+  /** 원래 PR 커밋의 표시 정보. 현재 Graph 페이지에 해당 OID가 없어도 제목을 보여준다. */
+  commitSummaries?: PullRequestCommitSummary[];
   /** false면 후속 commit 페이지가 남아 있어 Git 쓰기 작업에 사용할 수 없다. */
   commitHashesComplete?: boolean;
   labels?: PullRequestLabelInfo[];
@@ -68,7 +79,7 @@ export interface GhPullRequestNode extends GhPullRequestCommentCounts, GhPullReq
   headRefOid?: string;
   baseRefName?: string;
   baseRefOid?: string;
-  mergeCommit?: { oid?: string } | null;
+  mergeCommit?: GhPullRequestCommit | null;
   author?: { login?: string };
   isDraft?: boolean;
   reviewDecision?: string;
@@ -76,7 +87,7 @@ export interface GhPullRequestNode extends GhPullRequestCommentCounts, GhPullReq
   labels?: GhPullRequestLabels;
   files?: { totalCount?: number };
   commits?: {
-    nodes?: Array<{ commit?: { oid?: string } }>;
+    nodes?: Array<{ commit?: GhPullRequestCommit }>;
     pageInfo?: GhPageInfo;
   };
 }
@@ -113,7 +124,7 @@ export function buildPullRequestInfoQuery(commitPageSize = 100, reviewThreadPage
         headRefOid
         baseRefName
         baseRefOid
-        mergeCommit { oid }
+        mergeCommit { ${PULL_REQUEST_COMMIT_FIELDS} }
         author { login }
         isDraft
         reviewDecision
@@ -123,7 +134,7 @@ ${PULL_REQUEST_REVIEWERS_QUERY}
 ${buildPullRequestCommentCountsQuery(reviewThreadPageSize)}
 ${includeStableConnections ? `        files(first: 1) { totalCount }
         commits(first: ${commitPageSize}) {
-          nodes { commit { oid } }
+          nodes { commit { ${PULL_REQUEST_COMMIT_FIELDS} } }
           pageInfo { hasNextPage endCursor }
         }` : ""}`;
 }
@@ -150,6 +161,7 @@ export function pullRequestInfoFromGraphQl(
     baseRefName: pr.baseRefName || "",
     baseHash: pr.baseRefOid,
     mergeHash: pr.mergeCommit?.oid,
+    mergeCommitSummary: pullRequestCommitSummary(pr.mergeCommit ?? undefined),
     author: pr.author?.login || "",
     ...normalizePullRequestReviewers(pr),
     isDraft: Boolean(pr.isDraft),
@@ -160,9 +172,22 @@ export function pullRequestInfoFromGraphQl(
     fileCount: pr.files?.totalCount ?? 0,
     fileCountComplete: Number.isSafeInteger(pr.files?.totalCount),
     commitHashes: normalizePullRequestCommitHashes(pr),
+    commitSummaries: (pr.commits?.nodes || []).flatMap(node => {
+      const summary = pullRequestCommitSummary(node.commit); return summary ? [summary] : [];
+    }),
     commitHashesComplete: !pr.commits?.pageInfo?.hasNextPage,
     labels: normalizePullRequestLabels(pr.labels),
   };
+}
+
+/**
+ * GitHub 커밋 필드를 그래프 비의존 표시 DTO로 바꾸며 OID·제목을 조회하지 않은 항목은 생성하지 않는다.
+ * @param commit 첫 페이지 또는 후속 페이지에서 받은 커밋
+ * @returns OID와 실제 제목·작성 정보. 빈 커밋 메시지는 빈 문자열로 보존한다.
+ */
+export function pullRequestCommitSummary(commit: GhPullRequestCommit | undefined): PullRequestCommitSummary | undefined {
+  return commit?.oid && typeof commit.messageHeadline === "string"
+    ? { hash: commit.oid, title: commit.messageHeadline, author: commit.author?.name, dateIso: commit.committedDate } : undefined;
 }
 
 /**

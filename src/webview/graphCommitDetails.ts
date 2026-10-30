@@ -33,37 +33,40 @@ export class GraphCommitDetailSender {
    * @param hash 선택된 커밋 해시
    * @param logService 전체 상세를 읽는 git 로그 서비스
    * @param post 웹뷰 메시지 전송 콜백
+   * @param prepare PR 객체 보완처럼 상세의 동일 취소 수명 안에서 먼저 완료할 선택 준비 작업
    */
   async send(
     hash: string,
     logService: GitLogService,
-    post: (message: ToWebviewMessage) => void
+    post: (message: ToWebviewMessage) => void,
+    prepare?: (signal: AbortSignal) => Promise<void>
   ): Promise<void> {
     this.cancel("selectionChanged");
-    const current = this.generation;
+    const current = this.generation, startedAt = Date.now();
     const controller = new AbortController(); this.request = controller;
-    const summaryPromise = isVirtualCommit(hash) ? undefined :
-      getCommitDetailSummary(logService.repoRoot, hash, controller.signal);
-    const detailPromise: Promise<DetailResult> = logService.getCommitDetail(hash, controller.signal, summaryPromise).then(
-      (detail) => ({ ok: true, detail }),
-      (error) => ({ ok: false, error })
-    );
-    if (summaryPromise) {
-      const summary = await summaryPromise.catch(() => undefined);
-      if (summary && current === this.generation) {
-        post({ type: "commitDetail", detail: summary });
+    try {
+      if (prepare) await prepare(controller.signal);
+      if (current !== this.generation || controller.signal.aborted) return;
+      const summaryPromise = isVirtualCommit(hash) ? undefined :
+        getCommitDetailSummary(logService.repoRoot, hash, controller.signal);
+      const detailPromise: Promise<DetailResult> = logService.getCommitDetail(hash, controller.signal, summaryPromise).then(
+        (detail) => ({ ok: true, detail }),
+        (error) => ({ ok: false, error })
+      );
+      if (summaryPromise) {
+        const summary = await summaryPromise.catch(() => undefined);
+        if (summary && current === this.generation) {
+          post({ type: "commitDetail", detail: summary });
+        }
       }
-    }
-    const result = await detailPromise;
-    if (current !== this.generation || controller.signal.aborted) return;
-    if (this.request === controller) this.request = undefined;
-    if (!result.ok) {
-      throw result.error;
-    }
-    const detail = result.detail;
-    if (current === this.generation) {
-      post({ type: "commitDetail", detail });
-    }
+      const result = await detailPromise;
+      if (current !== this.generation || controller.signal.aborted) return;
+      if (!result.ok) throw result.error;
+      post({ type: "commitDetail", detail: result.detail });
+      logInfo("graph commit detail sent", { repoRoot: logService.repoRoot, hash, files: result.detail.files.length, elapsedMs: Date.now() - startedAt });
+    } catch (error) {
+      if (current === this.generation && !controller.signal.aborted) throw error;
+    } finally { if (this.request === controller) this.request = undefined; }
   }
 }
 

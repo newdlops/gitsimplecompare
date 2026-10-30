@@ -1,0 +1,95 @@
+{
+  "version": "0.1.72183",
+  "verifiedAtUtc": "2026-10-30T12:16:39.427Z",
+  "objective": "Keep PR changed files usable while loading and allow reading PR commit history without requiring its rows in the current graph.",
+  "sourceSha256": {
+    "l10n/bundle.l10n.ko.json": "a662cd099d0d42ca5497dd44b34cc3370a9adb3520559f7de420779fd3c1046c",
+    "media/graph/graph.js": "f56ed014a756e5322dfd0abe7eb52c6b75ef0c3ad808765227f6321a08c57022",
+    "media/graph/graphDetail.js": "c451c57b48e2931b3933b987fb0282c0f7e623df2fb08a742ab0b29f9c9b93d5",
+    "media/graph/graphDetailVisibility.js": "a53c9330ee07bc2fcfcddb75643c67ecbddecdb26e40c42bfa703fd9ca4c5cda",
+    "media/graph/graphEntry.js": "3edf14aaa7527c65f51b3639ddefd546032cdb4baded5388935179a8c8799862",
+    "media/graph/graphPr.css": "813a29c0ac788881817568fa3ed7ff8c489e1d49a0627bd66e62aa1c5e202972",
+    "media/graph/graphPr.js": "82b929e262c402f17e8861261d2d9397cb3e86947b1357c4244710306ad7050f",
+    "media/graph/graphPrCommits.js": "7945a0e50dc614eb3dcca87d77f94fa3063667e7d96247fb63ac739355c9ab8d",
+    "media/graph/graphPrFiles.css": "e8324ac3d5523a0a440816863c9c2a714f2db8dde9da3a7e494fcf21aabba441",
+    "media/graph/graphPrFiles.js": "49dfc3322416efaf502a1e94cac567c1dd30a9ca6447e4396620a24a93b67b18",
+    "media/graph/graphPrViewState.js": "8487390514015b93d54d4dfc0e47b22f4b95ba655ca2e6d5c94eaadd71f51415",
+    "src/git/pullRequestCommitPages.ts": "cfe616f083d08b8e519c7b15afee5c784b9a8c47fe820cbb929b75ea0ca79b56",
+    "src/git/pullRequestDetail.ts": "55ed1e870df6a9cbed7cee08ddf49e996ba461d4006292bb719fe3f4680cab9e",
+    "src/git/pullRequestGraphTarget.ts": "a6512d504911c971867f92915419ba48f73a118f3d29b932290e79f7265dc337",
+    "src/git/pullRequestInfo.ts": "1643355f6997568fdea3c09ab614e5785df188f9d5a1296560449307663fee99",
+    "src/git/pullRequestListService.ts": "8d45f059551480ea94d7f96fc1784716e8a5579be83f5329732beef6577f968f",
+    "src/webview/graphCommitDetails.ts": "8fe50cc6d6ecbc55375783bc3fee388ed6c658edbf55a43cbf9cb03776d014b6",
+    "src/webview/graphHtml.ts": "7daab7f7353b72180a57888025a330cfd4211d586819ed41a1fde0f54353fcef",
+    "src/webview/graphPanelMessageRouter.ts": "52b337e887de15ca5cbb97fb2c54f720ba928172fff528c11e85f09a76f19530",
+    "src/webview/graphProtocol.ts": "01b1d5c103479293f048a48757fe78f456e4ce7a2cd2422512ac827d95bbcde4",
+    "src/webview/graphPullRequests.ts": "8dd87e430e99a2ca3adf15827af7935ea825443feb8d1eb0bc47ed0d279137f3"
+  },
+  "fixes": [
+    "Retain completed files while refreshing, retrying and handling refresh errors.",
+    "Enrich lightweight PR identities without discarding or repeating their active file requests.",
+    "Use paginated API commit summaries for titles, authors and dates; preserve them during stable snapshot reuse.",
+    "Open exact commit details independently of graph filters/windows; prepare missing objects and preserve PR context on resume."
+  ],
+  "tests": {
+    "relatedRegressionsPassed": 96,
+    "optionalLiveTestSkippedInUnitSuite": 1,
+    "browserUniqueTestsPassed": 42,
+    "finalProductionRendererTestsPassed": 7,
+    "finalProductionRendererOptionalLiveTestSkipped": 1,
+    "viewports": [
+      [
+        390,
+        844
+      ],
+      [
+        768,
+        1024
+      ],
+      [
+        1440,
+        900
+      ]
+    ],
+    "covers": [
+      "stale refresh failure and retry with existing files",
+      "both lightweight metadata/file response orders",
+      "first and tail commit metadata pages and legacy cache refresh",
+      "unfetched original and merge-result objects",
+      "unchanged protected refs/FETCH_HEAD/index/config/working files and custom graph filter",
+      "direct native commit detail rendering and both-direction graph navigation",
+      "cancel, focus resume and drawer reopen",
+      "keyboard, actual visible commit lists, hover contrast and Axe checks"
+    ],
+    "unitLogSha256": "f416b9d70103c48df6315fd939167a1711f28b154682e75a3fa3aa260303b584",
+    "browserLogSha256": "ae55305c526fcdd0b1b416f0eaa5fa368093f8c35fd157c42112d19ec7c8c447",
+    "productionRendererLogSha256": "d25f078b14ea20ea063378e02025007ba06e601e7e90e12e7e398fea23217858"
+  },
+  "nativeExistingWindow": {
+    "activationVersion": "0.1.72183",
+    "relatedCommitEntriesObserved": 6,
+    "titlesAuthorsDatesObserved": true,
+    "firstFilePageCounts": [
+      100,
+      100
+    ],
+    "firstFilePageBackendMs": [
+      1158,
+      1034
+    ],
+    "completeFileCount": 105,
+    "firstFullDetailBackendMs": 2748,
+    "completed105FilesObservedWhileRefreshingAfterTtl": true,
+    "emptyLoadingPlaceholderAbsentOnReturn": true,
+    "selectedCommitOutsideInitial300GraphRows": true,
+    "selectedCommitHashSha256": "90f4a67e8a47c177974f5bf441889c8fd0736681dfad27809498927fbf1d00c1",
+    "directCommitChangedFilesObserved": 6,
+    "nativeGitFileCountMatched": true,
+    "directCommitBackendMs": 125,
+    "graphWindowWasNotMovedOrPaged": true,
+    "loadingCompletedAndMetadataVisibleAtFinalObservation": true,
+    "outputSnapshotSha256": "9180d348eb95f0c169a9a08dddf0af72de0f79dd8c9e203af5de3f0ba3fcf65b",
+    "outputErrorLines": 0,
+    "privacy": "Private repository names, commit titles, author identities, changed-file paths and raw native logs are not committed."
+  }
+}

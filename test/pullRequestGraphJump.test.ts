@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test, { type TestContext } from "node:test";
-import { runGit } from "../src/git/gitExec";
+import { runGit, runGitWithInput } from "../src/git/gitExec";
 import { gitCommandPolicy } from "../src/git/gitCommandPolicy";
 import { gitProcesses } from "../src/git/gitProcessRegistry";
 import { PULL_REQUEST_GRAPH_FETCH_OPTIONS } from "../src/git/pullRequestGraphFetch";
-import { fetchPullRequestGraphObjects } from "../src/git/pullRequestGraphTarget";
+import { fetchPullRequestGraphObjects, preparePullRequestCommit } from "../src/git/pullRequestGraphTarget";
 import type { PullRequestInfo } from "../src/git/pullRequestInfo";
 import { loadFilteredGraphCommitWindow } from "../src/webview/graphCommitWindowLoading";
 import { ensureGraphCommitVisible } from "../src/webview/graphCommitFocus";
@@ -113,6 +113,46 @@ test("an unfetched PR downloads only its objects and preserves refs, FETCH_HEAD,
   assert.equal(commands.filter(command => command === "cat-file").length, 2, "check the same OIDs only before and after fetching");
   assert.equal(mutations, 0, "object preparation must not trigger a graph reload that cancels its own navigation");
   assert.deepEqual(await protectedState(f.root), before);
+});
+
+test("direct PR commit details fetch missing objects without moving or expanding a custom-filtered graph", async t => {
+  const f = await remoteFixture(t);
+  const blob = (await runGitWithInput(["hash-object", "-w", "--stdin"], f.remote, "remote PR change\n")).trim();
+  const tree = (await runGitWithInput(["mktree"], f.remote, `100644 blob ${blob}\ttracked.txt\n`)).trim();
+  const hash = await git(f.remote, "-c", "user.name=Remote author", "-c", "user.email=remote@example.test",
+    "commit-tree", tree, "-p", f.head, "-m", "Unfetched PR commit changes a real file");
+  await git(f.remote, "update-ref", "refs/pull/42/head", hash);
+  const r = await refsFixture(t, f.directory, hash);
+  t.mock.method(PullRequestService.prototype, "getOverview", async () => ({ available: true, repository: "owner/repo",
+    defaultBranch: "main", hasMore: false, pullRequests: [r.pr] }));
+  t.mock.method(PullRequestStackService.prototype, "getGraphSnapshot", async () =>
+    ({ repository: "owner/repo", defaultBranch: "main", stacks: [], layers: [] }));
+  const h = createOperationGraphPanel(t, new GitLogService(f.root)); t.after(() => h.panel.dispose());
+  await h.receiveMessage({ type: "ready" });
+  await h.receiveMessage({ type: "setBranchFilter", mode: "custom", branches: ["main"], compact: true });
+  const graphHashes = h.panel.commits.map((commit: { hash: string }) => commit.hash), before = await protectedState(f.root);
+  assert.ok(!graphHashes.includes(hash));
+  await h.receiveMessage({ type: "selectCommit", hash, pullRequestNumber: 42 });
+  const result = h.messages.filter(message => message.type === "commitDetail" && message.detail.hash === hash && !message.detail.loading).at(-1);
+  assert.ok(result?.type === "commitDetail");
+  assert.equal(result.detail.message.trim(), "Unfetched PR commit changes a real file");
+  assert.equal(result.detail.authorName, "Remote author");
+  assert.deepEqual(result.detail.files.map(file => file.path), ["tracked.txt"]);
+  assert.deepEqual(h.panel.commits.map((commit: { hash: string }) => commit.hash), graphHashes);
+  assert.deepEqual(await protectedState(f.root), before);
+  assert.equal(await r.count(), 1);
+});
+
+test("direct merged-result details fetch the exact merge object rather than an unrelated PR head", async t => {
+  const f = await remoteFixture(t);
+  const base = await git(f.root, "rev-parse", "HEAD"), tree = await git(f.remote, "rev-parse", `${base}^{tree}`);
+  const merged = await git(f.remote, "-c", "user.name=Maintainer", "-c", "user.email=maintainer@example.test",
+    "commit-tree", tree, "-p", base, "-m", "Squash result outside PR head history");
+  const r = await refsFixture(t, f.directory, f.head, merged), before = await protectedState(f.root);
+  await preparePullRequestCommit(f.root, r.pr, merged);
+  assert.equal(await git(f.root, "show", "-s", "--format=%s", merged), "Squash result outside PR head history");
+  assert.deepEqual(await protectedState(f.root), before);
+  assert.equal(await r.count(), 1);
 });
 
 test("All branches can fetch the clicked PR while the remote branch catalog is still pending", async t => {

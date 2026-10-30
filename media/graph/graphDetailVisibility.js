@@ -23,7 +23,8 @@
     if (!visible) host.post({ type: "cancelGraphDetail" });
     if (notify) {
       window.dispatchEvent(new CustomEvent("gsc-detail-visibility", { detail: { visible } }));
-      if (visible && host.label === "commit details" && host.hash) host.post({ type: "selectCommit", hash: host.hash });
+      if (visible && host.label === "commit details" && host.hash) host.post({ type: "selectCommit", hash: host.hash,
+        ...(host.pullRequestNumber ? { pullRequestNumber: host.pullRequestNumber } : {}) });
     }
   }
   window.GscGraphDetailVisibility = { setVisible };

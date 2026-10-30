@@ -13,10 +13,11 @@ function records(count = 80): IdentifiedNode[] {
     return { id: `PR-${number}`, __typename: "PullRequest", number, title: `Title ${number}`,
       state: ["OPEN", "MERGED", "CLOSED"][index % 3], url: `https://github.com/owner/repo/pull/${number}`,
       headRefName: `feature-${number}`, headRefOid: `head-${number}`, baseRefName: "main", baseRefOid: `base-${number}`,
-      mergeCommit: { oid: `merge-${number}` }, author: { login: "author" }, isDraft: false, reviewDecision: "APPROVED",
+      mergeCommit: { oid: `merge-${number}`, messageHeadline: `Merge ${number}` }, author: { login: "author" }, isDraft: false, reviewDecision: "APPROVED",
       updatedAt: "2026-10-05T00:00:00Z", labels: { nodes: [{ name: "bug", color: "00ff00", description: "Fix" }] },
       comments: { totalCount: 2 }, reviewThreads: { nodes: [{ comments: { totalCount: 3 } }], pageInfo: { hasNextPage: false } },
-      files: { totalCount: number + 10 }, commits: { nodes: [{ commit: { oid: `start-${number}` } }, { commit: { oid: `head-${number}` } }],
+      files: { totalCount: number + 10 }, commits: { nodes: [{ commit: { oid: `start-${number}`, messageHeadline: `First change ${number}`, author: { name: "Contributor" }, committedDate: "2026-10-05T00:00:00Z" } },
+        { commit: { oid: `head-${number}`, messageHeadline: `Latest change ${number}`, author: { name: "Contributor" }, committedDate: "2026-10-05T01:00:00Z" } }],
         pageInfo: { hasNextPage: false } } };
   });
 }
@@ -316,6 +317,8 @@ test("refreshing eighty unchanged PRs avoids stable connections while preserving
   assert.equal(result.pullRequests.length, 80);
   assert.deepEqual(result.pullRequests[0].commitHashes, ["start-1", "head-1"]);
   assert.deepEqual(result.pullRequests[79].commitHashes, ["start-80", "head-80"]);
+  assert.deepEqual(result.pullRequests[0].commitSummaries, previous.pullRequests[0].commitSummaries);
+  assert.equal(result.pullRequests[0].mergeCommitSummary?.title, "Merge 1");
   assert.equal(result.pullRequests[0].fileCount, 11); assert.equal(result.pullRequests[79].fileCount, 90);
   assert.equal(result.pullRequests[0].commentCount, 15); assert.equal(result.pullRequests[0].title, "Fresh title");
   assert.deepEqual(result.pullRequests[0].labels, [{ name: "updated", color: "ff0000", description: undefined }]);
@@ -344,6 +347,19 @@ test("a changed refresh head rereads only that PR before completing the cached l
   assert.deepEqual(result.pullRequests[0].commitHashes, ["start-1", "head-1"]);
   assert.deepEqual(result.pullRequests[79].commitHashes, ["start-80", "head-80"]);
   assert.deepEqual(heavy, [["ids[]=PR-40"]], "a stale reusable connection must only reread its changed identity");
+});
+
+test("a legacy hash-only snapshot rereads commit metadata once rather than hiding graph-external titles", async () => {
+  const nodes = records(1), previous = { repository: "owner/repo", pullRequests: nodes.map(node => pullRequestInfoFromGraphQl(node)) };
+  previous.pullRequests[0].commitSummaries = undefined;
+  let metadataReads = 0;
+  const result = await fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
+    if (options.operation === "graph-pr-list-nodes") metadataReads++;
+    return projectedPage(args, nodes, options.operation === "graph-pr-list-page");
+  }, { previous });
+  assert.equal(metadataReads, 1);
+  assert.deepEqual(result.pullRequests[0].commitSummaries?.map(summary => summary.title), ["First change 1", "Latest change 1"]);
+  assert.equal(previous.pullRequests[0].commitSummaries, undefined);
 });
 
 for (const boundary of ["repository", "head", "base", "baseName", "incompleteCommits", "incompleteFiles"] as const) {

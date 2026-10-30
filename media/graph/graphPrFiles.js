@@ -56,11 +56,14 @@
    */
   function renderProgress(detail) {
     const labels = window.GscPrStackI18n || {};
-    const files = detail.filesLoading ? `<p class="pr-empty" role="status">${esc(String(labels.loadingPrFiles || "Loading changed files ({0} of {1})…")
+    const files = detail.refreshing ? `<p class="pr-empty" role="status">${esc(labels.refreshingPrFiles || "Refreshing changed files…")}</p>`
+      : detail.filesLoading ? `<p class="pr-empty" role="status">${esc(String(labels.loadingPrFiles || "Loading changed files ({0} of {1})…")
       .replace("{0}", detail.files.length).replace("{1}", detail.fileCount))}</p>` : "";
     const comments = detail.reviewThreadsLoading ? `<p class="pr-empty" role="status">${esc(labels.loadingPrFileComments || "Loading file comments…")}</p>` : "";
     const retry = labels.retryPrDetailsAll || "Retry loading pull request details";
-    const error = detail.reviewThreadsError ? `<p class="pr-empty" role="status">${esc(labels.prFileCommentsUnavailable || "File comments could not be loaded.")}</p>` +
+    const errorText = detail.refreshError ? labels.prFilesRefreshFailed || "Changed files could not be refreshed."
+      : detail.reviewThreadsError ? labels.prFileCommentsUnavailable || "File comments could not be loaded." : "";
+    const error = errorText ? `<p class="pr-empty" role="status">${esc(errorText)}</p>` +
       `<button type="button" class="gsc-button" data-pr-detail-retry ${tooltipAttrs(retry)}>${esc(retry)}</button>` : "";
     return `<div class="pr-files-progress"${files || comments || error ? "" : " hidden"}>${files}${comments}${error}</div>`;
   }
