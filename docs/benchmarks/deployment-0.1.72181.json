@@ -1,0 +1,53 @@
+{
+  "version": "0.1.72181",
+  "verifiedAtUtc": "2026-10-30T10:28:40.974Z",
+  "extensionId": "newdlops.gitsimplecompare",
+  "productCommit": "260cdfa193b7da3ccc01785b57aa2b4fb3b4ee69",
+  "branch": "main",
+  "pushedToOrigin": true,
+  "artifact": "gitsimplecompare-0.1.72181.vsix",
+  "bytes": 941030,
+  "sha256": "47b5e8a6dec81f7d50939f3497b756a776e5e1daf0778129cb2543ea2a9d6cd0",
+  "publish": {
+    "exitCode": 0,
+    "method": "vsce publish --packagePath (the verified VSIX, without rebuilding)",
+    "logSha256": "21bc1965b77df9eabfa0687faf2d40a473df606df23b39db9d46d02dc3b7c09a",
+    "url": "https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare"
+  },
+  "marketplace": {
+    "versionedPublicDownloadVerified": true,
+    "latestPublicDownloadVerified": true,
+    "bothArchivesByteIdenticalToRelease": true,
+    "downloads": {
+      "versioned": {
+        "version": "0.1.72181",
+        "bytes": 941030,
+        "sha256": "47b5e8a6dec81f7d50939f3497b756a776e5e1daf0778129cb2543ea2a9d6cd0"
+      },
+      "latest": {
+        "version": "0.1.72181",
+        "bytes": 941030,
+        "sha256": "47b5e8a6dec81f7d50939f3497b756a776e5e1daf0778129cb2543ea2a9d6cd0"
+      }
+    },
+    "catalogObservedVersion": "0.1.72180",
+    "catalogVersionMatchesRelease": false,
+    "catalogResponseSha256": "0a56f5d19b528c5faf358266206b99fa70230b20a0ec77a90f0f85cac119554b"
+  },
+  "install": {
+    "exitCode": 0,
+    "registeredVersion": "0.1.72181",
+    "registeredEntries": 1,
+    "runtimeFilesVerified": 84,
+    "allRuntimeBytesMatched": true,
+    "existingUserWindowsReloaded": false
+  },
+  "validation": {
+    "artifactRecord": "release-artifact-0.1.72181.json",
+    "typecheckExitCode": 0,
+    "productionPackageExitCode": 0,
+    "extractedVsixExtensionHostSmokeExitCode": 0,
+    "runtimeUnchangedFromPreviousRelease": true,
+    "previousVersion": "0.1.72180"
+  }
+}
