@@ -49,7 +49,10 @@
         hostContext = msg.context; details.setContext(`${hostContext}|${overview.repository || ""}`); lastDetailKey = ""; lastDetailRelated = undefined;
       }
     } else if (msg.type === "graphDetailCancelled") {
-      details.cancel(msg.number, msg.requestId);
+      // 앞선 commit 선택·닫기의 번호 없는 ACK가 이후 시작한 PR 요청을 지우지 않게 한다.
+      if (msg.number !== undefined || ["hidden", "windowUnfocused", "repositoryChanged", "dispose"].includes(msg.reason)) {
+        details.cancel(msg.number, msg.requestId);
+      }
       if (["hidden", "windowUnfocused"].includes(msg.reason)) detailPaused = true;
     } else if (msg.type === "graphDetailResume") {
       detailPaused = false; schedulePrRender();

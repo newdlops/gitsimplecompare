@@ -148,6 +148,46 @@ export class GraphLiveRenderer {
     return this.page.locator(selector).count();
   }
 
+  /** 현재 표시된 PR 파일 경로와 상세 문구를 읽어 host 게시와 실제 화면의 완료를 구분한다. */
+  async readPullRequestDetail(): Promise<{ paths: string[]; text: string }> {
+    await this.queue;
+    return this.page.locator("#detail").evaluate(root => ({
+      paths: Array.from(root.querySelectorAll<HTMLElement>(".pr-file-row"), row => row.dataset.path || ""),
+      text: root.textContent || "",
+    }));
+  }
+
+  /** PR 상세를 세 크기로 촬영한다. 깊은 트리는 내부 스크롤로 읽히고 파일명 공간은 유지해야 한다. */
+  async capturePullRequestDetail(directory: string): Promise<void> {
+    await mkdir(directory, { recursive: true });
+    for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
+      await this.page.setViewportSize({ width, height });
+      await this.waitForPendingFrame();
+      await this.page.screenshot({ path: path.join(directory, `pr-detail-${width}.png`), animations: "disabled" });
+      assert.ok(await this.page.locator("#detail").evaluate(root => {
+        const panel = root.getBoundingClientRect();
+        return document.documentElement.scrollWidth <= innerWidth + 1 && root.scrollWidth <= root.clientWidth + 1 &&
+          Array.from(root.querySelectorAll(".pr-file-tree, .pr-detail-title h2, [data-pr-detail-retry]")).every(node => {
+            const rect = node.getBoundingClientRect();
+            return rect.left >= panel.left - 1 && rect.right <= panel.right + 1;
+          }) && Array.from(root.querySelectorAll<HTMLElement>(".pr-file-row .name"))
+            .every(name => name.clientWidth >= 24);
+      }), `PR detail content overflowed at ${width}px`);
+      const tree = this.page.locator(".pr-file-tree");
+      const scrolled = await tree.evaluate(node => { node.scrollLeft = node.scrollWidth; return node.scrollLeft > 0; });
+      if (scrolled) {
+        assert.ok(await tree.evaluate(node => {
+          const edge = node.getBoundingClientRect();
+          const stats = Array.from(node.querySelectorAll(".pr-file-row .stat"), stat => stat.getBoundingClientRect());
+          return stats.every(stat => stat.right <= edge.right + 1) && stats.some(stat => stat.left >= edge.left);
+        }), `Deep file statistics could not be reached by tree scrolling at ${width}px`);
+        await this.page.screenshot({ path: path.join(directory, `pr-detail-${width}-scrolled.png`), animations: "disabled" });
+        await tree.evaluate(node => { node.scrollLeft = 0; });
+      }
+    }
+    assert.deepEqual(this.errors, []);
+  }
+
   /** 실제 Graph 스크롤 컨테이너에서 키보드로 끝/처음에 이동해 양방향 자동 페이지 요청을 발생시킨다. */
   async scrollGraph(direction: "older" | "newer"): Promise<void> {
     await this.queue;

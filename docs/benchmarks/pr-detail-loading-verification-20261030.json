@@ -1,0 +1,98 @@
+{
+  "verifiedAtUtc": "2026-10-30T10:47:52.243Z",
+  "defect": "Unnumbered commit cancellation acknowledgments cleared newly pending PR requests; the renderer then discarded already received file pages.",
+  "fix": "Only matching PR cancellations or explicit panel/window/repository lifecycle invalidations clear PR request state.",
+  "baseline": {
+    "version": "0.1.72181",
+    "productionHostBrowserTransportFailed": true,
+    "failure": "First page was posted by the host but never appeared in the drawer.",
+    "logSha256": "17b266f4227320f6eadebb094d6196a9e1bfd627a5c761fce83eb9b1461d908a"
+  },
+  "final": {
+    "sourceSha256": {
+      "media/graph/graphPr.js": "c820b9a591a4244fe2b4f895411b90ccaafe19a3ea850332a59f4185d6665052",
+      "media/graph/graphPrFiles.js": "87917f08d5a1f58c7ce1f51216241a6fd5de0d56b4917da840b350ce6e7d3ac3",
+      "media/graph/graphPrFiles.css": "e92052bf0e9d5ac034912bdbec46c5a10f1fb1d7d06a3bdc3b131d73e4cef2dc"
+    },
+    "productionGraphBundleSha256": "4cef7fbc7d92449b516dffb4b323bdb0e7ce455a4aa6b4a1d728a4f70c55a7b3",
+    "relatedRegressionTestsPassed": 25,
+    "optionalLiveTestSkippedInOfflineSuite": true,
+    "browserTestsPassed": 11,
+    "nativeProductionRendererTestsPassed": 3,
+    "regressionLogSha256": "9b1426eb5398ca1a21d2686d399bb933501c1ac9e592b6fe6aaa8f461eb187a1",
+    "browserLogSha256": "554c55beb1cf6faf615ae9fa8bc1b949129b49c8828519e925794cf8e1906699",
+    "actualGitHubPrCases": [
+      {
+        "check": "liveGitHubPrDetailTransport",
+        "firstPageFiles": 14,
+        "totalFiles": 14,
+        "backendFirstPageMs": 680,
+        "firstPageRenderMs": 26,
+        "allFilesRenderMs": 1274,
+        "detailRequests": 1,
+        "exactRestFilePaths": true,
+        "headBaseUnchanged": true,
+        "viewports": [
+          [
+            390,
+            844
+          ],
+          [
+            768,
+            1024
+          ],
+          [
+            1440,
+            900
+          ]
+        ]
+      },
+      {
+        "check": "liveGitHubPrDetailTransport",
+        "firstPageFiles": 100,
+        "totalFiles": 155,
+        "backendFirstPageMs": 847,
+        "firstPageRenderMs": 31,
+        "allFilesRenderMs": 1459,
+        "detailRequests": 1,
+        "exactRestFilePaths": true,
+        "headBaseUnchanged": true,
+        "viewports": [
+          [
+            390,
+            844
+          ],
+          [
+            768,
+            1024
+          ],
+          [
+            1440,
+            900
+          ]
+        ]
+      }
+    ],
+    "visualQa": {
+      "viewports": [
+        [
+          390,
+          844
+        ],
+        [
+          768,
+          1024
+        ],
+        [
+          1440,
+          900
+        ]
+      ],
+      "actual155FilePrInspected": true,
+      "deepTreeNamesRetainWidth": true,
+      "internalHorizontalScrollingVerified": true
+    },
+    "accessibility": "Axe checks passed for six detail/progressive states across the three viewport sizes."
+  },
+  "scope": "GitHub detail and independent REST queries used a real existing repository read-only. Git graph mutations and navigation used temporary fixtures. No private repository names, PR titles, changed-file paths, or credentials are recorded here."
+}

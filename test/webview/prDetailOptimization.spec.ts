@@ -103,3 +103,20 @@ test("visited detail cache has count and byte bounds, preserves active huge resu
   expect(result.counts.entries).toBe(32); expect(result.bytes.bytes).toBeLessThanOrEqual(8 * 1024 * 1024);
   expect(result.active).toBe(true); expect(result.afterContext.entries).toBe(0); expect(result.previous).toBe(false);
 });
+
+test("unnumbered lifecycle cancellation still pauses PR reads while older commit ACKs leave the resumed request intact", async ({ page }) => {
+  await mountList(page, false);
+  await dispatchWebviewMessage(page, { type: "pullRequestOverview", overview: overview(true) });
+  await page.getByRole("button", { name: "Show pull requests", exact: true }).click(); await page.locator(".pr-card").click();
+  const first = await latestRequest(page, 1);
+  await dispatchWebviewMessage(page, { type: "graphDetailCancelled", reason: "windowUnfocused" });
+  await dispatchWebviewMessage(page, { type: "pullRequestOverview", overview: overview(true) });
+  expect((await readPostedMessages(page)).filter((m: any) => m.type === "refreshPullRequestDetail")).toHaveLength(1);
+  await dispatchWebviewMessage(page, { type: "graphDetailResume" }); const second = await latestRequest(page, 2);
+  await dispatchWebviewMessage(page, { type: "pullRequestDetail", number: 42, requestId: first.requestId, detail: detail() });
+  await expect(page.locator(".pr-file-row")).toHaveCount(0);
+  for (const reason of ["closed", "selectionChanged"]) await dispatchWebviewMessage(page, { type: "graphDetailCancelled", reason });
+  await dispatchWebviewMessage(page, { type: "pullRequestDetail", number: 42, requestId: second.requestId, detail: detail() });
+  await expect(page.locator(".pr-file-row")).toHaveCount(105);
+  expect((await readPostedMessages(page)).filter((m: any) => m.type === "refreshPullRequestDetail")).toHaveLength(2);
+});

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.72182] - 2026-10-30
+
+### Fixes
+
+- Keep new pull request detail requests active when an earlier commit selection
+  sends a cancellation acknowledgment, so received changed files appear immediately.
+- Remove duplicate indentation in changed-file trees and retain readable file
+  names with horizontal scrolling inside deeply nested trees.
+
 ## [0.1.72181] - 2026-10-30
 
 ### Maintenance

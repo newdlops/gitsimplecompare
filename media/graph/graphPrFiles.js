@@ -42,11 +42,11 @@
     if (mode === "list") {
       // 리스트 모드: 폴더 그룹 없이 전체 경로(이름변경은 old -> new)를 한 줄씩 보여준다.
       return `<ul class="pr-file-tree list" role="tree">` +
-        files.map((file) => fileHtml(file, 0, displayPath(file))).join("") +
+        files.map((file) => fileHtml(file, displayPath(file))).join("") +
         `</ul>`;
     }
     const tree = buildTree(files);
-    return `<ul class="pr-file-tree" role="tree">${treeNodesHtml(tree.nodes, 0)}</ul>`;
+    return `<ul class="pr-file-tree" role="tree">${treeNodesHtml(tree.nodes)}</ul>`;
   }
 
   /**
@@ -117,10 +117,10 @@
   }
 
   /** 트리 노드 배열을 재귀적으로 HTML 로 변환한다. */
-  function treeNodesHtml(nodes, depth) {
+  function treeNodesHtml(nodes) {
     return nodes.map((node) => {
       if (node.kind === "file") {
-        return fileHtml(node.change, depth, node.name);
+        return fileHtml(node.change, node.name);
       }
       const collapsed = collapsedFolders.has(node.path);
       const icon = collapsed ? "codicon-folder" : "codicon-folder-opened";
@@ -129,24 +129,24 @@
       return (
         `<li class="pr-file-folder" role="treeitem" aria-expanded="${collapsed ? "false" : "true"}">` +
         `<button type="button" class="pr-folder-row" data-pr-file-folder="${esc(node.path)}" ` +
-        `style="--indent:${indent(depth)}px" ${tooltipAttrs(title)}>` +
+        `${tooltipAttrs(title)}>` +
         `<span class="twistie codicon ${chevron}" aria-hidden="true"></span>` +
         `<span class="codicon ${icon}" aria-hidden="true"></span>` +
         `<span class="path">${esc(node.name)}</span></button>` +
-        `<ul class="pr-folder-children${collapsed ? " collapsed" : ""}" role="group">${treeNodesHtml(node.children, depth + 1)}</ul>` +
+        `<ul class="pr-folder-children${collapsed ? " collapsed" : ""}" role="group">${treeNodesHtml(node.children)}</ul>` +
         `</li>`
       );
     }).join("");
   }
 
   /** changed file 한 줄 HTML 을 만든다(클릭/Enter 로 base↔head diff 를 연다). */
-  function fileHtml(file, depth, label) {
+  function fileHtml(file, label) {
     const title = `Open diff: ${displayPath(file)}`;
     return (
       `<li class="pr-file-row" role="treeitem" tabindex="0" data-pr-file-diff="1" ` +
       `data-path="${esc(file.path)}" data-status="${esc(file.status)}"` +
       (file.oldPath ? ` data-old-path="${esc(file.oldPath)}"` : "") +
-      ` style="--indent:${indent(depth)}px" title="${esc(title)}">` +
+      ` title="${esc(title)}">` +
       `<span class="twistie"></span>` +
       `<span class="icon codicon ${statusCodicon(file.status)}" aria-hidden="true"></span>` +
       `<span class="extension-icon codicon codicon-file" aria-hidden="true"></span>` +
@@ -193,11 +193,6 @@
   /** 이름변경을 고려한 전체 파일 표시 경로를 만든다. */
   function displayPath(file) {
     return file.oldPath ? `${file.oldPath} -> ${file.path}` : file.path;
-  }
-
-  /** 트리 깊이를 파일 행 padding-left 값으로 변환한다. */
-  function indent(depth) {
-    return 8 + depth * 16;
   }
 
   /** HTML 특수문자를 escape 한다. */

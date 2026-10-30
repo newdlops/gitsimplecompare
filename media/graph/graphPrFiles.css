@@ -25,7 +25,8 @@
   width: 100%;
   min-width: 0;
   min-height: 24px;
-  padding: 2px 8px 2px var(--indent, 8px);
+  /* 중첩 ul이 들여쓰기를 담당하므로 행에는 깊이를 다시 더하지 않는다. */
+  padding: 2px 8px;
   border: 0;
   border-radius: 3px;
   color: var(--vscode-foreground);
@@ -35,6 +36,7 @@
 }
 
 .pr-folder-row {
+  min-width: 160px;
   cursor: pointer;
   font-weight: 600;
 }
@@ -49,6 +51,8 @@
 
 /* 변경 파일 행: 클릭/Enter 로 diff 를 여므로 hover/focus 어포던스를 준다. */
 .pr-file-row {
+  /* 깊은 경로도 파일명 공간을 남기고 기존 트리의 가로 스크롤로 전체 행을 읽게 한다. */
+  min-width: 240px;
   cursor: pointer;
 }
 
