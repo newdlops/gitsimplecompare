@@ -11,6 +11,7 @@ export type BranchSelectorGit = typeof runGit;
 /**
  * gh가 현재 branch에서 찾는 PR head를 native push 해석과 명시 설정 우선순위로 결정한다.
  * @param root Git 루트, branch 이미 캡처한 현재 이름, signal 취소, runner Git 경계, env 고정한 부모 환경
+ * @param resolveSsh 같은 환경의 native SSH 설정을 읽는 경계. 실패하면 gh처럼 원래 host를 보존한다.
  * @returns PR-ref 번호 또는 head/remote identity. Git 설정·원격 주소 원문은 로그에 남기지 않는다.
  */
 export async function resolveCurrentPullRequestSelector(root: string, branch: string, signal?: AbortSignal,

@@ -214,7 +214,8 @@ function expectedHead(selector: PullRequestBranchSelector, repository: Repositor
     let host: string;
     try { host = new URL(repository.url).host; } catch { throw new PullRequestBranchLookupError("response"); }
     const head = selector.headRepository;
-    if (host.toLowerCase() !== head.host.toLowerCase() || repository.nameWithOwner.toLowerCase() !== `${head.owner}/${head.name}`.toLowerCase()) owner = head.owner;
+    if (host.toLowerCase() !== head.host.toLowerCase()) throw new PullRequestBranchLookupError("selector");
+    if (repository.nameWithOwner.toLowerCase() !== `${head.owner}/${head.name}`.toLowerCase()) owner = head.owner;
   }
   return owner ? `${owner}:${selector.headRefName}` : selector.headRefName!;
 }

@@ -166,6 +166,7 @@ async function readPullFiles(
  * @param name GitHub repository 이름
  * @param number PR 번호
  * @returns GitHub review comment 배열
+ * @throws 열 번째 페이지 뒤 실제 tail이 남거나 완전성을 확인할 수 없으면 제한 오류
  */
 async function readReviewComments(
   cwd: string,
@@ -191,6 +192,7 @@ async function readReviewComments(
  * @param owner GitHub owner
  * @param name GitHub repository 이름
  * @param route repository 하위 API route
+ * @param maximumPages 파일은 30, 댓글은 10으로 분리한 읽기 상한
  * @returns 누적된 REST 배열 응답
  */
 async function readPagedResult<T>(

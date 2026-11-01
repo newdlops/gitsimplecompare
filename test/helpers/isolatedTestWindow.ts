@@ -46,7 +46,7 @@ export class IsolatedTestWindow {
   async focusOwnedWindow(): Promise<void> {
     assert.equal(process.env.GSC_ALLOW_VISIBLE_HOST, "1");
     await this.selectOwnedWindow();
-    await this.evaluate(`(function(){${this.ownedWindow()}e.app.focus({steal:true});w.show();w.focus();w.webContents.focus();return true;})()`);
+    await this.evaluate(`(async function(){${this.ownedWindow()}w.webContents.setBackgroundThrottling(false);if(!w.isFocused()||!w.webContents.isFocused()){e.app.focus({steal:true});w.show();w.focus();w.webContents.focus();}await w.webContents.executeJavaScript('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');return true;})()`);
   }
 
   /** 실제 native 댓글 widget의 가시성·본문·경계를 읽는다. fixture marker 외 사용자 문서는 수집하지 않는다. */
@@ -63,16 +63,25 @@ export class IsolatedTestWindow {
 
   /** 소유 Settings control의 실제 위치에 마우스 입력을 보내고 렌더링된 체크/선택 상태 변화를 검사한다. */
   async clickGithubSetting(key: string): Promise<void> {
+    await this.focusOwnedWindow();
     const state = await this.githubSettingsState([key]), row = state.rows.find((item: any) => item.key === key);
     assert.ok(row?.control && row.bounds.top >= 0 && row.bounds.bottom <= state.height, "The owned setting must be visible before clicking");
     const { x, y } = row.control;
-    await this.evaluate(`(function(){${this.ownedWindow()}w.webContents.sendInputEvent({type:'mouseMove',x:${Math.round(x)},y:${Math.round(y)}});w.webContents.sendInputEvent({type:'mouseDown',button:'left',clickCount:1,x:${Math.round(x)},y:${Math.round(y)}});w.webContents.sendInputEvent({type:'mouseUp',button:'left',clickCount:1,x:${Math.round(x)},y:${Math.round(y)}});return true;})()`);
+    await this.evaluate(`(async function(){${this.ownedWindow()}w.webContents.sendInputEvent({type:'mouseMove',x:${Math.round(x)},y:${Math.round(y)}});w.webContents.sendInputEvent({type:'mouseDown',button:'left',clickCount:1,x:${Math.round(x)},y:${Math.round(y)}});w.webContents.sendInputEvent({type:'mouseUp',button:'left',clickCount:1,x:${Math.round(x)},y:${Math.round(y)}});await w.webContents.capturePage();return true;})()`);
+  }
+
+  /** 소유 Settings checkbox를 포커스한 뒤 실제 Space 키로 전환해 native keyboard 경로를 검증한다. */
+  async pressGithubCheckbox(key: string): Promise<void> {
+    await this.focusOwnedWindow();
+    const query = `(()=>{const row=Array.from(document.querySelectorAll('[data-key]')).find(r=>r.getAttribute('data-key')===${JSON.stringify(key)}),control=row?.querySelector('[role="checkbox"]');if(!control)throw Error('owned checkbox missing');control.focus();return document.activeElement===control;})()`;
+    await this.evaluate(`(async function(){${this.ownedWindow()}if(!await w.webContents.executeJavaScript(${JSON.stringify(query)}))throw Error('owned checkbox focus missing');w.webContents.sendInputEvent({type:'keyDown',keyCode:'Space'});w.webContents.sendInputEvent({type:'keyUp',keyCode:'Space'});await w.webContents.capturePage();return true;})()`);
   }
 
   /** Settings의 이미 선택한 control에만 허용한 탐색 키를 전달한다. OS/global keyboard를 쓰지 않는다. */
   async githubSettingsKeys(keys: string[]): Promise<void> {
     assert(keys.every(key => ["Home", "Down", "Up", "Enter", "Escape", "Tab", "Space"].includes(key)));
     for (const key of keys) {
+      await this.focusOwnedWindow();
       await this.evaluate(`(function(){${this.ownedWindow()}w.webContents.sendInputEvent({type:'keyDown',keyCode:${JSON.stringify(key)}});w.webContents.sendInputEvent({type:'keyUp',keyCode:${JSON.stringify(key)}});return true;})()`);
       // native select는 연속 key burst와 렌더 갱신이 경합한다. 다음 키 전에 실제 control 상태를 읽는다.
       await this.githubSettingsState(["gitSimpleCompare.githubReadTransport", "gitSimpleCompare.githubGitProactiveAuth", "gitSimpleCompare.cloneMode"]);
@@ -82,7 +91,7 @@ export class IsolatedTestWindow {
   /** UI QA에 지정한 desktop/compact 크기로 전용 test 창만 조정하며 활성화하지 않는다. */
   async settingsViewport(width: number, height: number): Promise<void> {
     assert(width >= 800 && width <= 1600 && height >= 600 && height <= 1100);
-    await this.evaluate(`(function(){${this.ownedWindow()}w.setContentSize(${width},${height});return true;})()`);
+    await this.evaluate(`(async function(){${this.ownedWindow()}w.webContents.setBackgroundThrottling(false);w.setContentSize(${width},${height});await w.webContents.executeJavaScript('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');await w.webContents.capturePage();return true;})()`);
   }
 
   /** 전용 창의 실제 native/renderer focus만 진단해 VS Code API와 차이가 나는 경계를 남긴다. */

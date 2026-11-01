@@ -121,10 +121,12 @@ async function verifySettings(root: string, owned: IsolatedTestWindow, directory
     states.push(state); await writeFile(path.join(directory, `settings-${vscode.env.language}-${width}.png`), await owned.screenshot());
   }
   await owned.clickGithubSetting("gitSimpleCompare.githubGitProactiveAuth");
-  await waitFor(() => config().get("githubGitProactiveAuth") === true, "Settings checkbox on");
+  await waitFor(async () => config().get("githubGitProactiveAuth") === true
+    && (await owned.githubSettingsState()).rows.find((row: any) => row.key === "gitSimpleCompare.githubGitProactiveAuth")?.checked === "true", "Settings checkbox on");
   await writeFile(path.join(directory, `settings-${vscode.env.language}-checked.png`), await owned.screenshot());
-  await owned.clickGithubSetting("gitSimpleCompare.githubGitProactiveAuth");
-  await waitFor(() => config().get("githubGitProactiveAuth") === false, "Settings checkbox off");
+  await owned.pressGithubCheckbox("gitSimpleCompare.githubGitProactiveAuth");
+  await waitFor(async () => config().get("githubGitProactiveAuth") === false
+    && (await owned.githubSettingsState()).rows.find((row: any) => row.key === "gitSimpleCompare.githubGitProactiveAuth")?.checked === "false", "Settings checkbox off");
   await owned.clickGithubSetting("gitSimpleCompare.githubReadTransport");
   await owned.githubSettingsKeys(["Home", "Down", "Enter"]);
   await waitFor(() => config().get("githubReadTransport") === "cli", "Settings CLI selection");
@@ -175,7 +177,7 @@ export async function run(): Promise<void> {
   await owned.connect();
   try {
     await owned.focusOwnedWindow();
-    await waitFor(() => vscode.window.state.focused, "owned native UI focus");
+    await waitFor(async () => { if (!vscode.window.state.focused) await owned.focusOwnedWindow(); return vscode.window.state.focused; }, "owned native UI focus");
     const settings = await verifySettings(root, owned, directory);
     const cloneSettings = await verifyCloneSettings(root, owned, directory);
     const progressiveComments = await verifyProgressiveComments(root, owned, directory);

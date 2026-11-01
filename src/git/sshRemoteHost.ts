@@ -41,7 +41,11 @@ export async function resolveSshRemoteHost(hostname: string, cwd: string, option
   } finally { clearTimeout(timer); options.signal?.removeEventListener("abort", abort); controller.abort(); }
 }
 
-/** PATH의 절대 디렉터리에서만 SSH를 찾아 저장소가 제공하는 상대 실행 파일을 시작하지 않는다. */
+/**
+ * PATH의 절대 디렉터리에서만 SSH를 찾아 저장소가 제공하는 상대 실행 파일을 시작하지 않는다.
+ * @param env 요청 때 고정한 환경. 원본이나 전역 PATH는 변경하지 않는다.
+ * @returns 실행 가능한 일반 SSH 파일의 절대 경로. 안전한 후보가 없으면 undefined
+ */
 async function sshExecutable(env: NodeJS.ProcessEnv): Promise<string | undefined> {
   for (const directory of (env.PATH ?? "").split(path.delimiter)) {
     if (!path.isAbsolute(directory)) continue;

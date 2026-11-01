@@ -1,6 +1,6 @@
 // renderer를 포함한 모든 unit 파일을 누락/중복 없는 두 순차 그룹으로 검증한다. 기존 15분/3-worker 한계는 보존한다.
 import { readdir, mkdir, open, readFile, writeFile } from "node:fs/promises";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import path from "node:path";
 import { createHash } from "node:crypto";
 
@@ -19,7 +19,8 @@ async function discover(directory) {
 const files = await discover(path.join(root, "test")), groups = [files.slice(0, Math.ceil(files.length / 2)), files.slice(Math.ceil(files.length / 2))];
 if (new Set(groups.flat()).size !== files.length || groups.flat().length !== files.length) throw Error("Incomplete or overlapping full-suite partition");
 await mkdir(output, { recursive: true });
-const record = { rendererVerification: true, concurrency: 3, timeoutMsPerGroup: 900000, allFiles: files, groups: [], complete: false,
+const record = { sourceHead: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(), node: process.version,
+  rendererVerification: true, concurrency: 3, timeoutMsPerGroup: 900000, allFiles: files, groups: [], complete: false,
   inputHash: createHash("sha256").update((await Promise.all(files.map(async file => file + "\0" + await readFile(path.join(root,file),"utf8")))).join("\0")).digest("hex") };
 for (let index = 0; index < groups.length; index++) {
   const log = path.join(output, `full-group-${index + 1}.log`), descriptor = await open(log, "w"), start = Date.now();

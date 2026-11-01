@@ -157,6 +157,12 @@ test("an SSH host alias selects the same-repository PR after native hostname tra
   assert.equal(result.get("topic")?.number, 7);
 });
 
+test("a different or unresolved SSH host cannot select an unrelated same-owner fork PR", async () => {
+  const f = api({ topic: [node(9, "topic", "OPEN", { isCrossRepository: true })] });
+  await assert.rejects(findPullRequestsForBranches("/repo", [{ key: "topic", headRefName: "topic",
+    headRepository: { host: "unresolved-github-work", owner: "owner", name: "repo" } }], {}, f.execute), /Cannot read complete/);
+});
+
 test("body enrichment receives its own request budget after a slow successful selection", async t => {
   let now = Date.now(), calls = 0; const budgets: number[] = [];
   t.mock.method(Date, "now", () => now);
