@@ -11,7 +11,7 @@ import { PullRequestService } from "../src/git/pullRequestService";
 import { beginGitHubReadLifetime, GitHubReadCache } from "../src/git/githubReadCache";
 import { setGitHubReadPolicyResolver, GitHubReadRuntime } from "../src/git/githubReadRuntime";
 import { GitHubCredentialProvider } from "../src/git/githubCredential";
-import { createGitHubReadSession, captureGitHubRequestContext, completeGitHubReadSession } from "../src/git/githubReadSession";
+import { createGitHubReadSession, captureGitHubRequestContext, completeGitHubReadSession, gitHubSnapshotIdentity, gitHubReadSessionState } from "../src/git/githubReadSession";
 import { gitHubRepositoryScopes } from "../src/git/githubRepositoryScope";
 import { fetchPreviewBootstrap, fetchPreviewCommitSummaries } from "../src/git/pullRequestPreviewRemote";
 import { GitHubApiError } from "../src/git/githubApiError";
@@ -179,6 +179,30 @@ test("preview reuses 201 complete commit summaries only after a fresh matching a
   await load(); assert.equal(http, 16, "fallback SHA titles are not complete reusable summaries");
   head = "new-head";
   await assert.rejects(load(), /head changed/i); assert.equal(http, 17);
+});
+
+test("preview applies its original empty-title fallback to authorized list snapshots", async t => {
+  const f = await fixture(t), selected = { ...pr(), headHash: "head", baseHash: "base", fileCount: 1, fileCountComplete: true };
+  const context = await captureGitHubRequestContext(f.root, { ...process.env }, ["repo"]);
+  gitHubRepositoryScopes.learn(f.root, context, { nameWithOwner: "owner/repo", url: "https://github.com/owner/repo" });
+  const runtime = new GitHubReadRuntime({ policy: async () => ({ transport: "auto", systemProxy: "none" }),
+    credentials: new GitHubCredentialProvider(async () => "fixture-token"),
+    cli: async () => { throw new Error("unexpected CLI"); },
+    http: { read: async () => JSON.stringify({ data: { repository: { nameWithOwner: "owner/repo", url: "https://github.com/owner/repo", pullRequest: {
+      headRefOid: "head", baseRefOid: "base", baseRefName: "main", commits: { nodes: [{ commit: { oid: "head", messageHeadline: "" } }], pageInfo: { hasNextPage: false } },
+    } } } }), dispose: async () => {} } });
+  const cache = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
+  t.after(async () => { await cache.dispose(); await runtime.dispose(); });
+  const execute: GhExecute = (args, root, options) => cache.read(args, root, options);
+  const seed = createGitHubReadSession(f.root, execute);
+  await fetchPreviewBootstrap(f.root, selected, seed);
+  gitHubReadSessionState(seed)!.snapshots!.commits.put(gitHubSnapshotIdentity(seed, "owner/repo")!, {
+    ...selected, commitHashes: ["head"], commitHashesComplete: true, commitSummaries: [{ hash: "head", title: "" }],
+  });
+  await completeGitHubReadSession(seed);
+  const initial = await fetchPreviewBootstrap(f.root, selected, execute);
+  const values = await fetchPreviewCommitSummaries(f.root, selected, execute, initial.firstPage);
+  assert.equal(values[0].title, "head");
 });
 
 for (const operation of ["refs", "prerequisites", "prerequisite-details"] as const) {

@@ -88,7 +88,8 @@ export async function fetchPreviewCommitSummaries(root: string, pr: PullRequestI
   if (bootstrap?.known) {
     await completeGitHubReadSession(runner, undefined, owns);
     const summaries = new Map(bootstrap.known.commitSummaries?.map(summary => [summary.hash, summary]));
-    return bootstrap.known.commitHashes.map(hash => ({ ...summaries.get(hash)!, shortHash: hash.slice(0, 7), files: [], filesLoaded: false }));
+    return bootstrap.known.commitHashes.map(hash => ({ ...summaries.get(hash)!, title: summaries.get(hash)!.title || hash.slice(0, 12),
+      shortHash: hash.slice(0, 7), files: [], filesLoaded: false }));
   }
   let cursor: string | undefined;
   let anchor: SummaryPage | undefined;
