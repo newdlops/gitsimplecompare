@@ -1,0 +1,126 @@
+{
+  "productionSourceCommit": "1162cbb2d5ef1351924a159e12adca48086f14d1",
+  "measurementCommit": "282dc52ffae979f6a472892c2469e521d028b58c",
+  "fullSuite": {
+    "command": "GSC_VERIFY_PR_RENDERER=1 npm test",
+    "exitCode": 0,
+    "tests": 2550,
+    "pass": 2549,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 1,
+    "duration_ms": 842394.250042
+  },
+  "node18": {
+    "version": "18.20.8",
+    "officialArchiveSha256": "bae4965d29d29bd32f96364eefbe3bca576a03e917ddbb70b9330d75f2cacd76",
+    "exitCode": 0,
+    "tests": 49,
+    "pass": 49,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "duration_ms": 2882.739042
+  },
+  "types": {
+    "command": "npm run check-types",
+    "exitCode": 0
+  },
+  "production": {
+    "command": "npm run package",
+    "exitCode": 0,
+    "bundleBytes": 1775649,
+    "bundleSha256": "87cfda05a144757fd3333868c72b8bfa3e4be016683d48752ebab2c80cba59e7",
+    "graphqlVersion": "16.14.2",
+    "graphqlParserOnlyMinifiedBytes": 43272
+  },
+  "audit": {
+    "command": "npm audit --omit=dev --json",
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    }
+  },
+  "lint": {
+    "command": "npm run lint",
+    "exitCode": 127,
+    "limitation": "eslint executable is not installed"
+  },
+  "actualExtensionHosts": [
+    {
+      "node": "24.22.1",
+      "vscode": "1.144.0",
+      "language": "en",
+      "actualPublicHttpRead": true,
+      "actualSearchHttpReads": true,
+      "forcedCli": true,
+      "unsupportedPoliciesBeforeHttp": true,
+      "defaultOverrideAgentPolicyUsesCli": true,
+      "verifiedDirectAgentPolicy": "on (isolated test profile only)",
+      "tlsValidation": true,
+      "cancellationIsolation": true,
+      "keepAliveReuse": true,
+      "disposalClose": true,
+      "viewports": [
+        {
+          "width": 1440,
+          "height": 900
+        },
+        {
+          "width": 900,
+          "height": 700
+        }
+      ]
+    },
+    {
+      "node": "24.22.1",
+      "vscode": "1.144.0",
+      "language": "ko",
+      "actualPublicHttpRead": true,
+      "forcedCli": true,
+      "unsupportedPoliciesBeforeHttp": true,
+      "defaultOverrideAgentPolicyUsesCli": true,
+      "verifiedDirectAgentPolicy": "on (isolated test profile only)",
+      "tlsValidation": true,
+      "cancellationIsolation": true,
+      "keepAliveReuse": true,
+      "disposalClose": true,
+      "viewports": [
+        {
+          "width": 1440,
+          "height": 900
+        },
+        {
+          "width": 900,
+          "height": 700
+        }
+      ]
+    }
+  ],
+  "externalEnvironmentCoverage": "Proxy, custom CA, Unix socket and Enterprise select CLI in preflight tests; external servers were not exercised.",
+  "review": {
+    "freshReviewCount": 1,
+    "range": "706d1c2..5390ffa",
+    "critical": 0,
+    "important": 5,
+    "minorRegradedImportant": 1,
+    "declinedJudgments": 0,
+    "deferredMinors": 0,
+    "findingsFixedWithRedGreen": true,
+    "reReviewPerformed": false
+  },
+  "evidenceLogSha256": {
+    "full": "f6779b1984aaf30072c08659d23b4d94a6913960b37b762aca1848300eed3e7f",
+    "node18": "57fc3c11743d17295d7b2c2807c7b03b3a41ef57e88e1d5648f4166cc741fe03",
+    "types": "4debb9e8caa83ac02d07a39547aced95c6dd5bf35bf086300db0a89761e8b014",
+    "production": "d8a64bc0a69caa5970d6ba7b45bdb792a2e9a4144e9b6b7a4c3688b0f1cc9fbf",
+    "hostEn": "3a827c1004cc814d516ef9227190ecc954d4173a4ca1a574597d4ae15a09a548",
+    "hostKo": "abc98cf987063b8dee5b1dc96942c386584ebd215b18b98645a08c67ecfb21db",
+    "audit": "df26c512a267d9a90a3524e0105ff3d48220d4f9b9505f548a1e0c13ca778efb",
+    "lint": "ed460d6ff31245dc0e84881e414432a4febd48193c1ce8f338b339903e55eb2f"
+  }
+}

@@ -1,0 +1,3229 @@
+{
+  "observedAtUtc": "2026-11-01T09:18:29.652Z",
+  "node": "v22.22.2",
+  "platform": "darwin",
+  "arch": "arm64",
+  "baselineCommit": "706d1c2a6c8b2d5c01e45e12735e5590572a43aa",
+  "implementationCommit": "282dc52ffae979f6a472892c2469e521d028b58c",
+  "publicRepository": "cli/cli",
+  "detail": {
+    "number": 14848,
+    "files": 738,
+    "productionCaller": "PullRequestService.getDetail"
+  },
+  "pairs": 7,
+  "alternatingOrder": true,
+  "includesCredentialAcquisition": true,
+  "credentialSource": "gh-stored",
+  "sourceProtectedFilesUnchanged": true,
+  "allPairedDTOsEqual": true,
+  "limitations": [
+    "One public repository; live mutable remote data must remain equal between each pair.",
+    "Direct figures require an Agent-preserving network policy. VS Code default proxySupport=override selects CLI; after-cli represents that supported fallback.",
+    "Read fixture origin and GH_REPO both select cli/cli; user source repository is never repointed.",
+    "CLI api/repo-view process counts are structural read counts, not packet captures. Direct HTTP counts are actual request-close events.",
+    "CLI API timing has GH_DEBUG disabled. Native Git HTTP tracing is enabled equally in both modes and never persisted.",
+    "Transport-only comparison retains immutable snapshots across policy-resolver modes; it does not measure UI setting changes.",
+    "Native fixture is shallow, blobless and up to date. Push is always dry-run; no object upload throughput is claimed."
+  ],
+  "nativeChecks": {
+    "invalidCredentialsFail": true,
+    "noRealPush": true,
+    "temporaryConfigUnchanged": true,
+    "responseStatuses": [
+      401,
+      401
+    ]
+  },
+  "budgetChecks": [
+    {
+      "observedAtUtc": "2026-11-01T09:10:45.915Z",
+      "remaining": 1052,
+      "resetAt": "2026-11-01T09:12:32Z",
+      "required": 240
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:11:16.560Z",
+      "remaining": 949,
+      "resetAt": "2026-11-01T09:12:32Z",
+      "required": 340
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:11:37.211Z",
+      "remaining": 715,
+      "resetAt": "2026-11-01T09:12:32Z",
+      "required": 340
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:12:02.251Z",
+      "remaining": 480,
+      "resetAt": "2026-11-01T09:12:32Z",
+      "required": 240
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:12:27.005Z",
+      "remaining": 399,
+      "resetAt": "2026-11-01T09:12:32Z",
+      "required": 240
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:12:52.552Z",
+      "remaining": 4929,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 340
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:13:12.678Z",
+      "remaining": 4654,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 340
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:13:35.354Z",
+      "remaining": 4433,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 240
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:14:00.463Z",
+      "remaining": 4280,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 240
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:14:26.321Z",
+      "remaining": 4097,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 340
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:14:48.896Z",
+      "remaining": 4557,
+      "resetAt": "2026-11-01T10:12:38Z",
+      "required": 340
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:15:13.246Z",
+      "remaining": 3661,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 240
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:15:37.712Z",
+      "remaining": 3542,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 240
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:16:05.266Z",
+      "remaining": 3302,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 340
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:16:27.198Z",
+      "remaining": 4265,
+      "resetAt": "2026-11-01T10:12:38Z",
+      "required": 280
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:16:44.235Z",
+      "remaining": 2889,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 110
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:16:49.696Z",
+      "remaining": 2771,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 110
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:16:55.522Z",
+      "remaining": 4146,
+      "resetAt": "2026-11-01T10:12:38Z",
+      "required": 110
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:17:00.508Z",
+      "remaining": 2545,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 110
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:17:06.295Z",
+      "remaining": 2447,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 110
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:17:11.604Z",
+      "remaining": 2382,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 110
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:17:16.519Z",
+      "remaining": 2243,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 110
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:17:21.345Z",
+      "remaining": 4027,
+      "resetAt": "2026-11-01T10:12:38Z",
+      "required": 110
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:17:26.952Z",
+      "remaining": 2005,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 110
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:17:32.815Z",
+      "remaining": 3911,
+      "resetAt": "2026-11-01T10:12:38Z",
+      "required": 110
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:17:37.967Z",
+      "remaining": 1843,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 110
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:17:43.014Z",
+      "remaining": 1703,
+      "resetAt": "2026-11-01T10:12:39Z",
+      "required": 110
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:17:49.088Z",
+      "remaining": 3846,
+      "resetAt": "2026-11-01T10:12:38Z",
+      "required": 110
+    },
+    {
+      "observedAtUtc": "2026-11-01T09:17:54.321Z",
+      "remaining": 3770,
+      "resetAt": "2026-11-01T10:12:38Z",
+      "required": 110
+    }
+  ],
+  "summary": [
+    {
+      "key": "list-cold:before-cli",
+      "count": 7,
+      "medianMs": 4581.4,
+      "medianFirstMs": 946.1,
+      "apiReads": [
+        6
+      ]
+    },
+    {
+      "key": "list-warm:before-cli",
+      "count": 7,
+      "medianMs": 6007.8,
+      "medianFirstMs": 6007.4,
+      "apiReads": [
+        1
+      ]
+    },
+    {
+      "key": "detail-reopen:before-cli",
+      "count": 7,
+      "medianMs": 6336.4,
+      "medianFirstMs": 793.2,
+      "apiReads": [
+        9
+      ]
+    },
+    {
+      "key": "search:before-cli",
+      "count": 7,
+      "medianMs": 1623.2,
+      "medianFirstMs": 1623.2,
+      "apiReads": [
+        3
+      ]
+    },
+    {
+      "key": "list-cold:after-cli",
+      "count": 7,
+      "medianMs": 4441.9,
+      "medianFirstMs": 998.6,
+      "apiReads": [
+        6
+      ]
+    },
+    {
+      "key": "list-warm:after-cli",
+      "count": 7,
+      "medianMs": 3237.3,
+      "medianFirstMs": 866.6,
+      "apiReads": [
+        5
+      ]
+    },
+    {
+      "key": "detail-reopen:after-cli",
+      "count": 7,
+      "medianMs": 683,
+      "medianFirstMs": 681.7,
+      "apiReads": [
+        1
+      ]
+    },
+    {
+      "key": "search:after-cli",
+      "count": 7,
+      "medianMs": 1121.4,
+      "medianFirstMs": 1121.4,
+      "apiReads": [
+        2
+      ]
+    },
+    {
+      "key": "same-code-transport:cli",
+      "count": 7,
+      "medianMs": 3232.3,
+      "medianFirstMs": 956.1,
+      "apiReads": [
+        5
+      ]
+    },
+    {
+      "key": "same-code-detail:cli",
+      "count": 7,
+      "medianMs": 703,
+      "medianFirstMs": 702.6,
+      "apiReads": [
+        1
+      ]
+    },
+    {
+      "key": "same-code-search:cli",
+      "count": 7,
+      "medianMs": 997.9,
+      "medianFirstMs": 997.9,
+      "apiReads": [
+        2
+      ]
+    },
+    {
+      "key": "same-code-transport:auto",
+      "count": 7,
+      "medianMs": 3104.5,
+      "medianFirstMs": 868.8,
+      "apiReads": [
+        5
+      ]
+    },
+    {
+      "key": "same-code-detail:auto",
+      "count": 7,
+      "medianMs": 568.7,
+      "medianFirstMs": 567.5,
+      "apiReads": [
+        1
+      ]
+    },
+    {
+      "key": "same-code-search:auto",
+      "count": 7,
+      "medianMs": 833.4,
+      "medianFirstMs": 833.4,
+      "apiReads": [
+        2
+      ]
+    },
+    {
+      "key": "git-fetch:legacy",
+      "count": 7,
+      "medianMs": 619.1
+    },
+    {
+      "key": "git-pull:legacy",
+      "count": 7,
+      "medianMs": 632
+    },
+    {
+      "key": "git-push-dry-run:legacy",
+      "count": 7,
+      "medianMs": 744.3
+    },
+    {
+      "key": "git-fetch:proactive",
+      "count": 7,
+      "medianMs": 674
+    },
+    {
+      "key": "git-pull:proactive",
+      "count": 7,
+      "medianMs": 721.4
+    },
+    {
+      "key": "git-push-dry-run:proactive",
+      "count": 7,
+      "medianMs": 523.2
+    }
+  ],
+  "comparisons": [
+    {
+      "scenario": "list-cold",
+      "pair": 1,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 1,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 1,
+      "equal": true,
+      "beforeSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f",
+      "afterSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 1,
+      "equal": true,
+      "beforeSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7",
+      "afterSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 2,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 2,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 2,
+      "equal": true,
+      "beforeSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f",
+      "afterSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 2,
+      "equal": true,
+      "beforeSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7",
+      "afterSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 3,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 3,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 3,
+      "equal": true,
+      "beforeSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f",
+      "afterSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 3,
+      "equal": true,
+      "beforeSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7",
+      "afterSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 4,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 4,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 4,
+      "equal": true,
+      "beforeSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f",
+      "afterSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 4,
+      "equal": true,
+      "beforeSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7",
+      "afterSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 5,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 5,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 5,
+      "equal": true,
+      "beforeSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f",
+      "afterSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 5,
+      "equal": true,
+      "beforeSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7",
+      "afterSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 6,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 6,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 6,
+      "equal": true,
+      "beforeSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f",
+      "afterSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 6,
+      "equal": true,
+      "beforeSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7",
+      "afterSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 7,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 7,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 7,
+      "equal": true,
+      "beforeSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f",
+      "afterSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 7,
+      "equal": true,
+      "beforeSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7",
+      "afterSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 1,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 1,
+      "equal": true,
+      "beforeSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f",
+      "afterSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 1,
+      "equal": true,
+      "beforeSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7",
+      "afterSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 2,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 2,
+      "equal": true,
+      "beforeSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f",
+      "afterSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 2,
+      "equal": true,
+      "beforeSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7",
+      "afterSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 3,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 3,
+      "equal": true,
+      "beforeSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f",
+      "afterSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 3,
+      "equal": true,
+      "beforeSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7",
+      "afterSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 4,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 4,
+      "equal": true,
+      "beforeSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f",
+      "afterSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 4,
+      "equal": true,
+      "beforeSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7",
+      "afterSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 5,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 5,
+      "equal": true,
+      "beforeSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f",
+      "afterSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 5,
+      "equal": true,
+      "beforeSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7",
+      "afterSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 6,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 6,
+      "equal": true,
+      "beforeSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f",
+      "afterSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 6,
+      "equal": true,
+      "beforeSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7",
+      "afterSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 7,
+      "equal": true,
+      "beforeSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc",
+      "afterSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 7,
+      "equal": true,
+      "beforeSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f",
+      "afterSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 7,
+      "equal": true,
+      "beforeSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7",
+      "afterSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    }
+  ],
+  "samples": [
+    {
+      "scenario": "list-cold",
+      "pair": 1,
+      "mode": "before-cli",
+      "cliApiProcesses": 6,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 215495,
+      "wallMs": 6167.5,
+      "firstMs": 1745,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 1,
+      "mode": "before-cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 93922,
+      "wallMs": 9386.4,
+      "firstMs": 9384.9,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 1,
+      "mode": "before-cli",
+      "cliApiProcesses": 9,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 81660,
+      "wallMs": 5801.4,
+      "firstMs": 793.2,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 1,
+      "mode": "before-cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 1,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 19624,
+      "wallMs": 1623.2,
+      "firstMs": 1623.2,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 1,
+      "mode": "after-cli",
+      "cliApiProcesses": 6,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 215530,
+      "wallMs": 4308.4,
+      "firstMs": 1181.1,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 1,
+      "mode": "after-cli",
+      "cliApiProcesses": 5,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 47.4,
+      "cliResponseBytes": 130251,
+      "wallMs": 3592.4,
+      "firstMs": 1054.4,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 1,
+      "mode": "after-cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 52.5,
+      "cliResponseBytes": 363,
+      "wallMs": 727.5,
+      "firstMs": 726.9,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 1,
+      "mode": "after-cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 55.8,
+      "cliResponseBytes": 2242,
+      "wallMs": 1121.4,
+      "firstMs": 1121.4,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 2,
+      "mode": "after-cli",
+      "cliApiProcesses": 6,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 215530,
+      "wallMs": 7623.8,
+      "firstMs": 865.9,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 2,
+      "mode": "after-cli",
+      "cliApiProcesses": 5,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 50.5,
+      "cliResponseBytes": 130251,
+      "wallMs": 3296.6,
+      "firstMs": 1002.6,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 2,
+      "mode": "after-cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 81.6,
+      "cliResponseBytes": 363,
+      "wallMs": 671.8,
+      "firstMs": 671.3,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 2,
+      "mode": "after-cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 54.9,
+      "cliResponseBytes": 2242,
+      "wallMs": 1217.2,
+      "firstMs": 1217.2,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 2,
+      "mode": "before-cli",
+      "cliApiProcesses": 6,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 215495,
+      "wallMs": 4477,
+      "firstMs": 926.4,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 2,
+      "mode": "before-cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 93922,
+      "wallMs": 5169.7,
+      "firstMs": 5168.7,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 2,
+      "mode": "before-cli",
+      "cliApiProcesses": 9,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 81660,
+      "wallMs": 6336.4,
+      "firstMs": 892.1,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 2,
+      "mode": "before-cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 1,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 19624,
+      "wallMs": 1609.5,
+      "firstMs": 1609.5,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 3,
+      "mode": "before-cli",
+      "cliApiProcesses": 6,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 215495,
+      "wallMs": 4143.3,
+      "firstMs": 792.2,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 3,
+      "mode": "before-cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 93922,
+      "wallMs": 6871.5,
+      "firstMs": 6870.8,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 3,
+      "mode": "before-cli",
+      "cliApiProcesses": 9,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 81660,
+      "wallMs": 6090.6,
+      "firstMs": 698.7,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 3,
+      "mode": "before-cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 1,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 19624,
+      "wallMs": 1615.8,
+      "firstMs": 1615.8,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 3,
+      "mode": "after-cli",
+      "cliApiProcesses": 6,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 215530,
+      "wallMs": 4441.9,
+      "firstMs": 865.8,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 3,
+      "mode": "after-cli",
+      "cliApiProcesses": 5,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 46.2,
+      "cliResponseBytes": 130251,
+      "wallMs": 3143.8,
+      "firstMs": 855.6,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 3,
+      "mode": "after-cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 46.6,
+      "cliResponseBytes": 363,
+      "wallMs": 656.8,
+      "firstMs": 656.4,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 3,
+      "mode": "after-cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 48.7,
+      "cliResponseBytes": 2242,
+      "wallMs": 1014.7,
+      "firstMs": 1014.7,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 4,
+      "mode": "after-cli",
+      "cliApiProcesses": 6,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 215530,
+      "wallMs": 4407.7,
+      "firstMs": 945.2,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 4,
+      "mode": "after-cli",
+      "cliApiProcesses": 5,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 46,
+      "cliResponseBytes": 130251,
+      "wallMs": 3804.4,
+      "firstMs": 956.2,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 4,
+      "mode": "after-cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 46.2,
+      "cliResponseBytes": 363,
+      "wallMs": 653.1,
+      "firstMs": 652.8,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 4,
+      "mode": "after-cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 44.2,
+      "cliResponseBytes": 2242,
+      "wallMs": 1027.7,
+      "firstMs": 1027.7,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 4,
+      "mode": "before-cli",
+      "cliApiProcesses": 6,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 215495,
+      "wallMs": 4231.3,
+      "firstMs": 1093.5,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 4,
+      "mode": "before-cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 93922,
+      "wallMs": 6007.8,
+      "firstMs": 6007.4,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 4,
+      "mode": "before-cli",
+      "cliApiProcesses": 9,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 81660,
+      "wallMs": 6331.2,
+      "firstMs": 847.6,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 4,
+      "mode": "before-cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 1,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 19624,
+      "wallMs": 1660.4,
+      "firstMs": 1660.4,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 5,
+      "mode": "before-cli",
+      "cliApiProcesses": 6,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 215495,
+      "wallMs": 4581.4,
+      "firstMs": 1183.8,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 5,
+      "mode": "before-cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 93922,
+      "wallMs": 5493.1,
+      "firstMs": 5492.7,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 5,
+      "mode": "before-cli",
+      "cliApiProcesses": 9,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 81660,
+      "wallMs": 6544.7,
+      "firstMs": 749.8,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 5,
+      "mode": "before-cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 1,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 19624,
+      "wallMs": 1677.5,
+      "firstMs": 1677.5,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 5,
+      "mode": "after-cli",
+      "cliApiProcesses": 6,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 215530,
+      "wallMs": 4466.8,
+      "firstMs": 998.6,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 5,
+      "mode": "after-cli",
+      "cliApiProcesses": 5,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 55.2,
+      "cliResponseBytes": 130251,
+      "wallMs": 3237.3,
+      "firstMs": 859.1,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 5,
+      "mode": "after-cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 44,
+      "cliResponseBytes": 363,
+      "wallMs": 739.7,
+      "firstMs": 738.8,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 5,
+      "mode": "after-cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 57.4,
+      "cliResponseBytes": 2242,
+      "wallMs": 976.7,
+      "firstMs": 976.7,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 6,
+      "mode": "after-cli",
+      "cliApiProcesses": 6,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 215530,
+      "wallMs": 7466,
+      "firstMs": 2125.6,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 6,
+      "mode": "after-cli",
+      "cliApiProcesses": 5,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 43.5,
+      "cliResponseBytes": 130251,
+      "wallMs": 2991.6,
+      "firstMs": 866.6,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 6,
+      "mode": "after-cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 80.5,
+      "cliResponseBytes": 363,
+      "wallMs": 698.5,
+      "firstMs": 697.9,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 6,
+      "mode": "after-cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 70.6,
+      "cliResponseBytes": 2242,
+      "wallMs": 1247.5,
+      "firstMs": 1247.5,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 6,
+      "mode": "before-cli",
+      "cliApiProcesses": 6,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 215495,
+      "wallMs": 5011.9,
+      "firstMs": 795.2,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 6,
+      "mode": "before-cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 93922,
+      "wallMs": 4654.4,
+      "firstMs": 4653.3,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 6,
+      "mode": "before-cli",
+      "cliApiProcesses": 9,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 81660,
+      "wallMs": 6733.4,
+      "firstMs": 963.9,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 6,
+      "mode": "before-cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 1,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 19624,
+      "wallMs": 1551.4,
+      "firstMs": 1551.4,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 7,
+      "mode": "before-cli",
+      "cliApiProcesses": 6,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 215495,
+      "wallMs": 5305,
+      "firstMs": 946.1,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 7,
+      "mode": "before-cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 93922,
+      "wallMs": 6022.8,
+      "firstMs": 6021.6,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 7,
+      "mode": "before-cli",
+      "cliApiProcesses": 9,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 81660,
+      "wallMs": 6394.4,
+      "firstMs": 715.8,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 7,
+      "mode": "before-cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 1,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 19624,
+      "wallMs": 2675.8,
+      "firstMs": 2675.8,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "list-cold",
+      "pair": 7,
+      "mode": "after-cli",
+      "cliApiProcesses": 6,
+      "credentialCliProcesses": 0,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 0,
+      "cliResponseBytes": 215530,
+      "wallMs": 4227.2,
+      "firstMs": 1107.8,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "list-warm",
+      "pair": 7,
+      "mode": "after-cli",
+      "cliApiProcesses": 5,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 44.1,
+      "cliResponseBytes": 130251,
+      "wallMs": 3204.2,
+      "firstMs": 809.2,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "detail-reopen",
+      "pair": 7,
+      "mode": "after-cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 64.8,
+      "cliResponseBytes": 363,
+      "wallMs": 683,
+      "firstMs": 681.7,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "search",
+      "pair": 7,
+      "mode": "after-cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 89.9,
+      "cliResponseBytes": 2242,
+      "wallMs": 1243.6,
+      "firstMs": 1243.6,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 1,
+      "mode": "cli",
+      "cliApiProcesses": 5,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 68.4,
+      "cliResponseBytes": 130251,
+      "wallMs": 3229.9,
+      "firstMs": 946.3,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 1,
+      "mode": "cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 63.8,
+      "cliResponseBytes": 363,
+      "wallMs": 738.1,
+      "firstMs": 737.7,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 1,
+      "mode": "cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 62.5,
+      "cliResponseBytes": 2242,
+      "wallMs": 1044.8,
+      "firstMs": 1044.8,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 1,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 50.3,
+      "cliResponseBytes": 0,
+      "wallMs": 3929.2,
+      "firstMs": 858.1,
+      "directHttpRequests": 5,
+      "reusedConnections": 1,
+      "wireBytes": 130251,
+      "decodedBytes": 130251,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 1,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 63.8,
+      "cliResponseBytes": 0,
+      "wallMs": 532.7,
+      "firstMs": 531.1,
+      "directHttpRequests": 1,
+      "reusedConnections": 1,
+      "wireBytes": 363,
+      "decodedBytes": 363,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 1,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 55.6,
+      "cliResponseBytes": 0,
+      "wallMs": 889.3,
+      "firstMs": 889.3,
+      "directHttpRequests": 2,
+      "reusedConnections": 2,
+      "wireBytes": 2242,
+      "decodedBytes": 2242,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 2,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 53.4,
+      "cliResponseBytes": 0,
+      "wallMs": 2782.6,
+      "firstMs": 752.5,
+      "directHttpRequests": 5,
+      "reusedConnections": 5,
+      "wireBytes": 130251,
+      "decodedBytes": 130251,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 2,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 42,
+      "cliResponseBytes": 0,
+      "wallMs": 565.5,
+      "firstMs": 564.8,
+      "directHttpRequests": 1,
+      "reusedConnections": 1,
+      "wireBytes": 363,
+      "decodedBytes": 363,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 2,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 67.3,
+      "cliResponseBytes": 0,
+      "wallMs": 1070.4,
+      "firstMs": 1070.4,
+      "directHttpRequests": 2,
+      "reusedConnections": 2,
+      "wireBytes": 2242,
+      "decodedBytes": 2242,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 2,
+      "mode": "cli",
+      "cliApiProcesses": 5,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 55.2,
+      "cliResponseBytes": 130251,
+      "wallMs": 3559.1,
+      "firstMs": 1360.5,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 2,
+      "mode": "cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 62.3,
+      "cliResponseBytes": 363,
+      "wallMs": 756.9,
+      "firstMs": 755.9,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 2,
+      "mode": "cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 56,
+      "cliResponseBytes": 2242,
+      "wallMs": 977.6,
+      "firstMs": 977.6,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 3,
+      "mode": "cli",
+      "cliApiProcesses": 5,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 67.5,
+      "cliResponseBytes": 130251,
+      "wallMs": 3191.2,
+      "firstMs": 956.1,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 3,
+      "mode": "cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 56.5,
+      "cliResponseBytes": 363,
+      "wallMs": 657.5,
+      "firstMs": 657,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 3,
+      "mode": "cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 47,
+      "cliResponseBytes": 2242,
+      "wallMs": 955,
+      "firstMs": 955,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 3,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 49.1,
+      "cliResponseBytes": 0,
+      "wallMs": 3104.5,
+      "firstMs": 875.3,
+      "directHttpRequests": 5,
+      "reusedConnections": 5,
+      "wireBytes": 130251,
+      "decodedBytes": 130251,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 3,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 62,
+      "cliResponseBytes": 0,
+      "wallMs": 591.1,
+      "firstMs": 590.8,
+      "directHttpRequests": 1,
+      "reusedConnections": 1,
+      "wireBytes": 363,
+      "decodedBytes": 363,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 3,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 44.7,
+      "cliResponseBytes": 0,
+      "wallMs": 765.3,
+      "firstMs": 765.3,
+      "directHttpRequests": 2,
+      "reusedConnections": 2,
+      "wireBytes": 2242,
+      "decodedBytes": 2242,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 4,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 39.9,
+      "cliResponseBytes": 0,
+      "wallMs": 2575.3,
+      "firstMs": 868.8,
+      "directHttpRequests": 5,
+      "reusedConnections": 5,
+      "wireBytes": 130251,
+      "decodedBytes": 130251,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 4,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 39.4,
+      "cliResponseBytes": 0,
+      "wallMs": 674.8,
+      "firstMs": 674.5,
+      "directHttpRequests": 1,
+      "reusedConnections": 1,
+      "wireBytes": 363,
+      "decodedBytes": 363,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 4,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 40.2,
+      "cliResponseBytes": 0,
+      "wallMs": 1062.4,
+      "firstMs": 1062.4,
+      "directHttpRequests": 2,
+      "reusedConnections": 2,
+      "wireBytes": 2242,
+      "decodedBytes": 2242,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 4,
+      "mode": "cli",
+      "cliApiProcesses": 5,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 39.2,
+      "cliResponseBytes": 130251,
+      "wallMs": 3232.3,
+      "firstMs": 825.7,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 4,
+      "mode": "cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 43.3,
+      "cliResponseBytes": 363,
+      "wallMs": 809.9,
+      "firstMs": 809.6,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 4,
+      "mode": "cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 46.3,
+      "cliResponseBytes": 2242,
+      "wallMs": 1064.3,
+      "firstMs": 1064.3,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 5,
+      "mode": "cli",
+      "cliApiProcesses": 5,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 44.6,
+      "cliResponseBytes": 130251,
+      "wallMs": 3712.5,
+      "firstMs": 1244.4,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 5,
+      "mode": "cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 41,
+      "cliResponseBytes": 363,
+      "wallMs": 703,
+      "firstMs": 702.6,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 5,
+      "mode": "cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 39,
+      "cliResponseBytes": 2242,
+      "wallMs": 997.9,
+      "firstMs": 997.9,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 5,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 46.6,
+      "cliResponseBytes": 0,
+      "wallMs": 3196.1,
+      "firstMs": 904.3,
+      "directHttpRequests": 5,
+      "reusedConnections": 5,
+      "wireBytes": 130251,
+      "decodedBytes": 130251,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 5,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 39.1,
+      "cliResponseBytes": 0,
+      "wallMs": 557.1,
+      "firstMs": 556.7,
+      "directHttpRequests": 1,
+      "reusedConnections": 1,
+      "wireBytes": 363,
+      "decodedBytes": 363,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 5,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 42.1,
+      "cliResponseBytes": 0,
+      "wallMs": 833.4,
+      "firstMs": 833.4,
+      "directHttpRequests": 2,
+      "reusedConnections": 2,
+      "wireBytes": 2242,
+      "decodedBytes": 2242,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 6,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 65.2,
+      "cliResponseBytes": 0,
+      "wallMs": 3105.1,
+      "firstMs": 877,
+      "directHttpRequests": 5,
+      "reusedConnections": 5,
+      "wireBytes": 130251,
+      "decodedBytes": 130251,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 6,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 40.8,
+      "cliResponseBytes": 0,
+      "wallMs": 676.3,
+      "firstMs": 676,
+      "directHttpRequests": 1,
+      "reusedConnections": 1,
+      "wireBytes": 363,
+      "decodedBytes": 363,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 6,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 40.1,
+      "cliResponseBytes": 0,
+      "wallMs": 776.5,
+      "firstMs": 776.5,
+      "directHttpRequests": 2,
+      "reusedConnections": 2,
+      "wireBytes": 2242,
+      "decodedBytes": 2242,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 6,
+      "mode": "cli",
+      "cliApiProcesses": 5,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 43.8,
+      "cliResponseBytes": 130251,
+      "wallMs": 3598,
+      "firstMs": 1170.6,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 6,
+      "mode": "cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 43.9,
+      "cliResponseBytes": 363,
+      "wallMs": 623.3,
+      "firstMs": 622.9,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 6,
+      "mode": "cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 53,
+      "cliResponseBytes": 2242,
+      "wallMs": 1346.9,
+      "firstMs": 1346.9,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 7,
+      "mode": "cli",
+      "cliApiProcesses": 5,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 39.2,
+      "cliResponseBytes": 130251,
+      "wallMs": 3205.4,
+      "firstMs": 806.6,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 7,
+      "mode": "cli",
+      "cliApiProcesses": 1,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 48.9,
+      "cliResponseBytes": 363,
+      "wallMs": 690.4,
+      "firstMs": 690.1,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 7,
+      "mode": "cli",
+      "cliApiProcesses": 2,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 53.5,
+      "cliResponseBytes": 2242,
+      "wallMs": 894.8,
+      "firstMs": 894.8,
+      "directHttpRequests": 0,
+      "reusedConnections": 0,
+      "wireBytes": 0,
+      "decodedBytes": 0,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "same-code-transport",
+      "pair": 7,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 48.1,
+      "cliResponseBytes": 0,
+      "wallMs": 2793.6,
+      "firstMs": 717.2,
+      "directHttpRequests": 5,
+      "reusedConnections": 5,
+      "wireBytes": 130251,
+      "decodedBytes": 130251,
+      "queueMs": 0,
+      "payloadSha256": "410751f364ff3b8dd7c2c2d77c499f3db7cd165b1f230d0167851785ced735bc"
+    },
+    {
+      "scenario": "same-code-detail",
+      "pair": 7,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 61.4,
+      "cliResponseBytes": 0,
+      "wallMs": 568.7,
+      "firstMs": 567.5,
+      "directHttpRequests": 1,
+      "reusedConnections": 1,
+      "wireBytes": 363,
+      "decodedBytes": 363,
+      "queueMs": 0,
+      "payloadSha256": "8bcb3bd98dc7cb1d8d13e1ade75477bc5bb42db60b152125fbc8e95229d1eb8f"
+    },
+    {
+      "scenario": "same-code-search",
+      "pair": 7,
+      "mode": "auto",
+      "cliApiProcesses": 0,
+      "credentialCliProcesses": 1,
+      "repositoryCliProcesses": 0,
+      "credentialCliMs": 55.2,
+      "cliResponseBytes": 0,
+      "wallMs": 793.2,
+      "firstMs": 793.2,
+      "directHttpRequests": 2,
+      "reusedConnections": 2,
+      "wireBytes": 2242,
+      "decodedBytes": 2242,
+      "queueMs": 0,
+      "payloadSha256": "5358afb46d6c4f22dec0d5cb86f6c4a35a6f8f81b1055bf7a1a64f5bf16b67a7"
+    },
+    {
+      "scenario": "git-fetch",
+      "pair": 1,
+      "mode": "legacy",
+      "wallMs": 1262.5,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "POST",
+        "POST",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200,
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-pull",
+      "pair": 1,
+      "mode": "legacy",
+      "wallMs": 626.1,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-push-dry-run",
+      "pair": 1,
+      "mode": "legacy",
+      "wallMs": 837.8,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "GET"
+      ],
+      "responseStatuses": [
+        401,
+        200
+      ]
+    },
+    {
+      "scenario": "git-fetch",
+      "pair": 1,
+      "mode": "proactive",
+      "wallMs": 674,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-pull",
+      "pair": 1,
+      "mode": "proactive",
+      "wallMs": 672.7,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-push-dry-run",
+      "pair": 1,
+      "mode": "proactive",
+      "wallMs": 487.5,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET"
+      ],
+      "responseStatuses": [
+        200
+      ]
+    },
+    {
+      "scenario": "git-fetch",
+      "pair": 2,
+      "mode": "proactive",
+      "wallMs": 631.4,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-pull",
+      "pair": 2,
+      "mode": "proactive",
+      "wallMs": 727.9,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-push-dry-run",
+      "pair": 2,
+      "mode": "proactive",
+      "wallMs": 498.1,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET"
+      ],
+      "responseStatuses": [
+        200
+      ]
+    },
+    {
+      "scenario": "git-fetch",
+      "pair": 2,
+      "mode": "legacy",
+      "wallMs": 588,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-pull",
+      "pair": 2,
+      "mode": "legacy",
+      "wallMs": 618.4,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-push-dry-run",
+      "pair": 2,
+      "mode": "legacy",
+      "wallMs": 794.8,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "GET"
+      ],
+      "responseStatuses": [
+        401,
+        200
+      ]
+    },
+    {
+      "scenario": "git-fetch",
+      "pair": 3,
+      "mode": "legacy",
+      "wallMs": 653.6,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-pull",
+      "pair": 3,
+      "mode": "legacy",
+      "wallMs": 634.6,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-push-dry-run",
+      "pair": 3,
+      "mode": "legacy",
+      "wallMs": 691.9,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "GET"
+      ],
+      "responseStatuses": [
+        401,
+        200
+      ]
+    },
+    {
+      "scenario": "git-fetch",
+      "pair": 3,
+      "mode": "proactive",
+      "wallMs": 667.2,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-pull",
+      "pair": 3,
+      "mode": "proactive",
+      "wallMs": 633.3,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-push-dry-run",
+      "pair": 3,
+      "mode": "proactive",
+      "wallMs": 661.3,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET"
+      ],
+      "responseStatuses": [
+        200
+      ]
+    },
+    {
+      "scenario": "git-fetch",
+      "pair": 4,
+      "mode": "proactive",
+      "wallMs": 621.3,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-pull",
+      "pair": 4,
+      "mode": "proactive",
+      "wallMs": 684.6,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-push-dry-run",
+      "pair": 4,
+      "mode": "proactive",
+      "wallMs": 523.2,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET"
+      ],
+      "responseStatuses": [
+        200
+      ]
+    },
+    {
+      "scenario": "git-fetch",
+      "pair": 4,
+      "mode": "legacy",
+      "wallMs": 618.4,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-pull",
+      "pair": 4,
+      "mode": "legacy",
+      "wallMs": 1314.5,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-push-dry-run",
+      "pair": 4,
+      "mode": "legacy",
+      "wallMs": 694.6,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "GET"
+      ],
+      "responseStatuses": [
+        401,
+        200
+      ]
+    },
+    {
+      "scenario": "git-fetch",
+      "pair": 5,
+      "mode": "legacy",
+      "wallMs": 619.1,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-pull",
+      "pair": 5,
+      "mode": "legacy",
+      "wallMs": 609.8,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-push-dry-run",
+      "pair": 5,
+      "mode": "legacy",
+      "wallMs": 776.6,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "GET"
+      ],
+      "responseStatuses": [
+        401,
+        200
+      ]
+    },
+    {
+      "scenario": "git-fetch",
+      "pair": 5,
+      "mode": "proactive",
+      "wallMs": 683.1,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-pull",
+      "pair": 5,
+      "mode": "proactive",
+      "wallMs": 746,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-push-dry-run",
+      "pair": 5,
+      "mode": "proactive",
+      "wallMs": 545.7,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET"
+      ],
+      "responseStatuses": [
+        200
+      ]
+    },
+    {
+      "scenario": "git-fetch",
+      "pair": 6,
+      "mode": "proactive",
+      "wallMs": 757.3,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-pull",
+      "pair": 6,
+      "mode": "proactive",
+      "wallMs": 728.8,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-push-dry-run",
+      "pair": 6,
+      "mode": "proactive",
+      "wallMs": 595.6,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET"
+      ],
+      "responseStatuses": [
+        200
+      ]
+    },
+    {
+      "scenario": "git-fetch",
+      "pair": 6,
+      "mode": "legacy",
+      "wallMs": 628.6,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-pull",
+      "pair": 6,
+      "mode": "legacy",
+      "wallMs": 632,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-push-dry-run",
+      "pair": 6,
+      "mode": "legacy",
+      "wallMs": 701.9,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "GET"
+      ],
+      "responseStatuses": [
+        401,
+        200
+      ]
+    },
+    {
+      "scenario": "git-fetch",
+      "pair": 7,
+      "mode": "legacy",
+      "wallMs": 568.1,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-pull",
+      "pair": 7,
+      "mode": "legacy",
+      "wallMs": 679.1,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-push-dry-run",
+      "pair": 7,
+      "mode": "legacy",
+      "wallMs": 744.3,
+      "requestedProactiveAuth": false,
+      "appliedProactiveAuth": false,
+      "policyReasons": [],
+      "httpMethods": [
+        "GET",
+        "GET"
+      ],
+      "responseStatuses": [
+        401,
+        200
+      ]
+    },
+    {
+      "scenario": "git-fetch",
+      "pair": 7,
+      "mode": "proactive",
+      "wallMs": 674.5,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-pull",
+      "pair": 7,
+      "mode": "proactive",
+      "wallMs": 721.4,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET",
+        "POST"
+      ],
+      "responseStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "git-push-dry-run",
+      "pair": 7,
+      "mode": "proactive",
+      "wallMs": 496.6,
+      "requestedProactiveAuth": true,
+      "appliedProactiveAuth": true,
+      "policyReasons": [
+        "supported"
+      ],
+      "httpMethods": [
+        "GET"
+      ],
+      "responseStatuses": [
+        200
+      ]
+    }
+  ]
+}
