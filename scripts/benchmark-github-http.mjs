@@ -15,6 +15,7 @@ const output = argument("output") ?? "/private/tmp/gsc-github-http-benchmark.jso
 assert(Number.isInteger(pairs) && pairs > 0 && pairs <= 7);
 assert(["all", "reads", "transport", "native"].includes(scenario));
 const samples = [], comparisons = [], scratch = await mkdtemp("/private/tmp/gsc-http-benchmark-");
+const readRoot = path.join(scratch, "read-fixture");
 const budgetChecks = [];
 const protectedPaths = [".git/HEAD", ".git/index", ".git/config"].map(name => path.join(root, name));
 const protectedBefore = await Promise.all(protectedPaths.map(fileHash));
@@ -137,6 +138,17 @@ async function measure(api, label, pair, mode, task) {
 function compare(scenario, pair, before, after) {
   const equal = digest(before) === digest(after);
   comparisons.push({ scenario, pair, equal, beforeSha256: digest(before), afterSha256: digest(after) });
+  if (!equal) {
+    const paths = [];
+    const visit = (left, right, at) => {
+      if (paths.length >= 20 || JSON.stringify(canonical(left)) === JSON.stringify(canonical(right))) return;
+      if (left && right && typeof left === "object" && typeof right === "object") {
+        if (Array.isArray(left) && Array.isArray(right) && left.length !== right.length) paths.push(`${at}.length`);
+        for (const key of new Set([...Object.keys(left), ...Object.keys(right)])) visit(left[key], right[key], `${at}.${key}`);
+      } else paths.push(at);
+    };
+    visit(before, after, scenario); console.log(JSON.stringify({ differingDtoPaths: paths }));
+  }
   assert(equal, `Public ${scenario} DTO changed between paired reads; rerun with a stable fixture`);
 }
 
@@ -150,16 +162,16 @@ async function readPairs(before, after) {
       const finish = await lifetime(api, mode === "after-cli" ? "cli" : "auto");
       try {
         const cold = await measure(api, "list-cold", pair, mode, progress =>
-          api.fetchPullRequestListPage(root, undefined, undefined, undefined, { onProgress: progress }));
+          api.fetchPullRequestListPage(readRoot, undefined, undefined, undefined, { onProgress: progress }));
         // 첫 CLI bootstrap 뒤 실제 인증 key의 완전한 snapshot도 채워 반복 표시 상태를 양쪽에 동일하게 준비한다.
-        const primed = mode === "before-cli" ? cold : await api.fetchPullRequestListPage(root, undefined, undefined, undefined, { previous: cold });
+        const primed = mode === "before-cli" ? cold : await api.fetchPullRequestListPage(readRoot, undefined, undefined, undefined, { previous: cold });
         const warm = await measure(api, "list-warm", pair, mode, progress =>
-          api.fetchPullRequestListPage(root, undefined, undefined, undefined, { previous: primed, onProgress: progress }));
-        const service = new api.PullRequestService(root);
+          api.fetchPullRequestListPage(readRoot, undefined, undefined, undefined, { previous: primed, onProgress: progress }));
+        const service = new api.PullRequestService(readRoot);
         const initial = await service.getDetail(14848, undefined, () => {});
         assert.equal(initial.files.length, 738, "The public detail fixture must retain its 738-file snapshot");
         const detail = await measure(api, "detail-reopen", pair, mode, progress => service.getDetail(14848, undefined, progress));
-        const search = await measure(api, "search", pair, mode, () => api.searchPullRequests(root, "#14848"));
+        const search = await measure(api, "search", pair, mode, () => api.searchPullRequests(readRoot, "#14848"));
         values[mode] = { cold, warm, detail, search };
       } finally { await finish(); }
     }
@@ -176,19 +188,19 @@ async function transportPairs(api) {
   const stop = await lifetime(api, () => mode);
   try {
     await ensureBudget(280);
-    let previous = await api.fetchPullRequestListPage(root);
-    previous = await api.fetchPullRequestListPage(root, undefined, undefined, undefined, { previous });
-    const service = new api.PullRequestService(root);
-    await service.getDetail(14848, undefined, () => {}); await api.searchPullRequests(root, "#14848");
+    let previous = await api.fetchPullRequestListPage(readRoot);
+    previous = await api.fetchPullRequestListPage(readRoot, undefined, undefined, undefined, { previous });
+    const service = new api.PullRequestService(readRoot);
+    await service.getDetail(14848, undefined, () => {}); await api.searchPullRequests(readRoot, "#14848");
     for (let pair = 1; pair <= pairs; pair++) {
       const values = {};
       for (const selected of pair % 2 ? ["cli", "auto"] : ["auto", "cli"]) {
         await ensureBudget(110);
         mode = selected;
         const list = await measure(api, "same-code-transport", pair, selected, progress =>
-          api.fetchPullRequestListPage(root, undefined, undefined, undefined, { previous, onProgress: progress }));
+          api.fetchPullRequestListPage(readRoot, undefined, undefined, undefined, { previous, onProgress: progress }));
         const detail = await measure(api, "same-code-detail", pair, selected, progress => service.getDetail(14848, undefined, progress));
-        const search = await measure(api, "same-code-search", pair, selected, () => api.searchPullRequests(root, "#14848"));
+        const search = await measure(api, "same-code-search", pair, selected, () => api.searchPullRequests(readRoot, "#14848"));
         values[selected] = { list, detail, search };
       }
       for (const [label, key] of [["same-code-transport", "list"], ["same-code-detail", "detail"], ["same-code-search", "search"]]) {
@@ -259,6 +271,13 @@ function summaries() {
 /** 재현 가능한 공개 요청만 수행한 뒤 원문 없는 성능/동등성 artifact를 쓴다. */
 async function main() {
   process.env.GH_REPO = "cli/cli"; process.env.GH_HOST = "github.com"; delete process.env.GH_DEBUG;
+  // gh repo view는 GH_REPO와 다르게 cwd remote를 선택할 수 있어 두 저장소 identity를 일치시킨다.
+  await mkdir(readRoot);
+  childProcess.execFileSync("git", ["init", "--quiet"], { cwd: readRoot, stdio: "ignore" });
+  childProcess.execFileSync("git", ["remote", "add", "origin", "https://github.com/cli/cli.git"], { cwd: readRoot, stdio: "ignore" });
+  const repository = JSON.parse(childProcess.execFileSync(process.env.GITHUB_CLI_PATH || "gh",
+    ["repo", "view", "--json", "nameWithOwner"], { cwd: readRoot, env: process.env, encoding: "utf8", timeout: 30000 }));
+  assert.equal(repository.nameWithOwner, "cli/cli", "CLI bootstrap and API fixture must use the same repository");
   const beforeRoot = path.join(scratch, "before"); await mkdir(beforeRoot);
   childProcess.execFileSync("tar", ["-x", "-C", beforeRoot], { input: childProcess.execFileSync("git", ["archive", base, "src"], { cwd: root, maxBuffer: 128 * 1024 * 1024 }) });
   const before = await bundle(beforeRoot, "before", false), after = await bundle(root, "after", true);
@@ -274,6 +293,7 @@ async function main() {
     sourceProtectedFilesUnchanged: true, allPairedDTOsEqual: comparisons.every(item => item.equal),
     limitations: ["One public repository; live mutable remote data must remain equal between each pair.",
       "Direct figures require an Agent-preserving network policy. VS Code default proxySupport=override selects CLI; after-cli represents that supported fallback.",
+      "Read fixture origin and GH_REPO both select cli/cli; user source repository is never repointed.",
       "CLI api/repo-view process counts are structural read counts, not packet captures. Direct HTTP counts are actual request-close events.",
       "CLI API timing has GH_DEBUG disabled. Native Git HTTP tracing is enabled equally in both modes and never persisted.",
       "Transport-only comparison retains immutable snapshots across policy-resolver modes; it does not measure UI setting changes.",
