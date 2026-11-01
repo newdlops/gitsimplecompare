@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { PullRequestReviewCommentService } from "../src/git/pullRequestReviewComments";
+import { encodeRestPage, restPageMetadata } from "../src/git/githubRestPages";
 import test from "node:test";
 import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -206,4 +209,30 @@ test("production search composition preserves verified HTTP routing and one actu
   const result = await searchPullRequests(f.root, "#7", undefined, undefined, (args, root, options) => cache.read(args, root, options));
   assert.equal(result.pullRequests[0].number, 7);
   assert.deepEqual({ cli, http, credentials }, { cli: 0, http: 2, credentials: 1 });
+});
+
+
+test("editor comment bootstrap and REST pages use one typed HTTP session with a single credential lease", async t => {
+  const f = await fixture(t);
+  execFileSync("git", ["init", "-q", "-b", "topic", f.root]);
+  const context = await captureGitHubRequestContext(f.root, { ...process.env }, ["repo"]);
+  gitHubRepositoryScopes.learn(f.root, context, { nameWithOwner: "owner/repo", url: "https://github.com/owner/repo" });
+  let http = 0, cli = 0, credentials = 0;
+  const runtime = new GitHubReadRuntime({ policy: async () => ({ transport: "auto", systemProxy: "none" }),
+    credentials: new GitHubCredentialProvider(async () => { credentials++; return "fixture-token"; }),
+    cli: async args => { cli++; return args[0] === "pr" ? JSON.stringify(pr()) : "[]"; },
+    http: { read: async request => {
+      http++;
+      if (request.kind === "graphql") return JSON.stringify({ data: { repository: { nameWithOwner: "owner/repo", url: "https://github.com/owner/repo",
+        defaultBranchRef: { name: "main" }, p0: { nodes: [{ ...pr(), isCrossRepository: false }] } } } });
+      assert.equal(request.responseMode, "page"); assert.equal(request.accept, "application/vnd.github-commitcomment.full+json");
+      return encodeRestPage("[]", restPageMetadata(200, {}));
+    }, dispose: async () => {} } });
+  const cache = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
+  t.after(async () => { await cache.dispose(); await runtime.dispose(); });
+  const runner: GhExecute = (args, root, options) => cache.read(args, root, options);
+  const service = new PullRequestReviewCommentService(f.root, {}, runner);
+  const result = await service.getActiveBranchReviewComments("topic");
+  assert.equal(result?.number, 7); assert.deepEqual(result?.comments, []);
+  assert.deepEqual({ http, cli, credentials }, { http: 2, cli: 0, credentials: 1 });
 });

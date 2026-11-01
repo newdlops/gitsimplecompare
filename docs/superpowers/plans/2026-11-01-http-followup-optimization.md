@@ -87,11 +87,11 @@
 **Files:** modify `pullRequestReviewComments.ts`, `pullRequestCommentCache.ts`, `pullRequestCommentController.ts`; extract provider progress/presentation helpers if needed; extend `test/pullRequestCommentLoading.test.ts` and add service/composition regressions.
 **Interfaces:** optional API-ready callback on the service; cache load accepts per-consumer progress subscription while retaining final Promise and existing two-minute completed-cache policy. Use Task 3 current-branch selector and typed bootstrap; Task 1 REST pages carry full media headers.
 
-- [ ] Add RED tests with deferred HTML proving API-ready precedes completion, late subscribers get the snapshot, provisional data is not completed TTL data, final failure preserves comments, stale branch/file/auth updates are ignored and one subscriber cannot cancel others.
-- [ ] Run comment service/loading/controller/composition targets; expected RED.
-- [ ] Connect progressive service/cache/controller, stable thread identity and typed production bootstrap; keep remote work alive across mere focus changes as before.
-- [ ] Run focused tests/types; verify known-scope production requests really use HTTP and unknown bootstrap remains consistent CLI.
-- [ ] Commit `perf: display API review comments before HTML enrichment`.
+- [x] Add RED tests with deferred HTML proving API-ready precedes completion, late subscribers get the snapshot, provisional data is not completed TTL data, final failure preserves comments, stale branch/file/auth updates are ignored and one subscriber cannot cancel others.
+- [x] Run comment service/loading/controller/composition targets; expected RED.
+- [x] Connect progressive service/cache/controller, stable thread identity and typed production bootstrap; keep remote work alive across mere focus changes as before.
+- [x] Run focused tests/types; verify known-scope production requests really use HTTP and unknown bootstrap remains consistent CLI.
+- [x] Commit `perf: display API review comments before HTML enrichment`.
 
 ## Task 7: Conversation REST page integration
 

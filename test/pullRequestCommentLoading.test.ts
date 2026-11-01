@@ -24,7 +24,7 @@ function deferred<T>(): { promise: Promise<T>; resolve(value: T): void } {
 function createFakeGh(root: string): { executable: string; calls: string } {
   const executable = join(root, "gh");
   const calls = join(root, "gh-calls.txt");
-  writeFileSync(executable, `#!/bin/sh\n[ -n "$GSC_FAKE_GH_DELAY" ] && sleep "$GSC_FAKE_GH_DELAY"\necho "$@" >> "${calls}"\ncase "$1:$2" in\n  pr:view) echo '{"number":7,"title":"PR","headRefName":"main"}' ;;\n  repo:view) echo '{"nameWithOwner":"owner/repo"}' ;;\n  api:*) echo '[]' ;;\n  *) exit 1 ;;\nesac\n`);
+  writeFileSync(executable, `#!/bin/sh\n[ -n "$GSC_FAKE_GH_DELAY" ] && sleep "$GSC_FAKE_GH_DELAY"\necho "$@" >> "${calls}"\ncase "$1:$2" in\n  pr:view) echo '{"number":7,"title":"PR","headRefName":"main"}' ;;\n  repo:view) echo '{"nameWithOwner":"owner/repo"}' ;;\n  api:graphql) echo '{"data":{"repository":{"nameWithOwner":"owner/repo","url":"https://github.com/owner/repo","defaultBranchRef":{"name":"main"},"p0":{"nodes":[{"number":7,"title":"PR","headRefName":"main","baseRefName":"main","url":"https://github.com/owner/repo/pull/7","state":"OPEN","isCrossRepository":false}]}}}}' ;;\n  api:*) echo '[]' ;;\n  auth:token) echo fixture-token ;;\n  *) exit 1 ;;\nesac\n`);
   chmodSync(executable, 0o755);
   return { executable, calls };
 }
@@ -89,9 +89,9 @@ test("같은 PR cache 요청은 singleflight가 되고 0 comment면 웹 HTML을 
   await cache.load(root);
 
   const calls = readFileSync(fakeGh.calls, "utf8");
-  assert.equal((calls.match(/^pr view /gm) || []).length, 1);
-  assert.equal((calls.match(/^repo view /gm) || []).length, 1);
-  assert.equal((calls.match(/^api /gm) || []).length, 1);
+  assert.equal((calls.match(/^api graphql /gm) || []).length, 1);
+  assert.equal((calls.match(/^repo view /gm) || []).length, 0);
+  assert.equal((calls.match(/^api (?:--include )?-H /gm) || []).length, 1);
   assert.equal(calls.includes("https://github.com/owner/repo/pull/7/files"), false);
   assert.ok(vscodeMock.__outputLines.some((line) => line.includes("cache coalesced")));
   assert.ok(vscodeMock.__outputLines.some((line) => line.includes("cache hit")));
@@ -109,7 +109,7 @@ test("같은 PR cache 요청은 singleflight가 되고 0 comment면 웹 HTML을 
   const retry = await cache.load(root);
   assert.equal(retry?.number, 7);
   const retryCalls = readFileSync(fakeGh.calls, "utf8");
-  assert.equal((retryCalls.match(/^pr view /gm) || []).length, 2);
+  assert.equal((retryCalls.match(/^api graphql /gm) || []).length, 2);
 });
 
 test("완료 PR 결과는 활성 1건과 LRU 과거 7건만 보존하고 퇴거 뒤 한 번 재조회한다", async (t) => {
@@ -166,7 +166,7 @@ test("LRU hit, 전체 TTL sweep, oversize 활성 해제와 dispose는 완료 캐
   assert.equal(cache.cache.has("next"), true);
   assert.ok(vscodeMock.__outputLines.some((line) => line.includes('"reason":"oversizeRelease"')));
 
-  const pending = { controller: new AbortController(), promise: Promise.resolve(undefined) };
+  const pending = { controller: new AbortController(), promise: Promise.resolve(undefined), cancel() { this.controller.abort(); } };
   cache.inFlightLoads.set("pending", pending);
   cache.dispose();
   assert.equal(pending.controller.signal.aborted, true);

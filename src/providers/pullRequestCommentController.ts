@@ -1,7 +1,7 @@
 // 활성 에디터에 GitHub PR inline review comment 를 접힌 comment thread 로 표시한다.
 // - 데이터 조회/캐싱은 전용 로더에 맡기고, 이 모듈은 VS Code 에디터 표시와 refresh 생명주기만 담당한다.
 import * as vscode from "vscode";
-import { PullRequestReviewComment } from "../git/pullRequestReviewComments";
+import { PullRequestReviewComment, ActivePullRequestReviewComments } from "../git/pullRequestReviewComments";
 import { GitServiceRegistry } from "../git/serviceRegistry";
 import { pullRequestCommentMarkdown } from "../ui/pullRequestCommentMarkdown";
 import {
@@ -261,65 +261,68 @@ export class PullRequestCommentController implements vscode.Disposable {
     try {
       // 파일/창 포커스 전환은 표시 대상만 바뀌는 이벤트다. 저장소 단위 원격 조회까지
       // 같은 signal로 취소하면 느린 PR은 끝없이 재시작되므로 singleflight는 완료·캐시되게 둔다.
-      const prComments = await this.commentCache.load(service.repoRoot);
-      if (!vscode.window.state.focused) {
-        this.refreshDeferred = true;
-        return;
-      }
-      if (
-        !this.isLatestTarget(requestId, targetUri, signal) ||
-        !isEnabled()
-      ) {
-        return;
-      }
-      if (!prComments) {
-        this.clearVisibleDecorations();
-        this.clearActiveGroups();
-        logInfo("pr editor comments skipped", {
+      const apply = (prComments: ActivePullRequestReviewComments | undefined) => {
+        if (!vscode.window.state.focused) {
+          this.refreshDeferred = true;
+          return;
+        }
+        if (
+          !this.isLatestTarget(requestId, targetUri, signal) ||
+          !isEnabled()
+        ) {
+          return;
+        }
+        if (!prComments) {
+          this.clearVisibleDecorations();
+          this.clearActiveGroups();
+          logInfo("pr editor comments skipped", {
+            reason,
+            target: "no-active-pr",
+            path: relativePath,
+          });
+          return;
+        }
+        const fileComments = prComments.comments.filter(
+          (comment) => normalizeGitPath(comment.path) === relativePath
+        );
+        if (!fileComments.length) {
+          this.clearVisibleDecorations();
+          this.clearActiveGroups();
+          logInfo("pr editor comments skipped", {
+            reason,
+            target: "no-comments-for-file",
+            pr: prComments.number,
+            path: relativePath,
+          });
+          return;
+        }
+        const groups = groupedComments(editor.document, fileComments);
+        if (!groups.length) {
+          this.clearVisibleDecorations();
+          this.clearActiveGroups();
+          logInfo("pr editor comments skipped", {
+            reason,
+            target: "no-display-line",
+            pr: prComments.number,
+            path: relativePath,
+            comments: fileComments.length,
+          });
+          return;
+        }
+        this.applyGroups(editor, groups);
+        logInfo("pr editor comments applied", {
           reason,
-          target: "no-active-pr",
-          path: relativePath,
-        });
-        return;
-      }
-      const fileComments = prComments.comments.filter(
-        (comment) => normalizeGitPath(comment.path) === relativePath
-      );
-      if (!fileComments.length) {
-        this.clearVisibleDecorations();
-        this.clearActiveGroups();
-        logInfo("pr editor comments skipped", {
-          reason,
-          target: "no-comments-for-file",
-          pr: prComments.number,
-          path: relativePath,
-        });
-        return;
-      }
-      const groups = groupedComments(editor.document, fileComments);
-      if (!groups.length) {
-        this.clearVisibleDecorations();
-        this.clearActiveGroups();
-        logInfo("pr editor comments skipped", {
-          reason,
-          target: "no-display-line",
           pr: prComments.number,
           path: relativePath,
           comments: fileComments.length,
+          lines: groups.length,
+          suggestedChangesets: countAttachedSuggestedChangesets(fileComments),
+          bodySuggestedChangeHints: countBodySuggestedChangeHints(fileComments),
+          suggestedCommentIds: suggestedCommentIds(fileComments),
         });
-        return;
-      }
-      this.applyGroups(editor, groups);
-      logInfo("pr editor comments applied", {
-        reason,
-        pr: prComments.number,
-        path: relativePath,
-        comments: fileComments.length,
-        lines: groups.length,
-        suggestedChangesets: countAttachedSuggestedChangesets(fileComments),
-        bodySuggestedChangeHints: countBodySuggestedChangeHints(fileComments),
-        suggestedCommentIds: suggestedCommentIds(fileComments),
-      });
+      };
+      const prComments = await this.commentCache.load(service.repoRoot, undefined, apply);
+      apply(prComments);
     } catch (error) {
       if (!this.isLatestTarget(requestId, targetUri, signal)) {
         logInfo("pr editor comments load cancelled", { reason, repoRoot: service.repoRoot });

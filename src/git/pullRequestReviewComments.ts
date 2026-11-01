@@ -1,8 +1,15 @@
 // 현재 브랜치의 GitHub PR inline review comment 를 읽는 서비스.
 // - provider/UI 계층이 gh CLI, repository 식별, REST pagination 을 직접 알지 않도록 분리한다.
 import { readGitHubInteractive } from "./githubReadCache";
-import { readGitHubRepositoryName } from "./githubRepositoryName";
+import type { GhExecute } from "./ghRunner";
 import { runGit } from "./gitExec";
+import { findPullRequestsForBranches } from "./pullRequestBranchLookup";
+import { resolveCurrentPullRequestSelector } from "./pullRequestBranchSelector";
+import { createGitHubReadSession, completeGitHubReadSession, gitHubReadSessionState, GitHubReadContextChangedError } from "./githubReadSession";
+import { readSessionRepository, readSessionRestApiBase } from "./githubRestSession";
+import { restRead } from "./githubReadRequest";
+import { decodeRestPage, nextRestPage, GitHubRestPageError } from "./githubRestPages";
+import { logInfo } from "../ui/outputLog";
 import { splitRepositoryName } from "./githubRepository";
 import { inheritReplyCommentLocations } from "./pullRequestCommentLocations";
 import {
@@ -100,6 +107,8 @@ const MAX_PAGES = 10;
 export interface PullRequestReviewCommentServiceOptions {
   /** suggested changeset 웹 HTML 을 읽기 위한 VS Code GitHub OAuth token */
   suggestedChangeset?: PullRequestSuggestedChangesetOptions;
+  /** API 댓글이 준비되면 HTML 보완 전에 표시하는 선택적 callback. 예외는 조회를 실패시키지 않는다. */
+  onApiReady?: (data: ActivePullRequestReviewComments) => void;
   /** 활성 에디터 교체 시 gh/웹 보조 조회를 중단할 신호 */
   signal?: AbortSignal;
 }
@@ -111,7 +120,8 @@ export interface PullRequestReviewCommentServiceOptions {
 export class PullRequestReviewCommentService {
   constructor(
     private readonly repoRoot: string,
-    private readonly options: PullRequestReviewCommentServiceOptions = {}
+    private readonly options: PullRequestReviewCommentServiceOptions = {},
+    private readonly execute: GhExecute = readGitHubInteractive
   ) {}
 
   /**
@@ -120,7 +130,7 @@ export class PullRequestReviewCommentService {
    * @returns 현재 브랜치 이름 또는 undefined
    */
   async getCurrentBranch(): Promise<string | undefined> {
-    const branch = (await runGit(["branch", "--show-current"], this.repoRoot)).trim();
+    const branch = (await runGit(["branch", "--show-current"], this.repoRoot, { signal: this.options.signal })).trim();
     return branch || undefined;
   }
 
@@ -132,76 +142,63 @@ export class PullRequestReviewCommentService {
   async getActiveBranchReviewComments(
     branch?: string
   ): Promise<ActivePullRequestReviewComments | undefined> {
+    const started = Date.now();
     throwIfAborted(this.options.signal);
     const currentBranch = branch || await this.getCurrentBranch();
     if (!currentBranch) {
       return undefined;
     }
-    const pr = await this.readCurrentPullRequest(currentBranch);
+    const read = createGitHubReadSession(this.repoRoot, this.execute);
+    const pr = await this.readCurrentPullRequest(currentBranch, read);
     throwIfAborted(this.options.signal);
     if (!pr?.number) {
+      await completeGitHubReadSession(read, this.options.signal);
       return undefined;
     }
-    const repository = await this.repositoryName();
+    const repository = await this.repositoryName(read);
     throwIfAborted(this.options.signal);
     const [owner, name] = splitRepositoryName(repository);
-    const comments = await this.readReviewComments(owner, name, Number(pr.number));
-    const suggested = comments.length
-      ? await readPullRequestSuggestedChangesets(
-        this.repoRoot,
-        owner,
-        name,
-        Number(pr.number),
-        { ...this.options.suggestedChangeset, signal: this.options.signal },
-        comments.map((comment) => ({ id: comment.id, url: comment.url }))
-      )
-      : skippedSuggestedChangesets();
-    return {
-      number: Number(pr.number),
-      title: pr.title || "",
-      url: pr.url,
-      headRefName: pr.headRefName || currentBranch,
-      comments: attachSuggestedChangesets(comments, suggested.byCommentId),
-      suggestedChangesetStatus: suggested.status,
+    const comments = await this.readReviewComments(owner, name, Number(pr.number), read);
+    const core: ActivePullRequestReviewComments = {
+      number: Number(pr.number), title: pr.title || "", url: pr.url,
+      headRefName: pr.headRefName || currentBranch, comments,
     };
-  }
-
-  /**
-   * gh 가 현재 브랜치에 연결된 PR 을 찾도록 한다.
-   * - PR 이 없는 브랜치는 에디터 기능에서 정상적인 빈 상태이므로 undefined 로 처리한다.
-   * @param branch 조회 시점의 현재 브랜치(진행 중 조회 공유 범위를 브랜치별로 나눈다)
-   */
-  private async readCurrentPullRequest(branch: string): Promise<GhPullRequestView | undefined> {
-    try {
-      const out = await readGitHubInteractive([
-        "pr",
-        "view",
-        "--json",
-        "number,title,url,headRefName",
-      // 인자에는 브랜치가 없으므로 브랜치를 세대로 넣어, checkout 직후 이전 브랜치의 진행 중 조회를 공유하지 않게 한다.
-      ], this.repoRoot, { signal: this.options.signal, operation: "pr-comment-view", version: branch });
-      return JSON.parse(out) as GhPullRequestView;
-    } catch (error) {
-      if (isNoPullRequestError(error)) {
-        return undefined;
+    await this.assertCurrentBranch(currentBranch);
+    await completeGitHubReadSession(read, this.options.signal, false);
+    try { this.options.onApiReady?.({ ...core, comments: comments.map(comment => ({ ...comment })) }); }
+    catch { logInfo("pr editor comments API-ready callback skipped", { reason: "callback-failed" }); }
+    logInfo("pr editor comments API ready", { comments: comments.length, pr: core.number, firstReadyMs: Date.now() - started });
+    let suggested = skippedSuggestedChangesets();
+    if (comments.length) {
+      try {
+        suggested = await readPullRequestSuggestedChangesets(this.repoRoot, owner, name, core.number,
+          { ...this.options.suggestedChangeset, signal: this.options.signal }, comments.map(comment => ({ id: comment.id, url: comment.url })));
+      } catch {
+        throwIfAborted(this.options.signal);
+        suggested = { byCommentId: new Map(), status: { attempted: true, comments: 0, changesets: 0, reason: "web HTML enrichment failed or timed out" } };
       }
-      throw error;
     }
+    await this.assertCurrentBranch(currentBranch);
+    await completeGitHubReadSession(read, this.options.signal);
+    logInfo("pr editor comments enrichment complete", { comments: comments.length, totalMs: Date.now() - started });
+    return { ...core, comments: attachSuggestedChangesets(comments, suggested.byCommentId), suggestedChangesetStatus: suggested.status };
   }
 
-  /**
-   * gh repo view 로 owner/name 저장소 식별자를 읽는다.
-   * @returns GitHub REST route 에 사용할 owner/name 문자열
-   */
-  private async repositoryName(): Promise<string> {
-    const nameWithOwner = await readGitHubRepositoryName(this.repoRoot, readGitHubInteractive, {
-      signal: this.options.signal,
-      operation: "pr-comment-repository",
-    });
-    if (!nameWithOwner) {
-      throw new Error("GitHub repository name is not available.");
-    }
-    return nameWithOwner;
+  /** 현재 branch의 native push/upstream 선택을 같은 typed session의 PR query로 읽는다. */
+  private async readCurrentPullRequest(branch: string, read: GhExecute): Promise<GhPullRequestView | undefined> {
+    const env = Object.fromEntries(Object.entries(gitHubReadSessionState(read)?.env ?? process.env)
+      .filter((pair): pair is [string, string] => pair[1] !== undefined));
+    const selector = await resolveCurrentPullRequestSelector(this.repoRoot, branch, this.options.signal, runGit, env);
+    return (await findPullRequestsForBranches(this.repoRoot, [selector], { signal: this.options.signal }, read)).get(branch);
+  }
+
+  /** 같은 bootstrap 응답의 canonical owner/name만 사용해 별도 repo view와 CLI 고정을 피한다. */
+  private async repositoryName(read: GhExecute): Promise<string> { return readSessionRepository(read).name; }
+
+  /** checkout 중 늦은 API/HTML 결과가 이전 branch snapshot으로 게시되지 못하게 한다. */
+  private async assertCurrentBranch(expected: string): Promise<void> {
+    throwIfAborted(this.options.signal);
+    if (await this.getCurrentBranch() !== expected) throw new GitHubReadContextChangedError();
   }
 
   /**
@@ -214,22 +211,23 @@ export class PullRequestReviewCommentService {
   private async readReviewComments(
     owner: string,
     name: string,
-    number: number
+    number: number,
+    read: GhExecute,
+    apiBase: string = readSessionRestApiBase(read)
   ): Promise<PullRequestReviewComment[]> {
     const all: PullRequestReviewComment[] = [];
     for (let page = 1; page <= MAX_PAGES; page++) {
-      const out = await readGitHubInteractive([
-        "api",
-        "-H",
-        "Accept: application/vnd.github-commitcomment.full+json",
-        `repos/${owner}/${name}/pulls/${number}/comments?per_page=${PAGE_SIZE}&page=${page}`,
-      ], this.repoRoot, { signal: this.options.signal, operation: "pr-review-comments" });
+      const path = `/repos/${owner}/${name}/pulls/${number}/comments?per_page=${PAGE_SIZE}&page=${page}`;
+      const accept = "application/vnd.github-commitcomment.full+json";
+      const request = restRead(path, accept, ["api", "-H", `Accept: ${accept}`, path.slice(1)]);
+      const out = await read(request.args, this.repoRoot, { signal: this.options.signal, operation: "pr-review-comments",
+        request: { ...request.request, responseMode: "page" } });
       throwIfAborted(this.options.signal);
-      const items = JSON.parse(out) as GhReviewComment[];
-      all.push(...items.map(normalizeReviewComment).filter(isReviewComment));
-      if (items.length < PAGE_SIZE) {
-        break;
-      }
+      const result = decodeRestPage<GhReviewComment[]>(out);
+      if (!Array.isArray(result.data)) throw new GitHubRestPageError("invalid-json");
+      all.push(...result.data.map(normalizeReviewComment).filter(isReviewComment));
+      if (nextRestPage(result, path, page, PAGE_SIZE, apiBase) === undefined) break;
+      if (page === MAX_PAGES) throw new GitHubRestPageError("pagination");
     }
     return inheritReplyCommentLocations(all);
   }
@@ -315,10 +313,4 @@ function attachSuggestedChangesets(
       ? { ...comment, suggestedChangesets }
       : comment;
   });
-}
-
-/** gh pr view 가 현재 브랜치의 PR 을 찾지 못한 오류인지 확인한다. */
-function isNoPullRequestError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /no pull requests? found|could not find.*pull request|not found.*pull request/i.test(message);
 }

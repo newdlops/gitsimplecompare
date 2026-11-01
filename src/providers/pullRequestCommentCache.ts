@@ -1,6 +1,8 @@
 // GitHub PR review comment 원격 조회와 저장소별 캐시 생명주기를 관리한다.
 // - 에디터 표시/포커스 판단은 controller 에 남기고, TTL·singleflight·저장된 인증 재사용만 담당한다.
 import * as vscode from "vscode";
+import { PullRequestCommentLoad, type PullRequestCommentProgress } from "./pullRequestCommentLoad";
+import { gitHubReadNetworkPolicy } from "../ui/githubTransportSettings";
 import {
   ActivePullRequestReviewComments,
   PullRequestReviewCommentService,
@@ -44,12 +46,6 @@ interface CacheGenerationSnapshot {
   repository: number;
 }
 
-/** 같은 저장소/브랜치 원격 조회를 공유할 때 취소까지 함께 관리하는 묶음. */
-interface PullRequestCommentInFlight {
-  controller: AbortController;
-  promise: Promise<ActivePullRequestReviewComments | undefined>;
-}
-
 /**
  * 저장소/브랜치별 PR review comment 조회를 TTL 캐시와 singleflight 로 감싼다.
  * - 같은 키의 동시 호출은 하나의 원격 Promise 를 공유해 gh/GitHub 요청 중복을 막는다.
@@ -57,10 +53,11 @@ interface PullRequestCommentInFlight {
  */
 export class PullRequestCommentCache {
   private readonly cache = new Map<string, PullRequestCommentCacheEntry>();
-  private readonly inFlightLoads = new Map<string, PullRequestCommentInFlight>();
+  private readonly inFlightLoads = new Map<string, PullRequestCommentLoad>();
   private readonly repoGenerations = new Map<string, number>();
   private activeKey: string | undefined;
   private globalGeneration = 0;
+  private disposed = false;
 
   /**
    * @param secrets GitHub 웹 suggested changeset 조회용 Cookie 헤더를 읽을 SecretStorage
@@ -80,11 +77,16 @@ export class PullRequestCommentCache {
    */
   async load(
     repoRoot: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onProgress?: PullRequestCommentProgress
   ): Promise<ActivePullRequestReviewComments | undefined> {
+    signal?.throwIfAborted();
+    if (this.disposed) throw new DOMException("PR review comment cache was disposed.", "AbortError");
     this.sweepExpiredEntries();
     const branchService = new PullRequestReviewCommentService(repoRoot);
     const branch = await branchService.getCurrentBranch();
+    signal?.throwIfAborted();
+    if (this.disposed) throw new DOMException("PR review comment cache was disposed.", "AbortError");
     if (!branch) {
       return undefined;
     }
@@ -95,26 +97,19 @@ export class PullRequestCommentCache {
       return cached.data;
     }
     const pending = this.inFlightLoads.get(key);
-    if (pending) {
+    if (pending && !pending.controller.signal.aborted) {
       logInfo("pr editor comments cache coalesced", { repoRoot, branch });
-      return pending.promise;
+      return pending.subscribe(signal, onProgress);
     }
     const generation = this.generation(repoRoot);
-    const controller = new AbortController();
-    const removeAbortListener = forwardAbort(signal, controller);
-    const load = this.loadUncached(repoRoot, branch, key, generation, controller.signal)
-      .finally(removeAbortListener);
-    const pendingLoad = { controller, promise: load };
+    const pendingLoad = new PullRequestCommentLoad((ownedSignal, publish) =>
+      this.loadUncached(repoRoot, branch, key, generation, ownedSignal, publish));
     this.inFlightLoads.set(key, pendingLoad);
     logInfo("pr editor comments load started", { repoRoot, branch });
-    try {
-      return await load;
-    } finally {
-      // 무효화 뒤 시작된 새 요청을 이전 요청의 finally 가 지우지 않도록 같은 Promise 만 제거한다.
-      if (this.inFlightLoads.get(key) === pendingLoad) {
-        this.inFlightLoads.delete(key);
-      }
-    }
+    void pendingLoad.promise.finally(() => {
+      if (this.inFlightLoads.get(key) === pendingLoad) this.inFlightLoads.delete(key);
+    }).catch(() => undefined);
+    return pendingLoad.subscribe(signal, onProgress);
   }
 
   /**
@@ -145,7 +140,7 @@ export class PullRequestCommentCache {
       this.activeKey = undefined;
     }
     for (const key of this.repositoryKeys(this.inFlightLoads, repoRoot)) {
-      this.inFlightLoads.get(key)?.controller.abort();
+      this.inFlightLoads.get(key)?.cancel();
       this.inFlightLoads.delete(key);
     }
   }
@@ -153,7 +148,7 @@ export class PullRequestCommentCache {
   /** 진행 중인 gh/HTTPS 조회를 취소해 오래된 editor 결과가 캐시에 들어가지 않게 한다. */
   cancel(reason: string): void {
     for (const pending of this.inFlightLoads.values()) {
-      pending.controller.abort();
+      pending.cancel();
     }
     this.inFlightLoads.clear();
     logInfo("pr editor comments load cancelled", { reason });
@@ -164,6 +159,7 @@ export class PullRequestCommentCache {
    * - gh/HTTPS 작업에는 AbortSignal을 전달해 자연 완료를 기다리지 않고 즉시 중단한다.
    */
   dispose(): void {
+    this.disposed = true;
     this.cancel("dispose");
     this.globalGeneration++;
     this.releaseEntries(Array.from(this.cache.keys()), "dispose");
@@ -188,16 +184,19 @@ export class PullRequestCommentCache {
     branch: string,
     key: string,
     generation: CacheGenerationSnapshot,
-    signal: AbortSignal
+    signal: AbortSignal,
+    onProgress?: PullRequestCommentProgress
   ): Promise<ActivePullRequestReviewComments | undefined> {
-    const [webAccessToken, webCookie] = await Promise.all([
+    const [webAccessToken, webCookie, networkPolicy] = await Promise.all([
       readGitHubAuthenticationToken(),
       readStoredGitHubWebCookie(this.secrets),
+      gitHubReadNetworkPolicy(repoRoot).catch(() => ({ transport: "auto" as const, systemProxy: "unknown" as const })),
     ]);
     const service = new PullRequestReviewCommentService(repoRoot, {
-      suggestedChangeset: webAccessToken || webCookie
-        ? { webAccessToken, webCookie }
-        : undefined,
+      suggestedChangeset: { webAccessToken, webCookie, networkPolicy },
+      onApiReady: data => {
+        if (!signal.aborted && this.isCurrent(repoRoot, generation)) onProgress?.(data);
+      },
       signal,
     });
     const data = await service.getActiveBranchReviewComments(branch);
@@ -403,15 +402,6 @@ function nestedStringWeight(value: unknown, visited: WeakSet<object>): number {
       (value as Record<string, unknown>)[key],
       visited
     ), 0);
-}
-
-/** 호출자 신호를 singleflight 요청 소유자에 전달하고 등록 해제 함수를 반환한다. */
-function forwardAbort(signal: AbortSignal | undefined, controller: AbortController): () => void {
-  if (!signal) return () => undefined;
-  const abort = () => controller.abort();
-  if (signal.aborted) abort();
-  else signal.addEventListener("abort", abort, { once: true });
-  return () => signal.removeEventListener("abort", abort);
 }
 
 /** 취소된 요청이 음수 캐시로 처리되지 않게 한다. */
