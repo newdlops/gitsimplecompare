@@ -1,0 +1,25 @@
+{
+  "observedAtUtc": "2026-11-01T10:06:16.930Z",
+  "sourceCommit": "516d170fd0d3cce93ac33ab3f16c4ed9d37a267d",
+  "productBaselineCommit": "341e1b2",
+  "productCodeUnchanged": true,
+  "statusAtCapture": {
+    "designApproval": "pending",
+    "implementationStarted": false
+  },
+  "command": "npm test -- test/pullRequestCommentLoading.test.ts test/pullRequestStackLifecycle.test.ts test/githubRepositoryCatalog.test.ts test/repositorySetupService.test.ts test/repositorySetupCommands.test.ts test/nativeInspectorDiscovery.test.ts test/nativeDiffOverlayRetry.test.ts test/pullRequestDependencyLookup.test.ts",
+  "exitCode": 0,
+  "tests": 45,
+  "pass": 45,
+  "fail": 0,
+  "cancelled": 0,
+  "skipped": 0,
+  "duration_ms": 5633.75275,
+  "initialSandboxRun": {
+    "pass": 42,
+    "fail": 3,
+    "reason": "localhost listen EPERM in the sandbox; exact same tests rerun outside that restriction"
+  },
+  "logSha256": "84702a294d851d4a01b9736c91a84a8ac63270fa958b3902c99938f60619428c",
+  "limitation": "Existing behavior baseline only; does not verify the proposed improvements."
+}
