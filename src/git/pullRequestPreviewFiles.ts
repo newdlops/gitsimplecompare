@@ -120,16 +120,20 @@ export async function fetchPullRequestPreviewFiles(
  *   보존해 호출부가 목록이 완전하지 않을 수 있음을 표시할 수 있게 한다.
  * @param cwd gh 를 실행할 저장소 루트
  * @param repository owner/name 형태의 GitHub 저장소 이름
- * @param number 조회할 PR 번호
+ * @param number 조회할 PR 번호, execute 페이지 전체가 공유할 읽기 실행기
  * @returns 댓글과 patch 를 제외한 changed files 및 잘림 여부
  */
 export async function fetchPullRequestChangedFiles(
   cwd: string,
   repository: string,
-  number: number
+  number: number,
+  execute: GhExecute = readGitHubInteractive
 ): Promise<PullRequestChangedFilesResult> {
+  const owns = !gitHubReadSessionState(execute);
+  const runner = createGitHubReadSession(cwd, execute);
   const [owner, name] = splitRepositoryName(repository);
-  const page = await readPullFiles(cwd, owner, name, number);
+  const page = await readPullFiles(cwd, owner, name, number, runner);
+  if (owns) await completeGitHubReadSession(runner);
   return {
     files: page.items.map(normalizeChangedFile),
     truncated: page.truncated,
@@ -207,17 +211,16 @@ async function readPagedResult<T>(
   const all: T[] = [];
   for (let page = 1; page <= maximumPages; page++) {
     const path = `repos/${owner}/${name}/${route}?per_page=${PAGE_SIZE}&page=${page}`;
-    const metadata = route.endsWith("/comments");
     const out = await runner([
       "api",
       ...headers.flatMap((header) => ["-H", header]),
       path,
-    ], cwd, { operation: "pr-preview-files", request: { ...restRead(`/${path}`, headers.find(header => /^Accept:/i.test(header))?.slice(7).trim()).request, ...(metadata ? { responseMode: "page" as const } : {}) } });
-    const result = metadata ? decodeRestPage<T[]>(out) : undefined;
-    const items = result ? result.data : JSON.parse(out) as T[];
+    ], cwd, { operation: "pr-preview-files", request: { ...restRead(`/${path}`, headers.find(header => /^Accept:/i.test(header))?.slice(7).trim()).request, responseMode: "page" } });
+    const result = decodeRestPage<T[]>(out);
+    const items = result.data;
     if (!Array.isArray(items)) throw new GitHubRestPageError("invalid-json");
     all.push(...items);
-    if (result ? nextRestPage(result, `/${path}`, page, PAGE_SIZE, readSessionRestApiBase(runner)) === undefined : items.length < PAGE_SIZE) {
+    if (nextRestPage(result, `/${path}`, page, PAGE_SIZE, readSessionRestApiBase(runner)) === undefined) {
       return { items: all, truncated: false };
     }
   }

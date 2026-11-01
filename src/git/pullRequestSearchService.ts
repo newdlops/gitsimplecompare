@@ -13,6 +13,8 @@ import { logInfo } from "../ui/outputLog";
 import type { GhExecute } from "./ghRunner";
 import { completeSearchPullRequests, fetchSearchPullRequestsByNumber } from "./pullRequestSearchReads";
 import { splitRepositoryName } from "./githubRepository";
+import { decodeRestPage, nextRestPage } from "./githubRestPages";
+import { readSessionRestApiBase } from "./githubRestSession";
 import {
   buildPullRequestInfoQuery,
 } from "./pullRequestInfo";
@@ -221,21 +223,22 @@ async function searchByCommitHash(
   const numbers = new Set<number>();
   for (let page = 1; ; page++) {
     const path = `${route}${page > 1 ? `&page=${page}` : ""}`;
-    const out = await runner(["api", path], repoRoot, { operation: "pr-search-associated", request: restRead(`/${path}`).request }).catch(error => {
+    const out = await runner(["api", path], repoRoot, { operation: "pr-search-associated", request: { ...restRead(`/${path}`).request, responseMode: "page" } }).catch(error => {
       // 첫 페이지의 존재하지 않는 commit만 보완한다. 후속 실패를 완성된 빈 페이지로 숨기지 않는다.
       if (page === 1 && error instanceof GitHubApiError && (error.status === 404 || error.status === 422 && error.reason === "missing-commit")) return "";
       if (page === 1 && error instanceof GhCliError && (/\bHTTP 404\b/i.test(error.stderr)
         || /\bHTTP 422\b/i.test(error.stderr) && /no commit found for sha/i.test(error.stderr))) return "";
       throw error;
     });
-    const associated = out ? JSON.parse(out) as GhAssociatedPullRequest[] : [];
+    const response = out ? decodeRestPage<GhAssociatedPullRequest[]>(out) : { data: [] };
+    const associated = response.data;
     if (!Array.isArray(associated) || associated.length > 100
       || associated.some(pr => !pr || !Number.isSafeInteger(pr.number) || Number(pr.number) <= 0)) {
       throw new Error("GitHub pull request associations are incomplete. Refresh to try again.");
     }
     const before = numbers.size;
     for (const pr of associated) numbers.add(pr.number!);
-    if (associated.length < 100) {
+    if (nextRestPage(response, `/${path}`, page, 100, readSessionRestApiBase(runner)) === undefined) {
       if (page > 1) logInfo("GitHub associated pull requests loaded", { repoRoot, pages: page, pullRequests: numbers.size });
       break;
     }

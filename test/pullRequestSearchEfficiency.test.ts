@@ -7,6 +7,24 @@ import { searchPullRequests } from "../src/git/pullRequestSearchService";
 import { fetchSearchPullRequestsByNumber } from "../src/git/pullRequestSearchReads";
 import type { GhPullRequestNode } from "../src/git/pullRequestInfo";
 import { safetyFixture } from "./helpers/gitSafetyFixture";
+import { encodeRestPage, restPageMetadata } from "../src/git/githubRestPages";
+
+test("SHA association search stops on a known-final full REST page", async t => {
+  clearGitHubRepositoryNameCache(); t.after(clearGitHubRepositoryNameCache);
+  const f = await safetyFixture(t, "association-final"); let associated = 0;
+  const result = await searchPullRequests(f.root, "abcdef0", undefined, undefined, async (args, _root, options) => {
+    if (args[0] === "repo") return JSON.stringify({ nameWithOwner: "fixture/repo" });
+    if (options.operation === "pr-search") return JSON.stringify(search());
+    if (options.operation === "pr-search-associated") {
+      associated++;
+      return encodeRestPage(JSON.stringify(Array.from({ length: 100 }, (_, index) => ({ number: index + 1 }))), restPageMetadata(200, {}));
+    }
+    const query = args.find(arg => arg.startsWith("query=")) || "";
+    const numbers = [...query.matchAll(/p(\d+):\s*pullRequest/g)].map(match => Number(match[1]));
+    return JSON.stringify({ data: { repository: Object.fromEntries(numbers.map(number => [`p${number}`, node(number)])) } });
+  });
+  assert.equal(result.pullRequests.length, 100); assert.equal(associated, 1);
+});
 
 /** 첫 검색·단건·묶음 조회가 공통으로 반환할 완전한 PR metadata다. */
 function node(number: number) {

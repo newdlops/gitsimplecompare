@@ -6,6 +6,8 @@ import type { PullRequestPreviewCommit } from "./pullRequestPreviewCommits";
 import { normalizePreviewStatus } from "./pullRequestPreviewFiles";
 import { createGitHubReadSession, completeGitHubReadSession, gitHubReadSessionState } from "./githubReadSession";
 import { graphQLRequest, restRead } from "./githubReadRequest";
+import { decodeRestPage, nextRestPage } from "./githubRestPages";
+import { readSessionRestApiBase } from "./githubRestSession";
 
 const generations = new Map<string, number>();
 /**
@@ -122,13 +124,17 @@ export async function fetchRemotePreviewCommit(root: string, repository: string,
   for (let page = 1; ; page++) {
     const path = `repos/${repository}/commits/${hash}?per_page=100&page=${page}`;
     const out = await runner(["api", path], root,
-      { operation: "pr-preview-commit-files", signal, request: restRead(`/${path}`).request,
+      { operation: "pr-preview-commit-files", signal, request: { ...restRead(`/${path}`).request, responseMode: "page" },
         ...{ version: "commit", ttlMs: COMMIT_FILES_TTL_MS } });
-    const value = JSON.parse(out) as { sha?: string; files?: Array<{ filename: string; previous_filename?: string; status?: string; additions?: number; deletions?: number; patch?: string }> };
+    const response = decodeRestPage<{ sha?: string; files?: Array<{ filename: string; previous_filename?: string; status?: string; additions?: number; deletions?: number; patch?: string }> }>(out);
+    const value = response.data;
     if (value.sha !== hash || !Array.isArray(value.files)) throw new Error("GitHub returned incomplete commit files.");
     result.files.push(...value.files.map(file => ({ path: file.filename, oldPath: file.previous_filename,
       status: normalizePreviewStatus(file.status), additions: file.additions ?? 0, deletions: file.deletions ?? 0, patch: file.patch, comments: [] })));
-    if (value.files.length < 100) return result;
+    if (nextRestPage({ ...response, data: value.files }, `/${path}`, page, 100, readSessionRestApiBase(runner)) === undefined) {
+      await completeGitHubReadSession(runner, signal);
+      return result;
+    }
     if (page >= 30) throw new Error("GitHub commit file limit reached. Open this commit on GitHub to inspect all files.");
   }
 }

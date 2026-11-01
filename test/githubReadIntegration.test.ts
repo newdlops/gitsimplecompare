@@ -21,6 +21,8 @@ import type { GhExecute } from "../src/git/ghRunner";
 import { readGitHubRepositoryName } from "../src/git/githubRepositoryName";
 import { fetchPullRequestRefs } from "../src/git/pullRequestRefLookup";
 import { lookupPullRequestDependencies, lookupPullRequestDependencyDetails } from "../src/git/pullRequestDependencyLookup";
+import { fetchPullRequestChangedFiles } from "../src/git/pullRequestPreviewFiles";
+import { fetchRemotePreviewCommit } from "../src/git/pullRequestPreviewRemote";
 
 /** 실제 세션의 파일 metadata 관찰을 쓰며 환경·GitHub 설정은 임시 fixture에 격리한다. */
 async function fixture(t: test.TestContext) {
@@ -44,6 +46,43 @@ function pr(): any { return { number: 7, title: "Fixture", state: "OPEN", url: "
   headRefName: "topic", baseRefName: "main", headRefOid: "head", baseRefOid: "base", headHash: "head", baseHash: "base", files: { totalCount: 1 }, comments: { totalCount: 0 },
   commits: { nodes: [{ commit: { oid: "head", messageHeadline: "Fixture" } }], pageInfo: { hasNextPage: false } },
   reviewThreads: { nodes: [], pageInfo: { hasNextPage: false } } }; }
+
+test("changed-files read binds one credential session and uses HTTP after scope discovery", async t => {
+  const f = await fixture(t);
+  const executable = join(f.root, "gh-empty");
+  await writeFile(executable, `#!${process.execPath}\nconsole.log('[]');\n`);
+  await chmod(executable, 0o755); process.env.GITHUB_CLI_PATH = executable;
+  const context = await captureGitHubRequestContext(f.root, { ...process.env }, ["repo"]);
+  gitHubRepositoryScopes.learn(f.root, context, { nameWithOwner: "owner/repo", url: "https://github.com/owner/repo" });
+  let http = 0, cli = 0, credentials = 0;
+  const runtime = new GitHubReadRuntime({ policy: async () => ({ transport: "auto", systemProxy: "none" }),
+    credentials: new GitHubCredentialProvider(async () => { credentials++; return "fixture-token"; }),
+    cli: async () => { cli++; return "[]"; },
+    http: { read: async request => {
+      http++; assert.equal(request.kind, "rest");
+      if (request.kind === "rest") assert.equal(request.path, "/repos/owner/repo/pulls/7/files?per_page=100&page=1");
+      return encodeRestPage(JSON.stringify([{ filename: "new.ts", previous_filename: "old.ts", status: "renamed", additions: 2, deletions: 1 }]), restPageMetadata(200, {}));
+    }, dispose: async () => {} } });
+  const cache = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
+  t.after(async () => { await cache.dispose(); await runtime.dispose(); });
+  const result = await fetchPullRequestChangedFiles(f.root, "{owner}/{repo}", 7,
+    (args, root, options) => cache.read(args, root, options));
+  assert.deepEqual({ http, cli, credentials }, { http: 1, cli: 0, credentials: 1 });
+  assert.equal(result.files[0].oldPath, "old.ts"); assert.equal(result.truncated, false);
+});
+
+test("selected commit file object stops at a known final full page", async t => {
+  const f = await fixture(t), count = join(f.root, "count"), executable = join(f.root, "gh-commit");
+  const hash = "a".repeat(40);
+  await writeFile(count, "0");
+  await writeFile(executable, `#!${process.execPath}\nconst fs=require('node:fs'),a=process.argv.slice(2),c=${JSON.stringify(count)};const n=Number(fs.readFileSync(c));fs.writeFileSync(c,String(n+1));if(a.includes('--include'))console.log('HTTP/2 200 OK\\ncontent-type: application/json\\n');console.log(JSON.stringify({sha:${JSON.stringify(hash)},files:n?[]:Array.from({length:100},(_,i)=>({filename:'file-'+i,status:'modified'}))}));\n`);
+  await chmod(executable, 0o755); process.env.GITHUB_CLI_PATH = executable;
+  const reset = setGitHubReadPolicyResolver(async () => ({ transport: "cli", systemProxy: "none" }));
+  const stop = beginGitHubReadLifetime(); t.after(async () => { await stop(); reset(); });
+  const result = await fetchRemotePreviewCommit(f.root, "owner/repo", hash);
+  assert.equal(result.files.length, 100); assert.equal(result.files.at(-1)?.path, "file-99");
+  assert.equal(Number(await readFile(count, "utf8")), 1);
+});
 
 for (const operation of ["refs", "prerequisites", "prerequisite-details"] as const) {
   test(`production ${operation} uses typed HTTP after scope discovery with one actual credential lease`, async t => {
