@@ -95,6 +95,8 @@ Cookie·Authorization·Set-Cookie와 원문 HTTP 오류는 envelope에 넣지 �
 - body-only 요청은 기존 값 그대로 반환한다. GraphQL과 native Git은 envelope를 사용하지 않는다.
 - 직접 HTTP는 기존 body/ETag 캐시에 페이지 metadata를 함께 저장한다. 304에서는 완전한 기존 body와 Link를 복원한다.
   body 없는 304는 기존처럼 unconditional GET을 한 번만 허용한다.
+- 304가 새 Link를 반환하면 갱신한다. Link를 생략한 304는 과거의 종료 판정을 최신으로 확정하지 않는다.
+  알려진 next는 따라가되, next가 없고 body가 꽉 찬 경우에는 길이 fallback으로 새 tail 누락을 방지한다.
 - production CLI adapter는 opt-in REST 요청에만 `gh api --include`를 사용하고 최종 응답 헤더를 envelope로 정규화한다.
   기존 service/fake runner의 plain JSON body도 reader가 받아 기존 page-length 종료 판정으로 fallback한다.
 - Link가 있으면 `rel=next`를 사용한다. 다음 URL은 같은 API origin·같은 endpoint/query·증가하는 page여야 한다.

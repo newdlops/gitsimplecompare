@@ -14,6 +14,8 @@ export interface GitHubRestRequest {
   readonly kind: "rest";
   readonly path: string;
   readonly accept: string;
+  /** 명시한 페이지 reader만 metadata envelope를 받는다. 생략하면 기존 JSON body 그대로다. */
+  readonly responseMode?: "page";
 }
 export type GitHubReadRequest = GitHubGraphQLRequest | GitHubRestRequest;
 interface GraphQLOptions {

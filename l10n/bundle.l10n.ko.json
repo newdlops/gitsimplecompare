@@ -1948,5 +1948,6 @@
   "GitHub returned incomplete data. Refresh to try again.": "GitHub가 불완전한 데이터를 반환했습니다. 새로고침하여 다시 시도하세요.",
   "GitHub connection failed. Refresh to try again.": "GitHub 연결에 실패했습니다. 새로고침하여 다시 시도하세요.",
   "GitHub response exceeded the size limit.": "GitHub 응답이 크기 제한을 초과했습니다.",
-  "GitHub redirected this read to an unsupported destination.": "GitHub가 읽기 요청을 지원되지 않는 대상으로 리디렉션했습니다."
+  "GitHub redirected this read to an unsupported destination.": "GitHub가 읽기 요청을 지원되지 않는 대상으로 리디렉션했습니다.",
+  "Cannot read a complete GitHub REST page. Refresh and try again.": "GitHub REST 페이지를 완전히 읽을 수 없습니다. 새로고침한 뒤 다시 시도하세요."
 }

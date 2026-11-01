@@ -1,5 +1,6 @@
 // REST의 완전한 body/ETag와 GitHub rate-limit cooldown만 bounded 메모리에 보관한다.
-interface Body { value: string; etag: string; bytes: number; }
+import type { GitHubRestPageMetadata } from "./githubRestPages";
+interface Body { value: string; etag: string; bytes: number; metadata: GitHubRestPageMetadata; }
 export class GitHubHttpCache {
   private readonly bodies = new Map<string, Body>();
   private readonly cooldowns = new Map<string, number>();
@@ -13,11 +14,11 @@ export class GitHubHttpCache {
   }
 
   /** 단일 4MiB, 전체 16MiB/128개 상한으로 body와 ETag를 함께 저장한다. */
-  put(key: string, value: string, etag?: string): void {
+  put(key: string, value: string, etag: string | undefined, metadata: GitHubRestPageMetadata): void {
     this.remove(key);
-    const bytes = Buffer.byteLength(value);
+    const bytes = Buffer.byteLength(value) + Buffer.byteLength(JSON.stringify(metadata));
     if (!etag || bytes > 4 * 1024 * 1024) return;
-    this.bodies.set(key, { value, etag, bytes }); this.bytes += bytes;
+    this.bodies.set(key, { value, etag, bytes, metadata: { ...metadata } }); this.bytes += bytes;
     while (this.bodies.size > 128 || this.bytes > 16 * 1024 * 1024) this.remove(this.bodies.keys().next().value!);
   }
 

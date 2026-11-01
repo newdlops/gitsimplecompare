@@ -13,6 +13,7 @@ import { graphqlRead, restRead } from "../src/git/githubReadRequest";
 import { graphQLResult } from "../src/git/githubApiError";
 import { GitHubHttpPool } from "../src/git/githubHttpPool";
 import { EventEmitter } from "node:events";
+import { decodeRestPage, nextRestPage } from "../src/git/githubRestPages";
 
 /** 로컬 TLS 검증도 유지하면서 production API 요청을 fixture 서버로만 보낸다. */
 async function fixture(t: test.TestContext, handler: (req: IncomingMessage, res: ServerResponse) => void) {
@@ -58,6 +59,45 @@ test("304 without a complete body performs one unconditional read", async t => {
     calls++; res.writeHead(calls === 1 ? 304 : 200); res.end(calls === 1 ? "" : '{"ok":true}');
   });
   assert.equal(await f.read("/missing"), '{"ok":true}'); assert.equal(calls, 2);
+});
+
+test("page metadata survives a 304 even when the body was first read without an envelope", async t => {
+  const link = '<https://api.github.com/page?per_page=100&page=2>; rel="next"';
+  const f = await fixture(t, (req, res) => {
+    if (req.headers["if-none-match"]) { res.writeHead(304); res.end(); }
+    else { res.writeHead(200, { etag: '"page"', link, "set-cookie": "fixture-secret" }); res.end('[{"id":7}]'); }
+  });
+  assert.equal(await f.read("/page?per_page=100&page=1"), '[{"id":7}]');
+  const request = { ...restRead("/page?per_page=100&page=1").request, responseMode: "page" as const };
+  const value = JSON.parse(await f.transport.read(request, f.credential, { operation: "fixture-page", deadline: Date.now() + 3000 }));
+  assert.deepEqual(value, { __gscRestPage: 1, body: '[{"id":7}]', metadata: { status: 200, link, etag: '"page"', paginationKnown: false } });
+  assert.deepEqual(f.count(), { requests: 2, connections: 1 });
+});
+
+test("304 pagination uses newly supplied Link when unchanged page data gains a tail", async t => {
+  const link = '<https://api.github.com/items?per_page=100&page=2>; rel="next"';
+  const f = await fixture(t, (req, res) => {
+    if (req.headers["if-none-match"]) { res.writeHead(304, { link }); res.end(); }
+    else { res.writeHead(200, { etag: "fixture-etag" }); res.end(JSON.stringify(Array.from({ length: 100 }, (_, id) => ({ id })))); }
+  });
+  const path = "/items?per_page=100&page=1";
+  await f.read(path);
+  const page = decodeRestPage<unknown[]>(await f.transport.read({ ...restRead(path).request, responseMode: "page" }, f.credential,
+    { operation: "fixture-page", deadline: Date.now() + 3000 }));
+  assert.equal(page.metadata?.link, link);
+  assert.equal(nextRestPage(page, path, 1), 2);
+});
+
+test("a 304 without current Link cannot reuse an old terminal-page assumption", async t => {
+  const f = await fixture(t, (req, res) => {
+    if (req.headers["if-none-match"]) { res.writeHead(304); res.end(); }
+    else { res.writeHead(200, { etag: "fixture-etag" }); res.end(JSON.stringify(Array.from({ length: 100 }, (_, id) => ({ id })))); }
+  });
+  const path = "/items?per_page=100&page=1";
+  await f.read(path);
+  const page = decodeRestPage<unknown[]>(await f.transport.read({ ...restRead(path).request, responseMode: "page" }, f.credential,
+    { operation: "fixture-page", deadline: Date.now() + 3000 }));
+  assert.equal(nextRestPage(page, path, 1), 2, "A newly added second page must not disappear behind a cached terminal Link");
 });
 
 test("REST allows only bounded same-origin redirects; GraphQL never redirects", async t => {

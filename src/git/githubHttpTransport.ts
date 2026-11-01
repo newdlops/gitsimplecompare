@@ -9,6 +9,7 @@ import { GitHubApiError } from "./githubApiError";
 import type { GitHubReadRequest } from "./githubReadRequest";
 import type { GitHubCredentialLease } from "./githubCredential";
 import { logInfo } from "../ui/outputLog";
+import { encodeRestPage, restPageMetadata, revalidateRestPageMetadata } from "./githubRestPages";
 
 type RequestFactory = (options: RequestOptions, callback: (res: IncomingMessage) => void) => ClientRequest;
 interface Options {
@@ -98,7 +99,11 @@ export class GitHubHttpTransport {
         path = target.pathname + target.search; continue;
       }
       if (status === 304 && request.kind === "rest") {
-        if (cached) return cached.value;
+        if (cached) {
+          const metadata = revalidateRestPageMetadata(cached.metadata, headers);
+          this.cache.put(key, cached.value, metadata.etag ?? cached.etag, metadata);
+          return request.responseMode === "page" ? encodeRestPage(cached.value, metadata) : cached.value;
+        }
         if (unconditional) throw new GitHubApiError("http", options.operation, status);
         unconditional = true; continue;
       }
@@ -133,7 +138,11 @@ export class GitHubHttpTransport {
       if (request.kind === "graphql" && Array.isArray(parsed?.errors) && parsed.errors.length) {
         throw new GitHubApiError("graphql", options.operation, status, undefined, parsed);
       }
-      if (request.kind === "rest" && status === 200) this.cache.put(key, body, headers.etag);
+      if (request.kind === "rest") {
+        const metadata = restPageMetadata(status, headers);
+        if (status === 200) this.cache.put(key, body, headers.etag, metadata);
+        if (request.responseMode === "page") return encodeRestPage(body, metadata);
+      }
       return body;
     }
   }

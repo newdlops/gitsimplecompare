@@ -42,7 +42,7 @@ export class GitHubReadCache {
     await this.prepare?.(root, { ...options, env });
     if (this.disposed || options.signal?.aborted) throw cancelled();
     const key = JSON.stringify([root, context ?? Math.random(), options.readSession?.credentialKey ?? "", options.readSession?.generation,
-      options.version || "", args]);
+      options.version || "", args, options.request?.kind === "rest" ? options.request.responseMode ?? "body" : "body"]);
     const ttl = context === undefined ? 0 : options.ttlMs ?? 0;
     this.sweep();
     const cached = this.cache.get(key);

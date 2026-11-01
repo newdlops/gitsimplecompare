@@ -32,11 +32,11 @@
 **Files:** create `src/git/githubRestPages.ts`, `test/githubRestPages.test.ts`; modify `githubReadRequest.ts`, `githubReadRuntime.ts`, `githubHttpTransport.ts`, `githubHttpCache.ts`, relevant routing/transport tests.
 **Interfaces:** optional `GitHubRestRequest.responseMode: "page"`; exported `encodeRestPage`, `decodeRestPage<T>` and `nextRestPage`. The envelope carries raw JSON body plus allowlisted metadata and a version marker; body-only requests are unchanged. CLI runtime opts into `--include` only for page descriptors.
 
-- [ ] Write regressions for body-only parity, CLI final headers, envelope allowlist, 304 Link restoration, cache-mode separation, 0/99/100/101/200/1000/1001 boundaries, unsafe/repeated/skip next URLs and headerless fallback.
-- [ ] Run `npm test -- test/githubRestPages.test.ts test/githubReadRouting.test.ts test/githubHttpTransport.test.ts`; verify failures are missing behavior.
-- [ ] Implement descriptor/CLI/HTTP/cache metadata and strict same-endpoint next-page validation; retain effective complete body on 304.
-- [ ] Run the same tests and `npm run check-types`; expected green.
-- [ ] Commit `feat: preserve REST page metadata across GitHub transports`.
+- [x] Write regressions for body-only parity, CLI final headers, envelope allowlist, 304 Link restoration, cache-mode separation, 0/99/100/101/200/1000/1001 boundaries, unsafe/repeated/skip next URLs and headerless fallback.
+- [x] Run `npm test -- test/githubRestPages.test.ts test/githubReadRouting.test.ts test/githubHttpTransport.test.ts`; verify failures are missing behavior.
+- [x] Implement descriptor/CLI/HTTP/cache metadata and strict same-endpoint next-page validation; retain effective complete body on 304.
+- [x] Run the same tests and `npm run check-types`; expected green.
+- [x] Commit `feat: preserve REST page metadata across GitHub transports`.
 
 ## Task 2: Typed ref and prerequisite reads
 

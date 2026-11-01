@@ -8,6 +8,7 @@ import { GitHubReadContextChangedError } from "./githubReadSession";
 import { logInfo } from "../ui/outputLog";
 import { GitHubPullRequestSnapshots } from "./githubPullRequestSnapshots";
 import { GitHubApiError } from "./githubApiError";
+import { normalizeRestPageCli, restPageCliArgs } from "./githubRestPages";
 
 type PolicyResolver = (root: string) => Promise<GitHubNetworkPolicy>;
 let policyResolver: PolicyResolver = async () => ({ transport: "auto", systemProxy: "unknown" });
@@ -88,7 +89,11 @@ export class GitHubReadRuntime {
     }
     const started = Date.now();
     const cliOptions = state?.credential ? { ...options, env: (await state.credential).cliEnvironment(options.env ?? state.env) } : options;
-    try { return await this.cli(args, root, cliOptions); }
+    try {
+      const page = options.request?.kind === "rest" && options.request.responseMode === "page";
+      const output = await this.cli(page ? restPageCliArgs(args) : args, root, cliOptions);
+      return page ? normalizeRestPageCli(output) : output;
+    }
     finally { logInfo("GitHub CLI read closed", { operation: options.operation, transport: "cli", cliCount: 1, httpCount: 0, totalMs: Date.now() - started }); }
   };
 
