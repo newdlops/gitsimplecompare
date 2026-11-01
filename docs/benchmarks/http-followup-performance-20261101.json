@@ -1,0 +1,692 @@
+{
+  "sourceBefore": "341e1b2",
+  "sourceAfter": "04bc29bc0e1c1f47edff032a129d9fac155a92f4",
+  "node": "v22.22.2",
+  "git": "git version 2.50.1 (Apple Git-155)",
+  "recordedAt": "2026-11-01T12:39:08.657Z",
+  "evidencePolicy": "Controlled fixtures only; no private payload/auth headers included. Wall times include complete service work. Server bytes are HTTP response body bytes, not TCP packet bytes.",
+  "records": [
+    {
+      "id": "H1",
+      "evidence": "Controlled real TLS HTML plus actual fixture gh process; equal OAuth token across fallback paths",
+      "payloadEquality": true,
+      "pairs": [
+        {
+          "before": {
+            "wallMs": 462.9704999923706,
+            "requests": 6,
+            "responseBodyBytes": 74,
+            "newConnections": 1,
+            "reads": 1,
+            "cliCalls": 2,
+            "authCalls": 1,
+            "graphql": 0,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "02600829178cbb485643c9832575924245146de26019c36e04cba152605d8690"
+          },
+          "after": {
+            "wallMs": 149.68970799446106,
+            "requests": 2,
+            "responseBodyBytes": 54,
+            "newConnections": 1,
+            "reads": 1,
+            "cliCalls": 2,
+            "authCalls": 1,
+            "graphql": 0,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "02600829178cbb485643c9832575924245146de26019c36e04cba152605d8690"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 125.13349997997284,
+            "requests": 6,
+            "responseBodyBytes": 74,
+            "newConnections": 0,
+            "reads": 1,
+            "cliCalls": 2,
+            "authCalls": 1,
+            "graphql": 0,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "02600829178cbb485643c9832575924245146de26019c36e04cba152605d8690"
+          },
+          "after": {
+            "wallMs": 128.99933299422264,
+            "requests": 2,
+            "responseBodyBytes": 54,
+            "newConnections": 1,
+            "reads": 1,
+            "cliCalls": 2,
+            "authCalls": 1,
+            "graphql": 0,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "02600829178cbb485643c9832575924245146de26019c36e04cba152605d8690"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 115.15916699171066,
+            "requests": 6,
+            "responseBodyBytes": 74,
+            "newConnections": 0,
+            "reads": 1,
+            "cliCalls": 2,
+            "authCalls": 1,
+            "graphql": 0,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "02600829178cbb485643c9832575924245146de26019c36e04cba152605d8690"
+          },
+          "after": {
+            "wallMs": 120.06220802664757,
+            "requests": 2,
+            "responseBodyBytes": 54,
+            "newConnections": 1,
+            "reads": 1,
+            "cliCalls": 2,
+            "authCalls": 1,
+            "graphql": 0,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "02600829178cbb485643c9832575924245146de26019c36e04cba152605d8690"
+          }
+        }
+      ]
+    },
+    {
+      "id": "H2",
+      "evidence": "Controlled real TLS, eight fragments, 15ms response delay; content-encoding negotiated normally",
+      "payloadEquality": true,
+      "pairs": [
+        {
+          "before": {
+            "wallMs": 150.17787501215935,
+            "requests": 9,
+            "responseBodyBytes": 104691,
+            "newConnections": 0,
+            "payloadHash": "46f05dd3d0e8b92fc60c4bb4045a49e05e863e8f0d1c9c4a624556a0456a6713"
+          },
+          "after": {
+            "wallMs": 95.33650001883507,
+            "requests": 9,
+            "responseBodyBytes": 836,
+            "newConnections": 2,
+            "payloadHash": "46f05dd3d0e8b92fc60c4bb4045a49e05e863e8f0d1c9c4a624556a0456a6713"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 151.54308301210403,
+            "requests": 9,
+            "responseBodyBytes": 104691,
+            "newConnections": 0,
+            "payloadHash": "46f05dd3d0e8b92fc60c4bb4045a49e05e863e8f0d1c9c4a624556a0456a6713"
+          },
+          "after": {
+            "wallMs": 92.20987498760223,
+            "requests": 9,
+            "responseBodyBytes": 836,
+            "newConnections": 2,
+            "payloadHash": "46f05dd3d0e8b92fc60c4bb4045a49e05e863e8f0d1c9c4a624556a0456a6713"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 152.16645899415016,
+            "requests": 9,
+            "responseBodyBytes": 104691,
+            "newConnections": 0,
+            "payloadHash": "46f05dd3d0e8b92fc60c4bb4045a49e05e863e8f0d1c9c4a624556a0456a6713"
+          },
+          "after": {
+            "wallMs": 90.09895798563957,
+            "requests": 9,
+            "responseBodyBytes": 836,
+            "newConnections": 2,
+            "payloadHash": "46f05dd3d0e8b92fc60c4bb4045a49e05e863e8f0d1c9c4a624556a0456a6713"
+          }
+        }
+      ]
+    },
+    {
+      "id": "H4",
+      "evidence": "Actual comment service/fake gh with real TLS enrichment delayed 200ms; before first display was final completion",
+      "payloadEquality": true,
+      "pairs": [
+        {
+          "before": {
+            "wallMs": 439.19616600871086,
+            "firstReadyMs": 439.19616600871086,
+            "requests": 1,
+            "responseBodyBytes": 39,
+            "newConnections": 0,
+            "reads": 4,
+            "cliCalls": 4,
+            "authCalls": 0,
+            "graphql": 0,
+            "prViews": 1,
+            "broad": 1,
+            "writes": 0,
+            "payloadHash": "60644d22ee0cdf0f6e56e16fc746ddb5db96f51c9e608fe31b3fd1199e909dda"
+          },
+          "after": {
+            "wallMs": 487.27008298039436,
+            "firstReadyMs": 201.8535829782486,
+            "requests": 1,
+            "responseBodyBytes": 56,
+            "newConnections": 1,
+            "reads": 3,
+            "cliCalls": 3,
+            "authCalls": 0,
+            "graphql": 1,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "60644d22ee0cdf0f6e56e16fc746ddb5db96f51c9e608fe31b3fd1199e909dda"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 363.39512500166893,
+            "firstReadyMs": 363.39512500166893,
+            "requests": 1,
+            "responseBodyBytes": 39,
+            "newConnections": 0,
+            "reads": 3,
+            "cliCalls": 3,
+            "authCalls": 0,
+            "graphql": 0,
+            "prViews": 1,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "60644d22ee0cdf0f6e56e16fc746ddb5db96f51c9e608fe31b3fd1199e909dda"
+          },
+          "after": {
+            "wallMs": 539.4035830199718,
+            "firstReadyMs": 253.5214579999447,
+            "requests": 1,
+            "responseBodyBytes": 56,
+            "newConnections": 1,
+            "reads": 3,
+            "cliCalls": 4,
+            "authCalls": 1,
+            "graphql": 1,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "60644d22ee0cdf0f6e56e16fc746ddb5db96f51c9e608fe31b3fd1199e909dda"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 366.92774999141693,
+            "firstReadyMs": 366.92774999141693,
+            "requests": 1,
+            "responseBodyBytes": 39,
+            "newConnections": 0,
+            "reads": 3,
+            "cliCalls": 3,
+            "authCalls": 0,
+            "graphql": 0,
+            "prViews": 1,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "60644d22ee0cdf0f6e56e16fc746ddb5db96f51c9e608fe31b3fd1199e909dda"
+          },
+          "after": {
+            "wallMs": 485.5674580037594,
+            "firstReadyMs": 203.95283299684525,
+            "requests": 1,
+            "responseBodyBytes": 56,
+            "newConnections": 1,
+            "reads": 3,
+            "cliCalls": 4,
+            "authCalls": 1,
+            "graphql": 1,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "60644d22ee0cdf0f6e56e16fc746ddb5db96f51c9e608fe31b3fd1199e909dda"
+          }
+        }
+      ]
+    },
+    {
+      "id": "M2",
+      "evidence": "Real production session/cache/routing with controlled complete GraphQL data; deterministic routing counts",
+      "payloadEquality": true,
+      "pairs": [
+        {
+          "before": {
+            "wallMs": 5.08304101228714,
+            "http": 0,
+            "cli": 3,
+            "credentials": 0,
+            "payloadHash": "6e97e844df714f5f5e4fb9da6dff13ba8b917553fdf3c513059437d984f29c5f"
+          },
+          "after": {
+            "wallMs": 8.497500002384186,
+            "http": 3,
+            "cli": 0,
+            "credentials": 3,
+            "payloadHash": "6e97e844df714f5f5e4fb9da6dff13ba8b917553fdf3c513059437d984f29c5f"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 4.64054200053215,
+            "http": 0,
+            "cli": 3,
+            "credentials": 0,
+            "payloadHash": "6e97e844df714f5f5e4fb9da6dff13ba8b917553fdf3c513059437d984f29c5f"
+          },
+          "after": {
+            "wallMs": 8.703958004713058,
+            "http": 3,
+            "cli": 0,
+            "credentials": 3,
+            "payloadHash": "6e97e844df714f5f5e4fb9da6dff13ba8b917553fdf3c513059437d984f29c5f"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 4.547374993562698,
+            "http": 0,
+            "cli": 3,
+            "credentials": 0,
+            "payloadHash": "6e97e844df714f5f5e4fb9da6dff13ba8b917553fdf3c513059437d984f29c5f"
+          },
+          "after": {
+            "wallMs": 14.320416986942291,
+            "http": 3,
+            "cli": 0,
+            "credentials": 3,
+            "payloadHash": "6e97e844df714f5f5e4fb9da6dff13ba8b917553fdf3c513059437d984f29c5f"
+          }
+        }
+      ]
+    },
+    {
+      "id": "M1",
+      "evidence": "Actual Conversation service; controlled complete 100-item terminal page and 15ms API delay",
+      "payloadEquality": true,
+      "pairs": [
+        {
+          "before": {
+            "wallMs": 33.022459000349045,
+            "requests": 4,
+            "payloadHash": "36705207eb227a77cc643f554f614bfaac79740b033e9983fb6c284f00823f6e"
+          },
+          "after": {
+            "wallMs": 20.221500009298325,
+            "requests": 3,
+            "payloadHash": "36705207eb227a77cc643f554f614bfaac79740b033e9983fb6c284f00823f6e"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 32.79570800065994,
+            "requests": 4,
+            "payloadHash": "36705207eb227a77cc643f554f614bfaac79740b033e9983fb6c284f00823f6e"
+          },
+          "after": {
+            "wallMs": 22.270374983549118,
+            "requests": 3,
+            "payloadHash": "36705207eb227a77cc643f554f614bfaac79740b033e9983fb6c284f00823f6e"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 33.14812499284744,
+            "requests": 4,
+            "payloadHash": "36705207eb227a77cc643f554f614bfaac79740b033e9983fb6c284f00823f6e"
+          },
+          "after": {
+            "wallMs": 18.275833010673523,
+            "requests": 3,
+            "payloadHash": "36705207eb227a77cc643f554f614bfaac79740b033e9983fb6c284f00823f6e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "H3",
+      "evidence": "Actual native local branch metadata and eight parent PRs through fixture gh; no remote writes",
+      "payloadEquality": true,
+      "pairs": [
+        {
+          "before": {
+            "wallMs": 682.9582089781761,
+            "reads": 8,
+            "cliCalls": 8,
+            "authCalls": 0,
+            "graphql": 0,
+            "prViews": 8,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "0392fe791e0c75646f516634531ce1a84c28c693ef383fa2d5d11111da98bd32"
+          },
+          "after": {
+            "wallMs": 124.98725000023842,
+            "reads": 1,
+            "cliCalls": 1,
+            "authCalls": 0,
+            "graphql": 1,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "0392fe791e0c75646f516634531ce1a84c28c693ef383fa2d5d11111da98bd32"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 814.012167006731,
+            "reads": 8,
+            "cliCalls": 8,
+            "authCalls": 0,
+            "graphql": 0,
+            "prViews": 8,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "0392fe791e0c75646f516634531ce1a84c28c693ef383fa2d5d11111da98bd32"
+          },
+          "after": {
+            "wallMs": 167.83750000596046,
+            "reads": 1,
+            "cliCalls": 2,
+            "authCalls": 1,
+            "graphql": 1,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "0392fe791e0c75646f516634531ce1a84c28c693ef383fa2d5d11111da98bd32"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 794.1441670060158,
+            "reads": 8,
+            "cliCalls": 8,
+            "authCalls": 0,
+            "graphql": 0,
+            "prViews": 8,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "0392fe791e0c75646f516634531ce1a84c28c693ef383fa2d5d11111da98bd32"
+          },
+          "after": {
+            "wallMs": 195.26750001311302,
+            "reads": 1,
+            "cliCalls": 2,
+            "authCalls": 1,
+            "graphql": 1,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 0,
+            "payloadHash": "0392fe791e0c75646f516634531ce1a84c28c693ef383fa2d5d11111da98bd32"
+          }
+        }
+      ]
+    },
+    {
+      "id": "M3",
+      "evidence": "Actual native Git gates/fetches against owned bare remote and fixture-only PR writes; eight existing layers",
+      "payloadEquality": true,
+      "pairs": [
+        {
+          "before": {
+            "wallMs": 2802.6508330106735,
+            "reads": 10,
+            "cliCalls": 18,
+            "authCalls": 0,
+            "graphql": 0,
+            "prViews": 8,
+            "broad": 2,
+            "writes": 8,
+            "payloadHash": "0f7bc062a974796e95bb532f51df114e2fe663de0f2946baa17d3cbf2e35b777"
+          },
+          "after": {
+            "wallMs": 2608.6826249957085,
+            "reads": 3,
+            "cliCalls": 12,
+            "authCalls": 1,
+            "graphql": 3,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 8,
+            "payloadHash": "0f7bc062a974796e95bb532f51df114e2fe663de0f2946baa17d3cbf2e35b777"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 2788.63404199481,
+            "reads": 10,
+            "cliCalls": 18,
+            "authCalls": 0,
+            "graphql": 0,
+            "prViews": 8,
+            "broad": 2,
+            "writes": 8,
+            "payloadHash": "0f7bc062a974796e95bb532f51df114e2fe663de0f2946baa17d3cbf2e35b777"
+          },
+          "after": {
+            "wallMs": 2895.156666994095,
+            "reads": 3,
+            "cliCalls": 13,
+            "authCalls": 2,
+            "graphql": 3,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 8,
+            "payloadHash": "0f7bc062a974796e95bb532f51df114e2fe663de0f2946baa17d3cbf2e35b777"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 3018.8672079741955,
+            "reads": 10,
+            "cliCalls": 18,
+            "authCalls": 0,
+            "graphql": 0,
+            "prViews": 8,
+            "broad": 2,
+            "writes": 8,
+            "payloadHash": "0f7bc062a974796e95bb532f51df114e2fe663de0f2946baa17d3cbf2e35b777"
+          },
+          "after": {
+            "wallMs": 2526.2165000140667,
+            "reads": 3,
+            "cliCalls": 13,
+            "authCalls": 2,
+            "graphql": 3,
+            "prViews": 0,
+            "broad": 0,
+            "writes": 8,
+            "payloadHash": "0f7bc062a974796e95bb532f51df114e2fe663de0f2946baa17d3cbf2e35b777"
+          }
+        }
+      ]
+    },
+    {
+      "id": "L1",
+      "evidence": "Native fetch against owned HTTP endpoint, current OAuth authorization on every reopening; real 200/304 bytes",
+      "payloadEquality": true,
+      "pairs": [
+        {
+          "before": {
+            "wallMs": 19.2270829975605,
+            "requests": 1,
+            "responseBodyBytes": 67191,
+            "payloadHash": "2a07ead5a523aa7f90362a61428d672fb1aed8304532842fc163be78430cac23"
+          },
+          "after": {
+            "wallMs": 17.750458002090454,
+            "requests": 1,
+            "responseBodyBytes": 0,
+            "payloadHash": "2a07ead5a523aa7f90362a61428d672fb1aed8304532842fc163be78430cac23"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 18.12220799922943,
+            "requests": 1,
+            "responseBodyBytes": 67191,
+            "payloadHash": "2a07ead5a523aa7f90362a61428d672fb1aed8304532842fc163be78430cac23"
+          },
+          "after": {
+            "wallMs": 17.67858299612999,
+            "requests": 1,
+            "responseBodyBytes": 0,
+            "payloadHash": "2a07ead5a523aa7f90362a61428d672fb1aed8304532842fc163be78430cac23"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 17.768375009298325,
+            "requests": 1,
+            "responseBodyBytes": 67191,
+            "payloadHash": "2a07ead5a523aa7f90362a61428d672fb1aed8304532842fc163be78430cac23"
+          },
+          "after": {
+            "wallMs": 16.73691600561142,
+            "requests": 1,
+            "responseBodyBytes": 0,
+            "payloadHash": "2a07ead5a523aa7f90362a61428d672fb1aed8304532842fc163be78430cac23"
+          }
+        }
+      ]
+    },
+    {
+      "id": "D1",
+      "evidence": "Real localhost HTTP/WebSocket probes, twenty empty ports and one matching target; every reconnect proves PID",
+      "payloadEquality": true,
+      "pairs": [
+        {
+          "before": {
+            "wallMs": 6.338084012269974,
+            "requests": 21,
+            "pidProbes": 1,
+            "payloadHash": "9efd88fdbf072ba2ebbcbca5b62fec1ab0e07534809633be147d70eaae665710"
+          },
+          "after": {
+            "wallMs": 2.6627079844474792,
+            "requests": 1,
+            "pidProbes": 1,
+            "payloadHash": "9efd88fdbf072ba2ebbcbca5b62fec1ab0e07534809633be147d70eaae665710"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 3.805959016084671,
+            "requests": 21,
+            "pidProbes": 1,
+            "payloadHash": "9efd88fdbf072ba2ebbcbca5b62fec1ab0e07534809633be147d70eaae665710"
+          },
+          "after": {
+            "wallMs": 1.960750013589859,
+            "requests": 1,
+            "pidProbes": 1,
+            "payloadHash": "9efd88fdbf072ba2ebbcbca5b62fec1ab0e07534809633be147d70eaae665710"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 5.653834015130997,
+            "requests": 21,
+            "pidProbes": 1,
+            "payloadHash": "9efd88fdbf072ba2ebbcbca5b62fec1ab0e07534809633be147d70eaae665710"
+          },
+          "after": {
+            "wallMs": 1.8681249916553497,
+            "requests": 1,
+            "pidProbes": 1,
+            "payloadHash": "9efd88fdbf072ba2ebbcbca5b62fec1ab0e07534809633be147d70eaae665710"
+          }
+        }
+      ]
+    },
+    {
+      "id": "D2",
+      "evidence": "Actual native credential smart HTTP clone; all refs/parents/current checkout and old-blob hydration compared",
+      "payloadEquality": true,
+      "pairs": [
+        {
+          "before": {
+            "wallMs": 822.6552079916,
+            "requests": 4,
+            "responseBodyBytes": 1063308,
+            "historicalBlobDeferred": false,
+            "hydrationMs": 21.74524998664856,
+            "hydrationRequests": 0,
+            "hydrationResponseBodyBytes": 0,
+            "payloadHash": "1f1b8e760ffa24ccb6a2d7d9c07775974f6128866995683d81fdc0632ae5152c"
+          },
+          "after": {
+            "wallMs": 934.6105840206146,
+            "requests": 10,
+            "responseBodyBytes": 136079,
+            "historicalBlobDeferred": true,
+            "hydrationMs": 315.2853749990463,
+            "hydrationRequests": 3,
+            "hydrationResponseBodyBytes": 132634,
+            "payloadHash": "1f1b8e760ffa24ccb6a2d7d9c07775974f6128866995683d81fdc0632ae5152c"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 516.0142910182476,
+            "requests": 4,
+            "responseBodyBytes": 1063258,
+            "historicalBlobDeferred": false,
+            "hydrationMs": 39.01408299803734,
+            "hydrationRequests": 0,
+            "hydrationResponseBodyBytes": 0,
+            "payloadHash": "1f1b8e760ffa24ccb6a2d7d9c07775974f6128866995683d81fdc0632ae5152c"
+          },
+          "after": {
+            "wallMs": 870.8314590156078,
+            "requests": 10,
+            "responseBodyBytes": 136084,
+            "historicalBlobDeferred": true,
+            "hydrationMs": 293.55899998545647,
+            "hydrationRequests": 3,
+            "hydrationResponseBodyBytes": 132629,
+            "payloadHash": "1f1b8e760ffa24ccb6a2d7d9c07775974f6128866995683d81fdc0632ae5152c"
+          }
+        },
+        {
+          "before": {
+            "wallMs": 721.8371660113335,
+            "requests": 4,
+            "responseBodyBytes": 1063228,
+            "historicalBlobDeferred": false,
+            "hydrationMs": 24.11454200744629,
+            "hydrationRequests": 0,
+            "hydrationResponseBodyBytes": 0,
+            "payloadHash": "1f1b8e760ffa24ccb6a2d7d9c07775974f6128866995683d81fdc0632ae5152c"
+          },
+          "after": {
+            "wallMs": 960.3197079896927,
+            "requests": 10,
+            "responseBodyBytes": 136099,
+            "historicalBlobDeferred": true,
+            "hydrationMs": 336.3544169962406,
+            "hydrationRequests": 3,
+            "hydrationResponseBodyBytes": 132619,
+            "payloadHash": "1f1b8e760ffa24ccb6a2d7d9c07775974f6128866995683d81fdc0632ae5152c"
+          }
+        }
+      ]
+    }
+  ]
+}

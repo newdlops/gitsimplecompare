@@ -1,0 +1,269 @@
+{
+  "node": "24.22.1",
+  "vscode": "1.144.0",
+  "language": "en",
+  "actualPublicHttpRead": true,
+  "actualSearchHttpReads": true,
+  "forcedCli": true,
+  "unsupportedPoliciesBeforeHttp": true,
+  "defaultOverrideAgentPolicyUsesCli": true,
+  "verifiedDirectAgentPolicy": "on (isolated test profile only)",
+  "tlsValidation": true,
+  "cancellationIsolation": true,
+  "keepAliveReuse": true,
+  "disposalClose": true,
+  "settings": [
+    {
+      "width": 1440,
+      "height": 900,
+      "rows": [
+        {
+          "key": "gitSimpleCompare.githubGitProactiveAuth",
+          "text": "Git Simple Compare: GitHub Git Proactive Auth\nUse existing Git credentials before a GitHub.com HTTPS authentication challenge. Applies only to proven compatible native Git operations and respects explicit authentication settings. May require credentials for public repositories that previously allowed anonymous access.",
+          "tag": "DIV",
+          "role": "checkbox",
+          "checked": "false",
+          "tooltip": "gitSimpleCompare.githubGitProactiveAuth",
+          "bounds": {
+            "left": 577,
+            "right": 1115,
+            "top": 158,
+            "bottom": 292.21875
+          },
+          "control": {
+            "x": 600,
+            "y": 202.40625
+          }
+        },
+        {
+          "key": "gitSimpleCompare.githubReadTransport",
+          "text": "Git Simple Compare: GitHub Read Transport\nGitHub read transport. Auto reuses HTTPS connections after repository verification when network policy is supported. Proxy, custom CA and unsupported hosts use GitHub CLI. Changing this cancels active reads.\nauto\ncli",
+          "tag": "SELECT",
+          "role": null,
+          "value": "auto",
+          "checked": null,
+          "tooltip": "gitSimpleCompare.githubReadTransport",
+          "bounds": {
+            "left": 577,
+            "right": 1115,
+            "top": 292,
+            "bottom": 435.015625
+          },
+          "control": {
+            "x": 751,
+            "y": 404.015625
+          }
+        }
+      ]
+    },
+    {
+      "width": 900,
+      "height": 700,
+      "rows": [
+        {
+          "key": "gitSimpleCompare.githubGitProactiveAuth",
+          "text": "Git Simple Compare: GitHub Git Proactive Auth\nUse existing Git credentials before a GitHub.com HTTPS authentication challenge. Applies only to proven compatible native Git operations and respects explicit authentication settings. May require credentials for public repositories that previously allowed anonymous access.",
+          "tag": "DIV",
+          "role": "checkbox",
+          "checked": "false",
+          "tooltip": "gitSimpleCompare.githubGitProactiveAuth",
+          "bounds": {
+            "left": 256,
+            "right": 699,
+            "top": 158,
+            "bottom": 310.421875
+          },
+          "control": {
+            "x": 279,
+            "y": 202.40625
+          }
+        },
+        {
+          "key": "gitSimpleCompare.githubReadTransport",
+          "text": "Git Simple Compare: GitHub Read Transport\nGitHub read transport. Auto reuses HTTPS connections after repository verification when network policy is supported. Proxy, custom CA and unsupported hosts use GitHub CLI. Changing this cancels active reads.\nauto\ncli",
+          "tag": "SELECT",
+          "role": null,
+          "value": "auto",
+          "checked": null,
+          "tooltip": "gitSimpleCompare.githubReadTransport",
+          "bounds": {
+            "left": 256,
+            "right": 699,
+            "top": 310,
+            "bottom": 471.21875
+          },
+          "control": {
+            "x": 430,
+            "y": 440.21875
+          }
+        }
+      ]
+    }
+  ],
+  "cloneSettings": [
+    {
+      "width": 1440,
+      "height": 900,
+      "rows": [
+        {
+          "key": "gitSimpleCompare.cloneMode",
+          "text": "Git Simple Compare: Clone Mode\nClone mode for new repositories. Blobless keeps all commits, branches and current files, then downloads older file contents when needed. It requires Git 2.46+ and verified native Git access; otherwise Full is used.\nfull\nblobless",
+          "tag": "SELECT",
+          "role": null,
+          "value": "full",
+          "checked": null,
+          "tooltip": "gitSimpleCompare.cloneMode",
+          "bounds": {
+            "left": 447,
+            "right": 1233,
+            "top": 158,
+            "bottom": 282.8125
+          },
+          "control": {
+            "x": 621,
+            "y": 251.8125
+          }
+        }
+      ]
+    },
+    {
+      "width": 900,
+      "height": 700,
+      "rows": [
+        {
+          "key": "gitSimpleCompare.cloneMode",
+          "text": "Git Simple Compare: Clone Mode\nClone mode for new repositories. Blobless keeps all commits, branches and current files, then downloads older file contents when needed. It requires Git 2.46+ and verified native Git access; otherwise Full is used.\nfull\nblobless",
+          "tag": "SELECT",
+          "role": null,
+          "value": "full",
+          "checked": null,
+          "tooltip": "gitSimpleCompare.cloneMode",
+          "bounds": {
+            "left": 256,
+            "right": 699,
+            "top": 158,
+            "bottom": 319.21875
+          },
+          "control": {
+            "x": 430,
+            "y": 288.21875
+          }
+        }
+      ]
+    },
+    {
+      "phase": "blobless",
+      "width": 900,
+      "height": 700,
+      "rows": [
+        {
+          "key": "gitSimpleCompare.cloneMode",
+          "text": "Git Simple Compare: Clone Mode\nClone mode for new repositories. Blobless keeps all commits, branches and current files, then downloads older file contents when needed. It requires Git 2.46+ and verified native Git access; otherwise Full is used.\nfull\nblobless",
+          "tag": "SELECT",
+          "role": null,
+          "value": "blobless",
+          "checked": null,
+          "tooltip": "gitSimpleCompare.cloneMode",
+          "bounds": {
+            "left": 256,
+            "right": 699,
+            "top": 158,
+            "bottom": 319.21875
+          },
+          "control": {
+            "x": 430,
+            "y": 288.21875
+          }
+        }
+      ]
+    },
+    {
+      "phase": "restored-full",
+      "width": 900,
+      "height": 700,
+      "rows": [
+        {
+          "key": "gitSimpleCompare.cloneMode",
+          "text": "Git Simple Compare: Clone Mode\nClone mode for new repositories. Blobless keeps all commits, branches and current files, then downloads older file contents when needed. It requires Git 2.46+ and verified native Git access; otherwise Full is used.\nfull\nblobless",
+          "tag": "SELECT",
+          "role": null,
+          "value": "full",
+          "checked": null,
+          "tooltip": "gitSimpleCompare.cloneMode",
+          "bounds": {
+            "left": 256,
+            "right": 699,
+            "top": 158,
+            "bottom": 319.21875
+          },
+          "control": {
+            "x": 430,
+            "y": 288.21875
+          }
+        }
+      ]
+    }
+  ],
+  "progressiveComments": {
+    "apiBeforeHtml": true,
+    "firstReadyMs": 823,
+    "htmlFailureKeepsApi": true,
+    "nativeExpandedThreadPreserved": true,
+    "staleFileSuppressed": true,
+    "repositoryLoadSurvivesFileSwitch": true,
+    "disposeClearsCacheAndThreads": true,
+    "states": [
+      {
+        "phase": "api-ready",
+        "width": 1440,
+        "height": 900,
+        "widgets": [
+          {
+            "text": "PR review comments\nfixture-reviewer\n\nGSC API comment ready\n\n긴 한글 검토 내용이 좁은 에디터에서도 읽히는지 확인합니다. API 댓글은 HTML 보완이 늦어져도 먼저 표시되며 사용자가 펼친 스레드는 보완 실패 뒤에도 유지됩니다.\n\nconst visibleBeforeHtml = true;\n\nGitHub comment\n\nfixture-author\n\nGSC reply retained — 답글도 같은 스레드에 표시됩니다.",
+            "bounds": {
+              "left": 223,
+              "right": 1301,
+              "top": 132,
+              "bottom": 372
+            },
+            "overflow": false
+          }
+        ]
+      },
+      {
+        "phase": "api-ready",
+        "width": 900,
+        "height": 700,
+        "widgets": [
+          {
+            "text": "PR review comments\nfixture-reviewer\n\nGSC API comment ready\n\n긴 한글 검토 내용이 좁은 에디터에서도 읽히는지 확인합니다. API 댓글은 HTML 보완이 늦어져도 먼저 표시되며 사용자가 펼친 스레드는 보완 실패 뒤에도 유지됩니다.\n\nconst visibleBeforeHtml = true;\n\nGitHub comment\n\nfixture-author\n\nGSC reply retained — 답글도 같은 스레드에 표시됩니다.",
+            "bounds": {
+              "left": 223,
+              "right": 803,
+              "top": 132,
+              "bottom": 390
+            },
+            "overflow": false
+          }
+        ]
+      },
+      {
+        "phase": "html-failed",
+        "width": 900,
+        "height": 700,
+        "widgets": [
+          {
+            "text": "PR review comments\nfixture-reviewer\n\nGSC API comment ready\n\n긴 한글 검토 내용이 좁은 에디터에서도 읽히는지 확인합니다. API 댓글은 HTML 보완이 늦어져도 먼저 표시되며 사용자가 펼친 스레드는 보완 실패 뒤에도 유지됩니다.\n\nconst visibleBeforeHtml = true;\n\nGitHub comment\n\nfixture-author\n\nGSC reply retained — 답글도 같은 스레드에 표시됩니다.",
+            "bounds": {
+              "left": 223,
+              "right": 803,
+              "top": 132,
+              "bottom": 390
+            },
+            "overflow": false
+          }
+        ]
+      }
+    ]
+  }
+}

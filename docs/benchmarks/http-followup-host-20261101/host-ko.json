@@ -1,0 +1,269 @@
+{
+  "node": "24.22.1",
+  "vscode": "1.144.0",
+  "language": "ko",
+  "actualPublicHttpRead": true,
+  "actualSearchHttpReads": true,
+  "forcedCli": true,
+  "unsupportedPoliciesBeforeHttp": true,
+  "defaultOverrideAgentPolicyUsesCli": true,
+  "verifiedDirectAgentPolicy": "on (isolated test profile only)",
+  "tlsValidation": true,
+  "cancellationIsolation": true,
+  "keepAliveReuse": true,
+  "disposalClose": true,
+  "settings": [
+    {
+      "width": 1440,
+      "height": 900,
+      "rows": [
+        {
+          "key": "gitSimpleCompare.githubGitProactiveAuth",
+          "text": "Git Simple Compare: GitHub Git Proactive Auth\nGitHub.com HTTPS 인증 요청 전에 기존 Git 자격 증명을 사용합니다. 호환성이 검증된 native Git 작업에만 적용하며 명시적 인증 설정을 우선합니다. 이전에 익명으로 접근하던 공개 저장소에서도 자격 증명을 요구할 수 있습니다.",
+          "tag": "DIV",
+          "role": "checkbox",
+          "checked": "false",
+          "tooltip": "gitSimpleCompare.githubGitProactiveAuth",
+          "bounds": {
+            "left": 577,
+            "right": 1115,
+            "top": 158,
+            "bottom": 274.015625
+          },
+          "control": {
+            "x": 600,
+            "y": 202.40625
+          }
+        },
+        {
+          "key": "gitSimpleCompare.githubReadTransport",
+          "text": "Git Simple Compare: GitHub Read Transport\nGitHub 읽기 전송 방식입니다. 자동 모드는 저장소 검증 후 지원되는 네트워크 정책에서 HTTPS 연결을 재사용합니다. 프록시·사용자 CA·미지원 호스트는 GitHub CLI를 사용합니다. 변경하면 진행 중인 읽기를 취소합니다.\nauto\ncli",
+          "tag": "SELECT",
+          "role": null,
+          "value": "auto",
+          "checked": null,
+          "tooltip": "gitSimpleCompare.githubReadTransport",
+          "bounds": {
+            "left": 577,
+            "right": 1115,
+            "top": 274,
+            "bottom": 417.015625
+          },
+          "control": {
+            "x": 751,
+            "y": 386.015625
+          }
+        }
+      ]
+    },
+    {
+      "width": 900,
+      "height": 700,
+      "rows": [
+        {
+          "key": "gitSimpleCompare.githubGitProactiveAuth",
+          "text": "Git Simple Compare: GitHub Git Proactive Auth\nGitHub.com HTTPS 인증 요청 전에 기존 Git 자격 증명을 사용합니다. 호환성이 검증된 native Git 작업에만 적용하며 명시적 인증 설정을 우선합니다. 이전에 익명으로 접근하던 공개 저장소에서도 자격 증명을 요구할 수 있습니다.",
+          "tag": "DIV",
+          "role": "checkbox",
+          "checked": "false",
+          "tooltip": "gitSimpleCompare.githubGitProactiveAuth",
+          "bounds": {
+            "left": 256,
+            "right": 699,
+            "top": 158,
+            "bottom": 292.21875
+          },
+          "control": {
+            "x": 279,
+            "y": 202.40625
+          }
+        },
+        {
+          "key": "gitSimpleCompare.githubReadTransport",
+          "text": "Git Simple Compare: GitHub Read Transport\nGitHub 읽기 전송 방식입니다. 자동 모드는 저장소 검증 후 지원되는 네트워크 정책에서 HTTPS 연결을 재사용합니다. 프록시·사용자 CA·미지원 호스트는 GitHub CLI를 사용합니다. 변경하면 진행 중인 읽기를 취소합니다.\nauto\ncli",
+          "tag": "SELECT",
+          "role": null,
+          "value": "auto",
+          "checked": null,
+          "tooltip": "gitSimpleCompare.githubReadTransport",
+          "bounds": {
+            "left": 256,
+            "right": 699,
+            "top": 274,
+            "bottom": 417.015625
+          },
+          "control": {
+            "x": 430,
+            "y": 386.015625
+          }
+        }
+      ]
+    }
+  ],
+  "cloneSettings": [
+    {
+      "width": 1440,
+      "height": 900,
+      "rows": [
+        {
+          "key": "gitSimpleCompare.cloneMode",
+          "text": "Git Simple Compare: Clone Mode\n새 저장소의 복제 방식입니다. blobless는 전체 커밋·브랜치와 현재 파일을 유지하고 과거 파일 내용은 필요할 때 받습니다. Git 2.46 이상과 native Git 접근 확인이 필요하며, 조건을 충족하지 못하면 full을 사용합니다.\nfull\nblobless",
+          "tag": "SELECT",
+          "role": null,
+          "value": "full",
+          "checked": null,
+          "tooltip": "gitSimpleCompare.cloneMode",
+          "bounds": {
+            "left": 447,
+            "right": 1233,
+            "top": 158,
+            "bottom": 282.8125
+          },
+          "control": {
+            "x": 621,
+            "y": 251.8125
+          }
+        }
+      ]
+    },
+    {
+      "width": 900,
+      "height": 700,
+      "rows": [
+        {
+          "key": "gitSimpleCompare.cloneMode",
+          "text": "Git Simple Compare: Clone Mode\n새 저장소의 복제 방식입니다. blobless는 전체 커밋·브랜치와 현재 파일을 유지하고 과거 파일 내용은 필요할 때 받습니다. Git 2.46 이상과 native Git 접근 확인이 필요하며, 조건을 충족하지 못하면 full을 사용합니다.\nfull\nblobless",
+          "tag": "SELECT",
+          "role": null,
+          "value": "full",
+          "checked": null,
+          "tooltip": "gitSimpleCompare.cloneMode",
+          "bounds": {
+            "left": 256,
+            "right": 699,
+            "top": 158,
+            "bottom": 301.015625
+          },
+          "control": {
+            "x": 430,
+            "y": 270.015625
+          }
+        }
+      ]
+    },
+    {
+      "phase": "blobless",
+      "width": 900,
+      "height": 700,
+      "rows": [
+        {
+          "key": "gitSimpleCompare.cloneMode",
+          "text": "Git Simple Compare: Clone Mode\n새 저장소의 복제 방식입니다. blobless는 전체 커밋·브랜치와 현재 파일을 유지하고 과거 파일 내용은 필요할 때 받습니다. Git 2.46 이상과 native Git 접근 확인이 필요하며, 조건을 충족하지 못하면 full을 사용합니다.\nfull\nblobless",
+          "tag": "SELECT",
+          "role": null,
+          "value": "blobless",
+          "checked": null,
+          "tooltip": "gitSimpleCompare.cloneMode",
+          "bounds": {
+            "left": 256,
+            "right": 699,
+            "top": 158,
+            "bottom": 301.015625
+          },
+          "control": {
+            "x": 430,
+            "y": 270.015625
+          }
+        }
+      ]
+    },
+    {
+      "phase": "restored-full",
+      "width": 900,
+      "height": 700,
+      "rows": [
+        {
+          "key": "gitSimpleCompare.cloneMode",
+          "text": "Git Simple Compare: Clone Mode\n새 저장소의 복제 방식입니다. blobless는 전체 커밋·브랜치와 현재 파일을 유지하고 과거 파일 내용은 필요할 때 받습니다. Git 2.46 이상과 native Git 접근 확인이 필요하며, 조건을 충족하지 못하면 full을 사용합니다.\nfull\nblobless",
+          "tag": "SELECT",
+          "role": null,
+          "value": "full",
+          "checked": null,
+          "tooltip": "gitSimpleCompare.cloneMode",
+          "bounds": {
+            "left": 256,
+            "right": 699,
+            "top": 158,
+            "bottom": 301.015625
+          },
+          "control": {
+            "x": 430,
+            "y": 270.015625
+          }
+        }
+      ]
+    }
+  ],
+  "progressiveComments": {
+    "apiBeforeHtml": true,
+    "firstReadyMs": 786,
+    "htmlFailureKeepsApi": true,
+    "nativeExpandedThreadPreserved": true,
+    "staleFileSuppressed": true,
+    "repositoryLoadSurvivesFileSwitch": true,
+    "disposeClearsCacheAndThreads": true,
+    "states": [
+      {
+        "phase": "api-ready",
+        "width": 1440,
+        "height": 900,
+        "widgets": [
+          {
+            "text": "PR 리뷰 댓글\nfixture-reviewer\n\nGSC API comment ready\n\n긴 한글 검토 내용이 좁은 에디터에서도 읽히는지 확인합니다. API 댓글은 HTML 보완이 늦어져도 먼저 표시되며 사용자가 펼친 스레드는 보완 실패 뒤에도 유지됩니다.\n\nconst visibleBeforeHtml = true;\n\nGitHub comment\n\nfixture-author\n\nGSC reply retained — 답글도 같은 스레드에 표시됩니다.",
+            "bounds": {
+              "left": 223,
+              "right": 1301,
+              "top": 132,
+              "bottom": 372
+            },
+            "overflow": false
+          }
+        ]
+      },
+      {
+        "phase": "api-ready",
+        "width": 900,
+        "height": 700,
+        "widgets": [
+          {
+            "text": "PR 리뷰 댓글\nfixture-reviewer\n\nGSC API comment ready\n\n긴 한글 검토 내용이 좁은 에디터에서도 읽히는지 확인합니다. API 댓글은 HTML 보완이 늦어져도 먼저 표시되며 사용자가 펼친 스레드는 보완 실패 뒤에도 유지됩니다.\n\nconst visibleBeforeHtml = true;\n\nGitHub comment\n\nfixture-author\n\nGSC reply retained — 답글도 같은 스레드에 표시됩니다.",
+            "bounds": {
+              "left": 223,
+              "right": 803,
+              "top": 132,
+              "bottom": 390
+            },
+            "overflow": false
+          }
+        ]
+      },
+      {
+        "phase": "html-failed",
+        "width": 900,
+        "height": 700,
+        "widgets": [
+          {
+            "text": "PR 리뷰 댓글\nfixture-reviewer\n\nGSC API comment ready\n\n긴 한글 검토 내용이 좁은 에디터에서도 읽히는지 확인합니다. API 댓글은 HTML 보완이 늦어져도 먼저 표시되며 사용자가 펼친 스레드는 보완 실패 뒤에도 유지됩니다.\n\nconst visibleBeforeHtml = true;\n\nGitHub comment\n\nfixture-author\n\nGSC reply retained — 답글도 같은 스레드에 표시됩니다.",
+            "bounds": {
+              "left": 223,
+              "right": 803,
+              "top": 132,
+              "bottom": 390
+            },
+            "overflow": false
+          }
+        ]
+      }
+    ]
+  }
+}

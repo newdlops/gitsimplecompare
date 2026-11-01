@@ -71,6 +71,16 @@ test("disposed comment caches never start another branch or remote load", async 
   await assert.rejects(f.cache.load("/repo"), { name: "AbortError" }); assert.equal(f.calls(), 0);
 });
 
+test("cancellation during the local branch probe never starts a remote comment load", async t => {
+  const branch = deferred<string>(), cancel = new AbortController(); let reads = 0;
+  t.mock.method(PullRequestReviewCommentService.prototype, "getCurrentBranch", async () => branch.promise);
+  t.mock.method(PullRequestReviewCommentService.prototype, "getActiveBranchReviewComments", async () => { reads++; return data(); });
+  const cache = new PullRequestCommentCache({ get: async () => undefined } as any);
+  t.after(() => cache.dispose());
+  const loading = cache.load("/repo", cancel.signal), rejected = assert.rejects(loading, { name: "AbortError" });
+  cancel.abort(); branch.resolve("topic"); await rejected; assert.equal(reads, 0);
+});
+
 test("the service publishes normalized API comments before slow HTML and retains them after enrichment errors", async t => {
   const prototype = PullRequestReviewCommentService.prototype as any;
   t.mock.method(prototype, "getCurrentBranch", async () => "topic");

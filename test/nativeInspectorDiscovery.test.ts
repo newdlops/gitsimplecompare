@@ -33,7 +33,9 @@ async function inspector(t: TestContext, pid: number) {
 test("a ready preferred inspector is found without the old fixed timer or probing other ports", { timeout: 5000 }, async t => {
   const first = await inspector(t, 456789), other = await inspector(t, 123);
   const nativeTimeout = setTimeout;
-  t.mock.timers.enable({ apis: ["setTimeout"] });
+  // Node 18의 MockTimers는 배열 인자를 받는다. 두 runtime에서도 동일한 timer 정지 검사를 실행한다.
+  if (Number(process.versions.node.split(".")[0]) === 18) (t.mock.timers as any).enable(["setTimeout"]);
+  else t.mock.timers.enable({ apis: ["setTimeout"] });
   const controller = new AbortController(); t.after(() => controller.abort());
   let timer: ReturnType<typeof setTimeout>;
   try {

@@ -103,7 +103,7 @@ function runExtensionHost() {
 /** bundle 이후 한 개의 Extension Host test group만 실행한다. */
 async function main() {
   if (!process.argv.includes("--allow-visible-host")) {
-    throw new Error("Extension Host tests open a visible VS Code window. Add --allow-visible-host only when ready; use node/headless webview tests during other work. Tests never activate or pin the window.");
+    throw new Error("Extension Host tests open a visible VS Code window. Add --allow-visible-host only when ready; native-comment QA may focus only its verified isolated window. Use node/headless webview tests during other work.");
   }
   await bundleExtensionSmoke();
   const code = await runExtensionHost();

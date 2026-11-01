@@ -42,6 +42,19 @@ export class IsolatedTestWindow {
     this.windowId = await this.evaluate(`(function(){var e=require('electron');if(e.app.getPath('userData')!==${JSON.stringify(this.profile)})throw Error('profile changed');var windows=e.BrowserWindow.getAllWindows().filter(w=>w.getTitle().includes('workspace'));if(windows.length!==1)throw Error('expected one isolated workspace window');return windows[0].id;})()`);
   }
 
+  /** 명시적으로 visible Host를 허용한 QA에서만 PID/profile 검증을 통과한 테스트 창을 활성화한다. */
+  async focusOwnedWindow(): Promise<void> {
+    assert.equal(process.env.GSC_ALLOW_VISIBLE_HOST, "1");
+    await this.selectOwnedWindow();
+    await this.evaluate(`(function(){${this.ownedWindow()}e.app.focus({steal:true});w.show();w.focus();w.webContents.focus();return true;})()`);
+  }
+
+  /** 실제 native 댓글 widget의 가시성·본문·경계를 읽는다. fixture marker 외 사용자 문서는 수집하지 않는다. */
+  async commentState(): Promise<any> {
+    const query = `(()=>({width:innerWidth,height:innerHeight,widgets:Array.from(document.querySelectorAll('.review-widget')).filter(w=>w.getBoundingClientRect().height>0).map(w=>{const b=w.getBoundingClientRect();return{text:w.innerText,bounds:{left:b.left,right:b.right,top:b.top,bottom:b.bottom},overflow:w.scrollWidth>w.clientWidth}})}))()`;
+    return this.evaluate(`(async function(){${this.ownedWindow()}return w.webContents.executeJavaScript(${JSON.stringify(query)});})()`);
+  }
+
   /** 지정한 native Settings 기여 항목과 control/overflow 상태만 읽으며 다른 창은 검사하지 않는다. */
   async githubSettingsState(keys: readonly string[] = ["gitSimpleCompare.githubReadTransport", "gitSimpleCompare.githubGitProactiveAuth"]): Promise<any> {
     const query = `(()=>({width:innerWidth,height:innerHeight,rows:Array.from(document.querySelectorAll('[data-key]')).filter(r=>${JSON.stringify(keys)}.includes(r.getAttribute('data-key')||'')).map(r=>{const control=r.querySelector('select,[role="checkbox"],[role="combobox"]'),b=r.getBoundingClientRect(),c=control?.getBoundingClientRect();return{key:r.getAttribute('data-key'),text:r.innerText,tag:control?.tagName,role:control?.getAttribute('role'),value:control?.value,checked:control?.getAttribute('aria-checked'),tooltip:control?.getAttribute('title')||control?.getAttribute('aria-label'),bounds:{left:b.left,right:b.right,top:b.top,bottom:b.bottom},control:c?{x:c.left+c.width/2,y:c.top+c.height/2}:null}})}))()`;

@@ -14,6 +14,7 @@ import { gitHubReadNetworkPolicy } from "../../src/ui/githubTransportSettings";
 import { GitHubHttpTransport } from "../../src/git/githubHttpTransport";
 import { GitHubCredentialProvider } from "../../src/git/githubCredential";
 import { searchPullRequests } from "../../src/git/pullRequestSearchService";
+import { verifyProgressiveComments } from "./httpFollowupCommentsSmoke";
 
 /** 시간 자체를 성과로 쓰지 않으며 실제 상태가 도착했는지 bounded 대기로 확인한다. */
 async function waitFor(check: () => boolean | Promise<boolean>, label: string): Promise<void> {
@@ -113,7 +114,8 @@ async function verifySettings(root: string, owned: IsolatedTestWindow, directory
   await waitFor(async () => (await owned.githubSettingsState()).rows.length === 2, "GitHub Settings rows");
   for (const [width, height] of [[1440, 900], [900, 700]]) {
     await owned.settingsViewport(width, height);
-    await waitFor(async () => (await owned.githubSettingsState()).width === width, "Settings viewport");
+    await waitFor(async () => { const state = await owned.githubSettingsState(); return state.width === width
+      && state.rows.every((row: any) => row.bounds.right <= state.width && row.bounds.left >= 0); }, "Settings viewport and layout");
     const state = await owned.githubSettingsState(); assert.equal(state.rows.length, 2);
     assert(state.rows.every((row: any) => row.bounds.right <= state.width && row.bounds.left >= 0));
     states.push(state); await writeFile(path.join(directory, `settings-${vscode.env.language}-${width}.png`), await owned.screenshot());
@@ -141,7 +143,8 @@ async function verifyCloneSettings(root: string, owned: IsolatedTestWindow, dire
   assert.equal(config().get("cloneMode"), "full");
   for (const [width, height] of [[1440, 900], [900, 700]]) {
     await owned.settingsViewport(width, height);
-    await waitFor(async () => (await owned.githubSettingsState([key])).width === width, "Clone Settings viewport");
+    await waitFor(async () => { const state = await owned.githubSettingsState([key]); return state.width === width
+      && state.rows.length === 1 && state.rows[0].bounds.right <= state.width && state.rows[0].bounds.left >= 0; }, "Clone Settings viewport and layout");
     const state = await owned.githubSettingsState([key]);
     assert.equal(state.rows.length, 1); assert(state.rows[0].bounds.right <= state.width && state.rows[0].bounds.left >= 0);
     assert.match(state.rows[0].text, /2\.46/); states.push(state);
@@ -171,13 +174,20 @@ export async function run(): Promise<void> {
   const owned = new IsolatedTestWindow(Number(process.env.GSC_TEST_MAIN_INSPECTOR_PORT), profile);
   await owned.connect();
   try {
+    await owned.focusOwnedWindow();
+    await waitFor(() => vscode.window.state.focused, "owned native UI focus");
     const settings = await verifySettings(root, owned, directory);
     const cloneSettings = await verifyCloneSettings(root, owned, directory);
+    const progressiveComments = await verifyProgressiveComments(root, owned, directory);
     const record = { node: process.versions.node, vscode: vscode.version, language: vscode.env.language,
       actualPublicHttpRead: true, actualSearchHttpReads: true, forcedCli: true, unsupportedPoliciesBeforeHttp: true,
       defaultOverrideAgentPolicyUsesCli: true, verifiedDirectAgentPolicy: "on (isolated test profile only)",
-      tlsValidation: true, cancellationIsolation: true, keepAliveReuse: true, disposalClose: true, settings, cloneSettings };
+      tlsValidation: true, cancellationIsolation: true, keepAliveReuse: true, disposalClose: true, settings, cloneSettings, progressiveComments };
     await writeFile(path.join(directory, `host-${vscode.env.language}.json`), JSON.stringify(record, null, 2) + "\n");
     console.log(JSON.stringify({ githubHttpHostSmoke: "passed", node: record.node, vscode: record.vscode, language: record.language }));
+  } catch (error) {
+    console.error("owned-settings-failure", JSON.stringify(await owned.githubSettingsState(["gitSimpleCompare.githubReadTransport", "gitSimpleCompare.cloneMode"])));
+    await writeFile(path.join(directory, `host-${vscode.env.language}-failure.png`), await owned.screenshot());
+    throw error;
   } finally { owned.close(); }
 }

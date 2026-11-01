@@ -103,7 +103,8 @@ test("같은 PR cache 요청은 singleflight가 되고 0 comment면 웹 HTML을 
   const cancelled = cache.load(root, controller.signal);
   await new Promise((resolve) => setTimeout(resolve, 30));
   controller.abort();
-  await assert.rejects(cancelled, /cancelled/i);
+  // 로컬 branch 조회 중 취소되면 Node 기본 문구가 반환되므로 안정된 취소 타입을 확인한다.
+  await assert.rejects(cancelled, { name: "AbortError" });
 
   delete process.env.GSC_FAKE_GH_DELAY;
   const retry = await cache.load(root);
