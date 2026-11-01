@@ -3,7 +3,8 @@ import { CommitFileChange } from "../graph/graphTypes";
 import { FileChangeStatus } from "./gitTypes";
 import type { GhExecute } from "./ghRunner";
 import { readGitHubInteractive } from "./githubReadCache";
-import { createGitHubReadSession, GitHubReadContextChangedError } from "./githubReadSession";
+import { createGitHubReadSession, completeGitHubReadSession, GitHubReadContextChangedError } from "./githubReadSession";
+import { graphQLRequest } from "./githubReadRequest";
 import { splitRepositoryName } from "./githubRepository";
 import { reviewThreadCommentCount } from "./pullRequestCommentCounts";
 import { logWarn } from "../ui/outputLog";
@@ -36,7 +37,7 @@ const THREAD_FIELDS = "nodes { path comments(first: 1) { totalCount } } pageInfo
 /** 첫 응답과 후속 응답 모두 같은 head/base를 읽었는지 추가 요청 없이 판별한다. */
 const ANCHOR_FIELDS = "number headRefOid baseRefOid";
 const DETAIL_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
-  repository(owner: $owner, name: $name) { pullRequest(number: $number) {
+  repository(owner: $owner, name: $name) { nameWithOwner url pullRequest(number: $number) {
     ${ANCHOR_FIELDS} comments(first: 1) { totalCount }
     files(first: 100) { totalCount ${FILE_FIELDS} }
     reviewThreads(first: 100) { ${THREAD_FIELDS} }
@@ -44,7 +45,7 @@ const DETAIL_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
 }`;
 /** 직접 연 파일 목록은 비싼 reviewThreads 연결 없이 첫 페이지부터 표시한다. */
 const FILES_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
-  repository(owner: $owner, name: $name) { pullRequest(number: $number) {
+  repository(owner: $owner, name: $name) { nameWithOwner url pullRequest(number: $number) {
     ${ANCHOR_FIELDS} comments(first: 1) { totalCount }
     files(first: 100) { totalCount ${FILE_FIELDS} }
   } }
@@ -83,7 +84,8 @@ export async function fetchPullRequestDetail(
   const [owner, name] = splitRepositoryName(repository);
   try {
     const out = await runner(graphQlArgs(owner, name, number, onProgress ? FILES_QUERY : DETAIL_QUERY), cwd,
-      { operation: "pr-detail", signal: controller.signal });
+      { operation: "pr-detail", signal: controller.signal,
+        request: graphQLRequest(onProgress ? FILES_QUERY : DETAIL_QUERY, { owner, name, number }) });
     controller.signal.throwIfAborted();
     const pr = parseDetail(out, number);
     const firstFiles = connection<ChangedFile>(pr, "files");
@@ -118,7 +120,8 @@ export async function fetchPullRequestDetail(
         let initial = firstThreads;
         if (!initial) {
           const next = parseDetail(await runner(graphQlArgs(owner, name, number, pageQuery("reviewThreads")), cwd,
-            { operation: "pr-detail-threads", signal: controller.signal }), number);
+            { operation: "pr-detail-threads", signal: controller.signal,
+              request: graphQLRequest(pageQuery("reviewThreads"), { owner, name, number }) }), number);
           assertAnchor(next, pr);
           initial = connection<ReviewThread>(next, "reviewThreads"); threads.push(...initial.nodes);
         }
@@ -136,6 +139,7 @@ export async function fetchPullRequestDetail(
     try { await Promise.all(tails); }
     catch (error) { await Promise.allSettled(tails); throw failure ?? error; }
     controller.signal.throwIfAborted();
+    if (!filesTruncated && !reviewThreadsTruncated && !reviewThreadsError) await completeGitHubReadSession(runner, controller.signal);
     return { ...detailValue(number, conversation, total, files, threads, filesTruncated, reviewThreadsTruncated),
       ...(onProgress ? { headHash: pr.headRefOid, baseHash: pr.baseRefOid } : {}),
       ...(reviewThreadsError ? { reviewThreadsError } : {}) };
@@ -159,7 +163,8 @@ async function appendPages<T>(cwd: string, owner: string, name: string, anchor: 
     cursors.add(cursor);
     const query = pageQuery(kind);
     const out = await runner(graphQlArgs(owner, name, anchor.number, query, cursor), cwd,
-      { operation: kind === "files" ? "pr-detail-files" : "pr-detail-threads", signal });
+      { operation: kind === "files" ? "pr-detail-files" : "pr-detail-threads", signal,
+        request: graphQLRequest(query, { owner, name, number: anchor.number, cursor }) });
     signal.throwIfAborted();
     const pr = parseDetail(out, anchor.number);
     assertAnchor(pr, anchor);

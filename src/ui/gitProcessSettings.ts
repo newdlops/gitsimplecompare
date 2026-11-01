@@ -10,6 +10,9 @@ import { setOwnedFsmonitorPolicy } from "../git/ownedFsmonitor";
 import { setWorkingTreeSnapshotPolicy, invalidateWorkingTreeSnapshots, disposeWorkingTreeSnapshots } from "../git/workingTreeSnapshot";
 import { setBlameReadCancellationPolicy, disposeSharedBlameReads } from "../git/sharedBlameReads";
 import { beginGitHubReadLifetime } from "../git/githubReadCache";
+import { setGitHubReadPolicyResolver } from "../git/githubReadRuntime";
+import { gitHubReadNetworkPolicy } from "./githubTransportSettings";
+import { setGitHubApiErrorLocalizer } from "../git/githubApiError";
 import { beginFileHistoryReadLifetime } from "../git/fileHistoryReadCache";
 import { clearGitHubRepositoryNameCache } from "../git/githubRepositoryName";
 import { logError, logInfo } from "./outputLog";
@@ -46,7 +49,9 @@ function protectedPaths(): string[] {
  * @returns extension dispose 때 해제할 전체 기능 구독
  */
 export function registerGitProcessManagement(activeRoot: () => string | undefined, storageDirectory?: string): vscode.Disposable {
-  const stopGitHubReads = beginGitHubReadLifetime();
+  const resetGitHubPolicy = setGitHubReadPolicyResolver(gitHubReadNetworkPolicy);
+  const resetGitHubErrors = setGitHubApiErrorLocalizer(message => vscode.l10n.t(message));
+  let stopGitHubReads = beginGitHubReadLifetime();
   const stopHistoryReads = beginFileHistoryReadLifetime(repo => configuration(repo).get<boolean>("cancelUnusedGitReads", true), logInfo,
     storageDirectory ? path.join(storageDirectory, "git-file-history-v1") : undefined);
   const subscriptions: vscode.Disposable[] = [];
@@ -182,6 +187,9 @@ export function registerGitProcessManagement(activeRoot: () => string | undefine
   subscriptions.push(vscode.commands.registerCommand("gitSimpleCompare.configureGitProcessCleanup", configure),
     vscode.commands.registerCommand("gitSimpleCompare.cleanupIdleGitProcesses", cleanup),
     vscode.workspace.onDidChangeConfiguration(event => {
+      if (event.affectsConfiguration("gitSimpleCompare.githubReadTransport") || event.affectsConfiguration("http")) {
+        logInfo("GitHub read network setting changed"); stopGitHubReads = beginGitHubReadLifetime();
+      }
       if (event.affectsConfiguration("gitSimpleCompare.gitProcessCleanup")) { logInfo("git cleanup configuration changed"); sync(); }
       if (event.affectsConfiguration("gitSimpleCompare.workingTreeStatusCache") || event.affectsConfiguration("gitSimpleCompare.gitPath")) invalidateWorkingTreeSnapshots();
     }), vscode.workspace.onDidChangeWorkspaceFolders(() => sync()), vscode.window.onDidChangeActiveTextEditor(() => sync()));
@@ -199,7 +207,7 @@ export function registerGitProcessManagement(activeRoot: () => string | undefine
       .then(() => undefined).finally(() => process.removeListener("exit", hostExit));
     void shutdown.catch(() => undefined);
     for (const subscription of subscriptions) subscription.dispose();
-    resetTimeout(); resetLogger(); resetStatusPolicy(); resetBlame();
+    resetTimeout(); resetLogger(); resetStatusPolicy(); resetBlame(); resetGitHubPolicy(); resetGitHubErrors();
   };
   activeShutdown = async () => { dispose(); await shutdown; };
   return { dispose };

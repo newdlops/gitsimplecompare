@@ -50,6 +50,11 @@ export function graphqlRead(query: string, variables: GitHubVariables = {}, opti
   return { args, request };
 }
 
+/** 기존 CLI 인자를 유지하는 서비스가 같은 검증 builder의 typed descriptor를 옵션에 붙인다. */
+export function graphQLRequest(query: string, variables: GitHubVariables = {}): GitHubGraphQLRequest {
+  return graphqlRead(query, variables).request;
+}
+
 /** 같은 API origin의 GET 경로만 허용하며 절대 URL·경로 탈출·헤더 문자를 거부한다. */
 export function restRead(path: string, accept = "application/vnd.github+json", cliArgs?: readonly string[]) {
   const url = new URL(path, "https://api.github.com");

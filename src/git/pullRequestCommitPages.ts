@@ -3,6 +3,7 @@ import { runGh } from "./ghCli";
 import type { GhExecute } from "./ghRunner";
 import type { GhPullRequestNode, PullRequestInfo } from "./pullRequestInfo";
 import { PULL_REQUEST_COMMIT_FIELDS, pullRequestCommitSummary } from "./pullRequestInfo";
+import { graphQLRequest } from "./githubReadRequest";
 
 const QUERY = `query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
   repository(owner: $owner, name: $name) { pullRequest(number: $number) {
@@ -38,9 +39,11 @@ export async function completePullRequestCommits(
     cursors.add(cursor);
     const output = await runner(["api", "graphql", "-f", `owner=${owner}`, "-f", `name=${name}`,
       "-F", `number=${node.number}`, "-f", `cursor=${cursor}`, "-f", `query=${QUERY}`], root,
-      { signal, operation: "graph-pr-commit-page" });
+      { signal, operation: "graph-pr-commit-page", request: graphQLRequest(QUERY, { owner, name, number: node.number!, cursor }) });
     signal?.throwIfAborted();
-    const current = (JSON.parse(output) as { data?: { repository?: { pullRequest?: GhPullRequestNode } } }).data?.repository?.pullRequest;
+    const response = JSON.parse(output) as { errors?: unknown[]; data?: { repository?: { pullRequest?: GhPullRequestNode } } };
+    if (response.errors?.length) throw new Error("GitHub returned an incomplete pull request commit page.");
+    const current = response.data?.repository?.pullRequest;
     if (current?.headRefOid !== node.headRefOid) throw new Error(`PR #${node.number} head changed while reading commits. Refresh pull requests.`);
     if (node.baseRefOid && current.baseRefOid !== node.baseRefOid) throw new Error(`PR #${node.number} base changed while reading commits. Refresh pull requests.`);
     const connection = current.commits;

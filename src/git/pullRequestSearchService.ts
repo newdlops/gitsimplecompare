@@ -3,7 +3,9 @@
 // - 결과는 PullRequestInfo 로 정규화해 기존 preview/open/action 흐름에 그대로 합칠 수 있게 한다.
 import { readGitHub } from "./githubReadCache";
 import { readGitHubRepositoryName } from "./githubRepositoryName";
-import { createGitHubReadSession } from "./githubReadSession";
+import { createGitHubReadSession, completeGitHubReadSession } from "./githubReadSession";
+import { graphQLRequest, restRead } from "./githubReadRequest";
+import { GitHubApiError } from "./githubApiError";
 import { GhCliError } from "./ghCli";
 import { PriorityReadQueue } from "../utils/priorityReadQueue";
 import { logInfo } from "../ui/outputLog";
@@ -94,6 +96,7 @@ export async function searchPullRequests(
     ]);
     const pullRequests = mergeByNumber([...(exact ? [exact] : []), ...associated, ...search.pullRequests]);
     controller.signal.throwIfAborted();
+    await completeGitHubReadSession(read, controller.signal);
     return { query, pullRequests, hasMore: search.hasMore, nextCursor: search.nextCursor,
       totalCount: Math.max(search.totalCount, pullRequests.length) };
   } finally { signal?.removeEventListener("abort", cancel); controller.abort(); }
@@ -148,7 +151,8 @@ async function searchPage(
     ...(cursor ? ["-f", `cursor=${cursor}`] : []),
     "-f",
     `query=${PULL_REQUEST_SEARCH_QUERY}`,
-  ], repoRoot, { operation: "pr-search" });
+  ], repoRoot, { operation: "pr-search", request: graphQLRequest(PULL_REQUEST_SEARCH_QUERY,
+    { searchQuery: buildSearchQuery(owner, name, query), limit, ...(cursor ? { cursor } : {}) }) });
   const response = JSON.parse(out) as GhSearchResponse, search = response.data?.search;
   if (response.errors?.length || !search || !Array.isArray(search.nodes)
     || typeof search.pageInfo?.hasNextPage !== "boolean" || !Number.isSafeInteger(search.issueCount) || Number(search.issueCount) < 0) {
@@ -205,8 +209,10 @@ async function searchByCommitHash(
     + `/commits/${encodeURIComponent(hash)}/pulls?per_page=100`;
   const numbers = new Set<number>();
   for (let page = 1; ; page++) {
-    const out = await runner(["api", `${route}${page > 1 ? `&page=${page}` : ""}`], repoRoot, { operation: "pr-search-associated" }).catch(error => {
+    const path = `${route}${page > 1 ? `&page=${page}` : ""}`;
+    const out = await runner(["api", path], repoRoot, { operation: "pr-search-associated", request: restRead(`/${path}`).request }).catch(error => {
       // 첫 페이지의 존재하지 않는 commit만 보완한다. 후속 실패를 완성된 빈 페이지로 숨기지 않는다.
+      if (page === 1 && error instanceof GitHubApiError && (error.status === 404 || error.status === 422 && error.reason === "missing-commit")) return "";
       if (page === 1 && error instanceof GhCliError && (/\bHTTP 404\b/i.test(error.stderr)
         || /\bHTTP 422\b/i.test(error.stderr) && /no commit found for sha/i.test(error.stderr))) return "";
       throw error;

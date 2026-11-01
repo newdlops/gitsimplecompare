@@ -117,7 +117,13 @@ export class GitHubHttpTransport {
         }
         throw new GitHubApiError("permission", options.operation, status);
       }
-      if (status < 200 || status >= 300) throw new GitHubApiError("http", options.operation, status);
+      if (status < 200 || status >= 300) {
+        let missingCommit = false;
+        if (status === 422) {
+          try { missingCommit = /^no commit found for sha\b/i.test(JSON.parse(body)?.message ?? ""); } catch { /* 원문은 오류에 보관하지 않는다. */ }
+        }
+        throw new GitHubApiError("http", options.operation, status, undefined, undefined, missingCommit ? "missing-commit" : undefined);
+      }
       let parsed: { errors?: unknown[] };
       try { parsed = JSON.parse(body); } catch { throw new GitHubApiError("http", options.operation, status); }
       if (request.kind === "graphql" && Array.isArray(parsed?.errors) && parsed.errors.length) {

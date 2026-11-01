@@ -2,6 +2,7 @@
 // - PR conversation comment 와 file review thread comment 를 합쳐 graph UI 의 숫자를 일관되게 만든다.
 import { runGh } from "./ghCli";
 import type { GhExecute } from "./ghRunner";
+import { graphQLRequest, type GitHubVariables } from "./githubReadRequest";
 
 /** PR 댓글 총합 계산에 필요한 GraphQL selection */
 export const PULL_REQUEST_COMMENT_COUNTS_QUERY = buildPullRequestCommentCountsQuery();
@@ -154,6 +155,7 @@ async function readReviewThreadCountBatch(
     throwIfAborted(signal);
     const pending = states.filter(state => state.page.pageInfo?.hasNextPage);
     const variables: string[] = [], selections: string[] = [];
+    const apiVariables: Record<string, string | number> = { owner, name };
     const args = ["api", "graphql", "-F", `owner=${owner}`, "-F", `name=${name}`];
     pending.forEach((state, index) => {
       const cursor = state.page.pageInfo?.endCursor;
@@ -164,11 +166,13 @@ async function readReviewThreadCountBatch(
         nodes { comments(first: 1) { totalCount } } pageInfo { hasNextPage endCursor }
       } }`);
       args.push("-F", `number${index}=${state.number}`, "-f", `cursor${index}=${cursor}`);
+      apiVariables[`number${index}`] = state.number; apiVariables[`cursor${index}`] = cursor;
     });
-    args.push("-f", `query=query($owner: String!, $name: String!, ${variables.join(", ")}) {
+    const query = `query($owner: String!, $name: String!, ${variables.join(", ")}) {
       repository(owner: $owner, name: $name) { ${selections.join("\n")} }
-    }`);
-    const output = await runner(args, cwd, { signal, operation: "graph-pr-review-thread-count-batch" });
+    }`;
+    args.push("-f", `query=${query}`);
+    const output = await runner(args, cwd, { signal, operation: "graph-pr-review-thread-count-batch", request: graphQLRequest(query, apiVariables as GitHubVariables) });
     throwIfAborted(signal);
     const response = JSON.parse(output) as { errors?: unknown[];
       data?: { repository?: Record<string, { reviewThreads?: GhReviewThreadConnection } | null> } };
@@ -255,7 +259,8 @@ async function readReviewThreadCountPage(
     `cursor=${cursor}`,
     "-f",
     `query=${PULL_REQUEST_REVIEW_THREAD_COUNTS_QUERY}`,
-  ], cwd, { signal, operation: "graph-pr-review-thread-count-page" });
+  ], cwd, { signal, operation: "graph-pr-review-thread-count-page", request: graphQLRequest(PULL_REQUEST_REVIEW_THREAD_COUNTS_QUERY,
+    { owner, name, number, cursor }) });
   throwIfAborted(signal);
   const parsed = JSON.parse(out) as GhReviewThreadCountPageResponse;
   const threads = parsed.data?.repository?.pullRequest?.reviewThreads;

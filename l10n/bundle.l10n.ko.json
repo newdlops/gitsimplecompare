@@ -1851,7 +1851,7 @@
   "Intent to Rename": "이름 변경 예정",
   "Merge conflict": "병합 충돌",
   "Commit details": "커밋 상세",
-  "Loading commit details…": "커밋 상세 정보를 불러오는 중…",
+  "Loading commit details…": "커밋 상세를 불러오는 중…",
   "Could not load commit details.": "커밋 상세 정보를 불러오지 못했습니다.",
   "Commit hash copied": "커밋 해시를 복사했습니다",
   "Copy Commit Hash": "커밋 해시 복사",
@@ -1939,7 +1939,14 @@
   "Open commit {0} details": "커밋 {0} 상세 열기",
   "Jump to commit {0} in the graph": "그래프의 커밋 {0}으로 이동",
   "View commit details": "커밋 상세 보기",
-  "Loading commit details…": "커밋 상세를 불러오는 중…",
   "(No commit message)": "(커밋 메시지 없음)",
-  "No related commits.": "관련 커밋이 없습니다."
+  "No related commits.": "관련 커밋이 없습니다.",
+  "GitHub authentication failed. Run gh auth login and refresh.": "GitHub 인증에 실패했습니다. gh auth login을 실행한 뒤 새로고침하세요.",
+  "GitHub denied this read. Check repository access and refresh.": "GitHub가 읽기 요청을 거부했습니다. 저장소 접근 권한을 확인한 뒤 새로고침하세요.",
+  "GitHub rate limit reached. Wait before refreshing.": "GitHub 요청 한도에 도달했습니다. 잠시 기다린 뒤 새로고침하세요.",
+  "GitHub read failed. Refresh to try again.": "GitHub 읽기에 실패했습니다. 새로고침하여 다시 시도하세요.",
+  "GitHub returned incomplete data. Refresh to try again.": "GitHub가 불완전한 데이터를 반환했습니다. 새로고침하여 다시 시도하세요.",
+  "GitHub connection failed. Refresh to try again.": "GitHub 연결에 실패했습니다. 새로고침하여 다시 시도하세요.",
+  "GitHub response exceeded the size limit.": "GitHub 응답이 크기 제한을 초과했습니다.",
+  "GitHub redirected this read to an unsupported destination.": "GitHub가 읽기 요청을 지원되지 않는 대상으로 리디렉션했습니다."
 }

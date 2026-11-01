@@ -1,7 +1,8 @@
 // Graph용 PR 목록을 가벼운 요약 조회와 제한된 정보/pagination 조회로 읽는 모듈.
 // - 제목·상태·브랜치를 먼저 알리고, 최종 반환 전에는 모든 commit OID와 댓글 수를 완성한다.
 import { readGitHub } from "./githubReadCache";
-import { createGitHubReadSession } from "./githubReadSession";
+import { createGitHubReadSession, completeGitHubReadSession } from "./githubReadSession";
+import { graphQLRequest } from "./githubReadRequest";
 import { completePullRequestCommits } from "./pullRequestCommitPages";
 import { PriorityReadQueue } from "../utils/priorityReadQueue";
 import type { GhExecute, GhRunnerOptions } from "./ghRunner";
@@ -40,7 +41,7 @@ function buildPullRequestListQuery(includeMutableMetadata: boolean): string {
   return `
 query($owner: String!, $name: String!, $limit: Int!, $cursor: String) {
   repository(owner: $owner, name: $name) {
-    nameWithOwner
+    nameWithOwner url
     defaultBranchRef { name }
     pullRequests(first: $limit, after: $cursor, states: [OPEN, CLOSED, MERGED], orderBy: {field: UPDATED_AT, direction: DESC}) {
       nodes {
@@ -147,7 +148,9 @@ export async function fetchPullRequestListPage(
       "-F", `limit=${PULL_REQUEST_PAGE_SIZE}`,
       ...(cursor ? ["-f", `cursor=${cursor}`] : []),
       "-f", `query=${reuseMetadata ? PULL_REQUEST_SNAPSHOT_QUERY : PULL_REQUESTS_QUERY}`,
-    ], repoRoot, { signal: controller.signal, operation: "graph-pr-list-page" });
+    ], repoRoot, { signal: controller.signal, operation: "graph-pr-list-page",
+      request: graphQLRequest(reuseMetadata ? PULL_REQUEST_SNAPSHOT_QUERY : PULL_REQUESTS_QUERY,
+        { owner: "{owner}", name: "{repo}", limit: PULL_REQUEST_PAGE_SIZE, ...(cursor ? { cursor } : {}) }) });
     ensureActive();
     const response = JSON.parse(output) as GhListResponse;
     const repository = response.data?.repository;
@@ -256,6 +259,7 @@ export async function fetchPullRequestListPage(
     await Promise.allSettled(pagination);
     if (paginationError) throw paginationFailure(paginationError.error, requestFailure?.error);
     ensureActive();
+    await completeGitHubReadSession(read, controller.signal);
     logInfo("graph pull request page complete", {
       repoRoot, pullRequests: pullRequests.length, requests, paginationTasks,
       elapsedMs: Date.now() - started, reusedCommits,
@@ -372,7 +376,7 @@ async function readPullRequestNodeBatch(repoRoot: string, references: readonly G
   const ids = references.map(node => node.id!);
   const output = await runner(["api", "graphql", ...ids.flatMap(id => ["-F", `ids[]=${id}`]),
     "-f", `query=${PULL_REQUEST_NODES_QUERY}`], repoRoot,
-  { signal, operation: "graph-pr-list-nodes" });
+  { signal, operation: "graph-pr-list-nodes", request: graphQLRequest(PULL_REQUEST_NODES_QUERY, { ids }) });
   throwIfAborted(signal);
   const response = JSON.parse(output) as { errors?: unknown[]; data?: { nodes?: Array<GhPullRequestNode | null> } };
   if (response.errors?.length || !Array.isArray(response.data?.nodes) || response.data.nodes.length !== ids.length) {

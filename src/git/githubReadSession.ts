@@ -16,6 +16,7 @@ export interface GitHubReadSessionState {
   credential?: Promise<GitHubCredentialLease>;
   credentialKey?: string;
   generation?: number;
+  preparation?: Promise<void>;
 }
 const sessions = new WeakMap<GhExecute, GitHubReadSessionState>();
 

@@ -4,6 +4,8 @@ import { readGitHub } from "./githubReadCache";
 import type { PullRequestInfo } from "./pullRequestInfo";
 import type { PullRequestPreviewCommit } from "./pullRequestPreviewCommits";
 import { normalizePreviewStatus } from "./pullRequestPreviewFiles";
+import { createGitHubReadSession, completeGitHubReadSession } from "./githubReadSession";
+import { graphQLRequest, restRead } from "./githubReadRequest";
 
 const generations = new Map<string, number>();
 /**
@@ -18,7 +20,13 @@ export function invalidatePreviewRemote(root: string): void { generations.set(ro
 /** 같은 PR head·갱신 시각의 조회를 공유하면서 모든 CLI에 panel의 취소 신호를 전달한다. */
 export function previewReadRunner(root: string, pr?: PullRequestInfo, signal?: AbortSignal): GhExecute {
   const version = JSON.stringify([pr?.number, pr?.headHash, pr?.updatedAt, generations.get(root) ?? 0]);
-  return (args, cwd, options) => readGitHub(args, cwd, { ...options, signal, version, ttlMs: 30_000 });
+  return async (args, cwd, options) => {
+    const controller = new AbortController(), signals = [...new Set([signal, options.signal].filter((value): value is AbortSignal => !!value))];
+    const abort = () => controller.abort();
+    for (const value of signals) { value.addEventListener("abort", abort, { once: true }); if (value.aborted) abort(); }
+    try { return await readGitHub(args, cwd, { ...options, signal: controller.signal, version, ttlMs: 30_000 }); }
+    finally { for (const value of signals) value.removeEventListener("abort", abort); }
+  };
 }
 
 const QUERY = `query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
@@ -35,7 +43,7 @@ interface SummaryPage { headRefOid?: string; title?: string; body?: string;
   commits?: { nodes?: Array<{ commit?: CommitNode }>; pageInfo?: { hasNextPage?: boolean; endCursor?: string } }; }
 /** 미리보기 첫 요청으로 함께 얻는 저장소·본문·첫 커밋 페이지다. */
 export interface PreviewBootstrap { repository: string; title: string; body: string; firstPage: SummaryPage; }
-const BOOTSTRAP_QUERY = QUERY.replace("{ pullRequest(number: $number) {", "{ nameWithOwner pullRequest(number: $number) { title body");
+const BOOTSTRAP_QUERY = QUERY.replace("{ pullRequest(number: $number) {", "{ nameWithOwner url pullRequest(number: $number) { title body");
 
 /**
  * 저장소 문맥·제목·본문·첫 커밋 페이지를 한 요청으로 읽어 초기 네트워크 왕복을 줄인다.
@@ -43,12 +51,17 @@ const BOOTSTRAP_QUERY = QUERY.replace("{ pullRequest(number: $number) {", "{ nam
  * @returns 첫 head가 검증된 원격 데이터. 커밋 후속 페이지와 파일은 이후 병렬로 읽는다.
  */
 export async function fetchPreviewBootstrap(root: string, pr: PullRequestInfo, runner: GhExecute): Promise<PreviewBootstrap> {
+  runner = createGitHubReadSession(root, runner);
   const out = await runner(["api", "graphql", "-F", "owner={owner}", "-F", "name={repo}",
-    "-F", `number=${pr.number}`, "-f", `query=${BOOTSTRAP_QUERY}`], root, { operation: "pr-preview-bootstrap" });
-  const repository = (JSON.parse(out) as { data?: { repository?: { nameWithOwner?: string; pullRequest?: SummaryPage } } }).data?.repository;
+    "-F", `number=${pr.number}`, "-f", `query=${BOOTSTRAP_QUERY}`], root, { operation: "pr-preview-bootstrap",
+    request: graphQLRequest(BOOTSTRAP_QUERY, { owner: "{owner}", name: "{repo}", number: pr.number }) });
+  const response = JSON.parse(out) as { errors?: unknown[]; data?: { repository?: { nameWithOwner?: string; pullRequest?: SummaryPage } } };
+  if (response.errors?.length) throw new Error("GitHub pull request preview is incomplete.");
+  const repository = response.data?.repository;
   if (!repository?.nameWithOwner || !repository.pullRequest) throw new Error("GitHub pull request preview is not available.");
   const value = repository.pullRequest;
   if (!pr.headHash || value.headRefOid !== pr.headHash) throw new Error("The pull request head changed. Refresh pull requests before opening its preview.");
+  await completeGitHubReadSession(runner);
   return { repository: repository.nameWithOwner, title: value.title || pr.title, body: value.body ?? "", firstPage: value };
 }
 
@@ -60,6 +73,7 @@ export async function fetchPreviewBootstrap(root: string, pr: PullRequestInfo, r
  * @returns 원래 순서의 커밋 요약. 파일은 사용자가 선택할 때 별도로 읽는다.
  */
 export async function fetchPreviewCommitSummaries(root: string, pr: PullRequestInfo, runner: GhExecute, initial?: SummaryPage): Promise<PullRequestPreviewCommit[]> {
+  runner = createGitHubReadSession(root, runner);
   let cursor: string | undefined;
   const seen = new Set<string>();
   const commits = new Map<string, PullRequestPreviewCommit>();
@@ -69,8 +83,11 @@ export async function fetchPreviewCommitSummaries(root: string, pr: PullRequestI
     if (!value) {
       const out = await runner(["api", "graphql", "-F", "owner={owner}", "-F", "name={repo}",
         "-F", `number=${pr.number}`, ...(cursor ? ["-f", `cursor=${cursor}`] : []), "-f", `query=${QUERY}`], root,
-        { operation: "pr-preview-commit-summaries" });
-      value = (JSON.parse(out) as { data?: { repository?: { pullRequest?: SummaryPage } } }).data?.repository?.pullRequest;
+        { operation: "pr-preview-commit-summaries", request: graphQLRequest(QUERY,
+          { owner: "{owner}", name: "{repo}", number: pr.number, ...(cursor ? { cursor } : {}) }) });
+      const response = JSON.parse(out) as { errors?: unknown[]; data?: { repository?: { pullRequest?: SummaryPage } } };
+      if (response.errors?.length) throw new Error("GitHub returned incomplete commit summaries.");
+      value = response.data?.repository?.pullRequest;
     }
     if (!pr.headHash || value?.headRefOid !== pr.headHash) throw new Error("The pull request head changed. Refresh pull requests before opening its preview.");
     if (!value.commits?.nodes || typeof value.commits.pageInfo?.hasNextPage !== "boolean") throw new Error("GitHub returned incomplete commit summaries.");
@@ -84,6 +101,7 @@ export async function fetchPreviewCommitSummaries(root: string, pr: PullRequestI
     if (!cursor || seen.has(cursor)) throw new Error("GitHub commit pagination did not advance.");
     seen.add(cursor);
   } while (cursor);
+  await completeGitHubReadSession(runner);
   return [...commits.values()];
 }
 
@@ -95,9 +113,12 @@ export async function fetchPreviewCommitSummaries(root: string, pr: PullRequestI
 export async function fetchRemotePreviewCommit(root: string, repository: string, hash: string, signal?: AbortSignal): Promise<PullRequestPreviewCommit> {
   if (!/^[a-f\d]{40,64}$/i.test(hash)) throw new Error("Invalid commit OID.");
   const result: PullRequestPreviewCommit = { hash, shortHash: hash.slice(0, 7), title: hash.slice(0, 12), files: [], filesLoaded: true };
+  const runner = createGitHubReadSession(root, readGitHub);
   for (let page = 1; ; page++) {
-    const out = await readGitHub(["api", `repos/${repository}/commits/${hash}?per_page=100&page=${page}`], root,
-      { operation: "pr-preview-commit-files", signal, version: "commit", ttlMs: COMMIT_FILES_TTL_MS });
+    const path = `repos/${repository}/commits/${hash}?per_page=100&page=${page}`;
+    const out = await runner(["api", path], root,
+      { operation: "pr-preview-commit-files", signal, request: restRead(`/${path}`).request,
+        ...{ version: "commit", ttlMs: COMMIT_FILES_TTL_MS } });
     const value = JSON.parse(out) as { sha?: string; files?: Array<{ filename: string; previous_filename?: string; status?: string; additions?: number; deletions?: number; patch?: string }> };
     if (value.sha !== hash || !Array.isArray(value.files)) throw new Error("GitHub returned incomplete commit files.");
     result.files.push(...value.files.map(file => ({ path: file.filename, oldPath: file.previous_filename,

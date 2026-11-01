@@ -122,6 +122,16 @@ test("rate limit cooldown rejects a later request without another network call",
   assert.equal(f.count().requests, 1);
 });
 
+test("missing-commit 422 is normalized without exposing a generic 422 response", async t => {
+  const f = await fixture(t, (req, res) => {
+    res.writeHead(422); res.end(JSON.stringify({ message: req.url === "/missing" ? "No commit found for SHA: fixture" : "private fixture validation details" }));
+  });
+  await assert.rejects(f.read("/missing"), { status: 422, reason: "missing-commit" });
+  await assert.rejects(f.read("/other"), error => {
+    assert.equal((error as any).reason, undefined); assert(!JSON.stringify(error).includes("private fixture")); return true;
+  });
+});
+
 test("pool bounds four contexts and cancels a fifth waiter without disrupting active leases", async () => {
   const pool = new GitHubHttpPool(10);
   const leases = await Promise.all(["a", "b", "c", "d"].map(key => pool.acquire(key)));

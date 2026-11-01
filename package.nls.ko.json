@@ -264,5 +264,9 @@
   "config.blameAnnotations.authorName": "파일 Blame에 전체 이름, 첫 단어 또는 마지막 단어를 표시합니다. 호버에서는 전체 작성자 정보를 유지합니다.",
   "config.blameAnnotations.compact": "연속된 같은 커밋 묶음에는 라벨을 한 번만 표시하고, 스크롤하거나 접은 뒤 처음 보이는 줄에는 다시 표시합니다.",
   "config.blameAnnotations.highlightCommit": "파일 Blame이 열린 동안 커서와 같은 커밋의 줄을 강조합니다. 커서 이동으로 Git을 실행하지 않습니다.",
-  "config.blameAnnotations.showCommitHash": "파일 Blame 주석에 짧은 커밋 해시를 포함합니다."
+  "config.blameAnnotations.showCommitHash": "파일 Blame 주석에 짧은 커밋 해시를 포함합니다.",
+  "config.githubReadTransport.desc": "GitHub 읽기 전송 방식입니다. 자동 모드는 저장소 검증 후 지원되는 네트워크 정책에서 HTTPS 연결을 재사용합니다. 프록시·사용자 CA·미지원 호스트는 GitHub CLI를 사용합니다. 변경하면 진행 중인 읽기를 취소합니다.",
+  "config.githubReadTransport.auto": "지원되는 GitHub.com 읽기에 직접 HTTPS를 사용하고 그 외에는 GitHub CLI를 사용합니다.",
+  "config.githubReadTransport.cli": "읽기에 항상 GitHub CLI를 사용합니다.",
+  "config.githubGitProactiveAuth.desc": "GitHub.com HTTPS 인증 요청 전에 기존 Git 자격 증명을 사용합니다. 호환성이 검증된 native Git 작업에만 적용하며 명시적 인증 설정을 우선합니다. 이전에 익명으로 접근하던 공개 저장소에서도 자격 증명을 요구할 수 있습니다."
 }

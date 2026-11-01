@@ -264,5 +264,9 @@
   "config.blameAnnotations.authorName": "Show the full author name, first word, or last word in file blame annotations. Hover always keeps the full identity.",
   "config.blameAnnotations.compact": "Show one label per consecutive commit block, repeating it at the first visible line after scrolling or folding.",
   "config.blameAnnotations.highlightCommit": "Highlight lines from the cursor's commit while file blame annotations are open. Cursor movement does not run Git.",
-  "config.blameAnnotations.showCommitHash": "Include the short commit hash in file blame annotations."
+  "config.blameAnnotations.showCommitHash": "Include the short commit hash in file blame annotations.",
+  "config.githubReadTransport.desc": "GitHub read transport. Auto reuses HTTPS connections after repository verification when network policy is supported. Proxy, custom CA and unsupported hosts use GitHub CLI. Changing this cancels active reads.",
+  "config.githubReadTransport.auto": "Use direct HTTPS for supported GitHub.com reads, otherwise GitHub CLI.",
+  "config.githubReadTransport.cli": "Always use GitHub CLI for reads.",
+  "config.githubGitProactiveAuth.desc": "Use existing Git credentials before a GitHub.com HTTPS authentication challenge. Applies only to proven compatible native Git operations and respects explicit authentication settings. May require credentials for public repositories that previously allowed anonymous access."
 }

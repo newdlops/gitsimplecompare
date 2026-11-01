@@ -4,6 +4,7 @@ import type { GhExecute, GhRunnerOptions } from "./ghRunner";
 import { snapshotGitHubEnvironment } from "./githubReadContext";
 import { assertGitHubReadContext, captureGitHubRequestContext } from "./githubReadSession";
 import { logInfo } from "../ui/outputLog";
+import { GitHubReadRuntime } from "./githubReadRuntime";
 
 interface Entry { value: string; at: number; expires: number; bytes: number; }
 interface Pending { controller: AbortController; promise: Promise<string>; users: number; }
@@ -24,7 +25,8 @@ export class GitHubReadCache {
   private disposed = false;
 
   /** 실제 CLI 또는 테스트 실행기, 큐 대기를 포함한 시간 상한을 받아 같은 정책을 적용한다. */
-  constructor(private readonly execute: GhExecute = runGh, private readonly timeoutMs = 30_000) {}
+  constructor(private readonly execute: GhExecute = runGh, private readonly timeoutMs = 30_000,
+    private readonly prepare?: (root: string, options: GhRunnerOptions) => Promise<void>) {}
 
   /**
    * 같은 저장소·환경·인자·세대의 조회를 공유하고 성공한 작은 응답만 잠시 보관한다.
@@ -33,10 +35,14 @@ export class GitHubReadCache {
    */
   async read(args: readonly string[], root: string, options: GitHubReadOptions): Promise<string> {
     if (this.disposed || options.signal?.aborted) return Promise.reject(cancelled());
+    options = { ...options, deadline: Math.min(options.deadline ?? Infinity, Date.now() + this.timeoutMs) };
     const env = snapshotGitHubEnvironment(options.env);
     const context = await captureGitHubRequestContext(root, env, args, options.signal);
     if (this.disposed || options.signal?.aborted) throw cancelled();
-    const key = JSON.stringify([root, context ?? Math.random(), options.version || "", args]);
+    await this.prepare?.(root, { ...options, env });
+    if (this.disposed || options.signal?.aborted) throw cancelled();
+    const key = JSON.stringify([root, context ?? Math.random(), options.readSession?.credentialKey ?? "", options.readSession?.generation,
+      options.version || "", args]);
     const ttl = context === undefined ? 0 : options.ttlMs ?? 0;
     this.sweep();
     const cached = this.cache.get(key);
@@ -123,7 +129,7 @@ export class GitHubReadCache {
     controller.signal.addEventListener("abort", onStopped, { once: true });
     const timer = setTimeout(() => {
       rejectInterrupted(new Error("GitHub query timed out. Refresh to try again.")); controller.abort();
-    }, this.timeoutMs);
+    }, Math.max(0, Math.min(this.timeoutMs, (options.deadline ?? Infinity) - Date.now())));
     const execution = Promise.resolve().then(async () => {
       if (this.active >= 4) logInfo("GitHub read queued", { repoRoot: root, operation: options.operation,
         active: this.active, queued: this.queue.length + 1 });
@@ -166,8 +172,9 @@ export class GitHubReadCache {
 
 /** 일반 조회 실패와 정상 취소를 구분하는 표준 오류를 만든다. */
 function cancelled(): Error { return new DOMException("GitHub query cancelled.", "AbortError"); }
-let shared = new GitHubReadCache();
-let interactive = new GitHubReadCache();
+let runtime = new GitHubReadRuntime();
+let shared = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
+let interactive = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
 
 /** production 백그라운드 조회가 실행 한계와 캐시를 공유하게 하는 진입점이다. */
 export const readGitHub = (args: readonly string[], root: string, options: GitHubReadOptions): Promise<string> => shared.read(args, root, options);
@@ -178,8 +185,11 @@ export const readGitHubInteractive = (args: readonly string[], root: string, opt
 
 /** 새 활성화가 새 조회 수명을 소유하게 하고 이전 disposer가 새 실행을 취소하지 못하게 한다. */
 export function beginGitHubReadLifetime(): () => Promise<void> {
-  const previous = Promise.all([shared.dispose(), interactive.dispose()]);
-  shared = new GitHubReadCache(); interactive = new GitHubReadCache();
+  const previous = Promise.all([shared.dispose(), interactive.dispose(), runtime.dispose()]);
+  runtime = new GitHubReadRuntime();
+  const ownedRuntime = runtime;
+  shared = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
+  interactive = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
   const owned = [shared, interactive];
-  return async () => { await Promise.all([previous, ...owned.map(cache => cache.dispose())]); };
+  return async () => { await Promise.all([previous, ...owned.map(cache => cache.dispose()), ownedRuntime.dispose()]); };
 }

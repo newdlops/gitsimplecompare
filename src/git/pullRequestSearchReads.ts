@@ -1,6 +1,8 @@
 // 검색의 번호별 PR 확장과 연결 완성을 공유한다. 같은 commit의 많은 PR도 20개씩 묶어 읽는다.
 import type { GhExecute } from "./ghRunner";
 import { GhCliError } from "./ghCli";
+import { graphQLResult, GitHubApiError } from "./githubApiError";
+import { graphQLRequest } from "./githubReadRequest";
 import { completePullRequestCommits, mapPullRequestReads } from "./pullRequestCommitPages";
 import { fetchRemainingReviewThreadCommentCounts } from "./pullRequestCommentCounts";
 import { PULL_REQUEST_INFO_QUERY, pullRequestInfoFromGraphQl, type GhPullRequestNode, type PullRequestInfo } from "./pullRequestInfo";
@@ -40,11 +42,15 @@ export async function fetchSearchPullRequestsByNumber(root: string, owner: strin
   for (let index = 0; index < selected.length; index += BATCH_SIZE) groups.push(selected.slice(index, index + BATCH_SIZE));
   const pages = await mapPullRequestReads(groups, async group => {
     const fields = group.map(number => `p${number}: pullRequest(number: ${number}) { ${PULL_REQUEST_INFO_QUERY} }`).join("\n");
-    let requestError: GhCliError | undefined;
+    let requestError: GhCliError | GitHubApiError | undefined;
+    const query = `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { ${fields} } }`;
     const out = await runner(["api", "graphql", "-F", `owner=${owner}`, "-F", `name=${name}`, "-f",
-      `query=query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { ${fields} } }`], root,
-    { operation: group.length === 1 ? "pr-search-number" : "pr-search-number-batch" }).catch(error => {
+      `query=${query}`], root,
+    { operation: group.length === 1 ? "pr-search-number" : "pr-search-number-batch", request: graphQLRequest(query, { owner, name }) }).catch(error => {
       // gh는 존재하지 않는 PR alias도 data:null + NOT_FOUND를 stdout에 넣고 exit=1로 반환한다.
+      if (error instanceof GitHubApiError && error.kind === "graphql" && graphQLResult(error)) {
+        requestError = error; return JSON.stringify(graphQLResult(error));
+      }
       if (!(error instanceof GhCliError) || !error.stdout) throw error;
       requestError = error; return error.stdout;
     });
@@ -66,7 +72,7 @@ export async function fetchSearchPullRequestsByNumber(root: string, owner: strin
  * @param requestError 원래 CLI 실패. 응답이 허용한 누락 형태가 아니면 그대로 전파한다.
  * @returns 정확한 alias별 node/null. 저장소 접근 실패·인증 오류를 빈 PR 목록으로 바꾸지 않는다.
  */
-function parseNumberBatch(output: string, numbers: readonly number[], requestError?: GhCliError): Record<string, GhPullRequestNode | null> {
+function parseNumberBatch(output: string, numbers: readonly number[], requestError?: GhCliError | GitHubApiError): Record<string, GhPullRequestNode | null> {
   let response: SearchNodesResponse;
   try { response = JSON.parse(output); } catch { throw requestError ?? incomplete(); }
   const repository = response?.data?.repository;

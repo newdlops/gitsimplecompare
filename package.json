@@ -1764,6 +1764,20 @@
           "scope": "resource",
           "description": "%config.cancelUnusedGitReads.desc%"
         },
+        "gitSimpleCompare.githubReadTransport": {
+          "type": "string",
+          "enum": ["auto", "cli"],
+          "enumDescriptions": ["%config.githubReadTransport.auto%", "%config.githubReadTransport.cli%"],
+          "default": "auto",
+          "scope": "machine-overridable",
+          "description": "%config.githubReadTransport.desc%"
+        },
+        "gitSimpleCompare.githubGitProactiveAuth": {
+          "type": "boolean",
+          "default": false,
+          "scope": "machine-overridable",
+          "description": "%config.githubGitProactiveAuth.desc%"
+        },
         "gitSimpleCompare.useBuiltinGitStatus": {
           "type": "boolean",
           "default": false,
