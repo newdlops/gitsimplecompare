@@ -54,11 +54,11 @@
 **Files:** create `src/git/pullRequestBranchLookup.ts`, `test/pullRequestBranchLookup.test.ts`; modify `pullRequestStackAdvanceService.ts`, stack lifecycle fixtures/tests.
 **Interfaces:** export `findPullRequestsForBranches(root, selectors, options, execute?)` returning selector-keyed validated PR records. Up to 20 selectors/query, first 30 CREATED_AT DESC per selector, stable OPEN-first selection; preserve owner/head/base/default-branch semantics. Current-branch selector resolution is also reusable by Task 6.
 
-- [ ] Add RED cases for 1/8/21/40 selectors, current-branch upstream/fork matching, reused/default branches, empty PRs, alias errors, cancellation and auth/rate stop behavior; assert eight normal heads use one query.
-- [ ] Run branch lookup and lifecycle tests; expected RED.
-- [ ] Implement typed bounded batches, gh-compatible selection and same-credential typed subqueries only for non-auth partial-error isolation; integrate Advance.
-- [ ] Run branch/lifecycle/context tests and types; compare against official gh selection fixtures/oracle where available.
-- [ ] Commit `perf: batch stack advance pull request discovery`.
+- [x] Add RED cases for 1/8/21/40 selectors, current-branch upstream/fork matching, reused/default branches, empty PRs, alias errors, cancellation and auth/rate stop behavior; assert eight normal heads use one query.
+- [x] Run branch lookup and lifecycle tests; expected RED.
+- [x] Implement typed bounded batches, gh-compatible selection and same-credential typed subqueries only for non-auth partial-error isolation; integrate Advance.
+- [x] Run branch/lifecycle/context tests and types; compare against official gh selection fixtures/oracle where available.
+- [x] Commit `perf: batch stack advance pull request discovery`.
 
 ## Task 4: Targeted Stack Submit reads
 

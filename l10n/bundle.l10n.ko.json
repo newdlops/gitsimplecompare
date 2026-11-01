@@ -1950,5 +1950,7 @@
   "GitHub response exceeded the size limit.": "GitHub 응답이 크기 제한을 초과했습니다.",
   "GitHub redirected this read to an unsupported destination.": "GitHub가 읽기 요청을 지원되지 않는 대상으로 리디렉션했습니다.",
   "Cannot read a complete GitHub REST page. Refresh and try again.": "GitHub REST 페이지를 완전히 읽을 수 없습니다. 새로고침한 뒤 다시 시도하세요.",
-  "Cannot read complete pull request refs. Refresh and try again.": "Pull Request 참조를 완전히 읽을 수 없습니다. 새로고침한 뒤 다시 시도하세요."
+  "Cannot read complete pull request refs. Refresh and try again.": "Pull Request 참조를 완전히 읽을 수 없습니다. 새로고침한 뒤 다시 시도하세요.",
+  "Cannot read complete branch pull requests. Refresh and try again.": "브랜치의 Pull Request를 완전히 읽을 수 없습니다. 새로고침한 뒤 다시 시도하세요.",
+  "Cannot resolve the current pull request branch. Refresh and try again.": "현재 Pull Request 브랜치를 확인할 수 없습니다. 새로고침한 뒤 다시 시도하세요."
 }

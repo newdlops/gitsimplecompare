@@ -214,6 +214,17 @@ async function writeFakeGh(executable: string): Promise<void> {
     "const value = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };",
     'const save = () => fs.writeFileSync(stateFile, JSON.stringify(state, null, 2) + "\\n");',
     'const output = (value) => process.stdout.write(typeof value === "string" ? value : JSON.stringify(value));',
+    'if (args[0] === "auth") { output("fixture-token"); process.exit(0); }',
+    'fs.appendFileSync(stateFile + ".reads", args.slice(0, 2).join(" ") + "\\n");',
+    'if (args[0] === "api" && args[1] === "graphql") {',
+    '  const query = args.find((arg) => arg.startsWith("query="))?.slice(6) || "";',
+    '  const vars = Object.fromEntries(args.filter((arg) => /^[A-Za-z][A-Za-z0-9_]*=/.test(arg)).map((arg) => { const i=arg.indexOf("=");return [arg.slice(0,i),arg.slice(i+1)]; }));',
+    '  const repository = { nameWithOwner: state.repository, url: "https://github.com/" + state.repository, defaultBranchRef: { name: state.defaultBranch } };',
+    '  const node = (pr) => ({ ...pr, isCrossRepository: pr.isCrossRepository || false, headRepositoryOwner: pr.headRepositoryOwner || { login: state.repository.split("/")[0] }, createdAt: pr.createdAt || "2020-01-01T00:00:00Z" });',
+    '  for (const match of query.matchAll(/(p\\d+):\\s*pullRequests\\(headRefName:\\s*\\$(head\\d+)/g)) repository[match[1]] = { nodes: state.pullRequests.filter((pr) => pr.headRefName === vars[match[2]]).map(node).reverse().slice(0, 30) };',
+    '  for (const match of query.matchAll(/(p\\d+):\\s*pullRequest\\(number:\\s*\\$(number\\d+)/g)) repository[match[1]] = node(state.pullRequests.find((pr) => String(pr.number) === vars[match[2]]));',
+    '  output({ data: { repository } }); process.exit(0);',
+    '}',
     'if (args[0] === "repo" && args[1] === "view") {',
     "  output({ nameWithOwner: state.repository, defaultBranchRef: { name: state.defaultBranch } });",
     "  process.exit(0);",
@@ -374,6 +385,31 @@ test("Submit/Sync 후 merge된 부모를 Advance하면 PR base와 로컬 stack�
     else process.env.GITHUB_CLI_PATH = previousGhPath;
     if (previousStatePath === undefined) delete process.env.GSC_FAKE_GH_STATE;
     else process.env.GSC_FAKE_GH_STATE = previousStatePath;
+    await rm(fixture.fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test("Advance reads eight parent PRs through one bounded metadata query", async () => {
+  const fixture = await createLifecycleFixture();
+  const oldGh = process.env.GITHUB_CLI_PATH, oldState = process.env.GSC_FAKE_GH_STATE;
+  process.env.GITHUB_CLI_PATH = fixture.ghPath; process.env.GSC_FAKE_GH_STATE = fixture.ghStatePath;
+  try {
+    const pullRequests: FakePullRequest[] = [];
+    for (let index = 0; index < 8; index++) {
+      const parent = `parent-${index}`, child = `child-${index}`;
+      await git(fixture.repoRoot, "branch", parent); await git(fixture.repoRoot, "branch", child);
+      await git(fixture.repoRoot, "config", `branch.${child}.gscStackParent`, parent);
+      pullRequests.push({ number: index + 1, title: parent, body: "", headRefName: parent, baseRefName: "main", state: "MERGED",
+        url: `https://github.com/example/stack-repository/pull/${index + 1}`, isDraft: false, author: { login: "stack-test" } });
+    }
+    await writeFakeGitHubState(fixture.ghStatePath, { repository: "example/stack-repository", defaultBranch: "main", pullRequests });
+    const candidates = await new PullRequestStackAdvanceService(fixture.repoRoot).listCandidates();
+    assert.deepEqual(candidates.map(candidate => candidate.branch), ["parent-0", "parent-1", "parent-2", "parent-3", "parent-4", "parent-5", "parent-6", "parent-7"]);
+    const reads = (await readFile(fixture.ghStatePath + ".reads", "utf8")).trim().split("\n");
+    assert.deepEqual(reads, ["api graphql"]);
+  } finally {
+    if (oldGh === undefined) delete process.env.GITHUB_CLI_PATH; else process.env.GITHUB_CLI_PATH = oldGh;
+    if (oldState === undefined) delete process.env.GSC_FAKE_GH_STATE; else process.env.GSC_FAKE_GH_STATE = oldState;
     await rm(fixture.fixtureRoot, { recursive: true, force: true });
   }
 });

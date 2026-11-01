@@ -3,7 +3,7 @@
 // - restack 완료 뒤 Submit/Sync와 merged branch/worktree 안전 정리를 조립할 API를 제공한다.
 import * as path from "node:path";
 import { realpath } from "node:fs/promises";
-import { runGh } from "./ghCli";
+import { findPullRequestsForBranches } from "./pullRequestBranchLookup";
 import { runGit } from "./gitExec";
 import {
   PullRequestStackMetadataService,
@@ -90,9 +90,15 @@ export class PullRequestStackAdvanceService {
       children.sort((left, right) => left.localeCompare(right));
       childrenByParent.set(branch.parentBranch, children);
     }
+    const byName = new Map(branches.map(branch => [branch.name, branch]));
+    const selectors = new Map([...childrenByParent.keys()].map(branch => {
+      const upstream = byName.get(branch)?.upstream ?? "", slash = upstream.indexOf("/");
+      return [branch, slash >= 0 ? upstream.slice(slash + 1) : branch];
+    }));
+    const pullRequests = await findPullRequestsForBranches(this.repoRoot, [...selectors.values()], { allowPartialFailures: true });
     const candidates: PullRequestStackAdvanceCandidate[] = [];
     for (const [branch, childBranches] of childrenByParent) {
-      const pullRequest = await this.pullRequestForBranch(branch).catch(() => undefined);
+      const pullRequest = pullRequests.get(selectors.get(branch)!);
       if (!pullRequest || pullRequest.state.toUpperCase() !== "MERGED") continue;
       candidates.push({
         branch,
@@ -272,15 +278,8 @@ export class PullRequestStackAdvanceService {
   /** GitHub에서 branch와 연결된 최신 PR의 merge 상태와 이전 base를 읽는다. */
   private async pullRequestForBranch(branch: string): Promise<AdvancePullRequestInfo> {
     const remoteBranch = await this.remoteBranchName(branch);
-    const output = await runGh([
-      "pr",
-      "view",
-      remoteBranch,
-      "--json",
-      "number,state,headRefName,baseRefName,url",
-    ], this.repoRoot);
-    const value = JSON.parse(output) as Partial<AdvancePullRequestInfo>;
-    if (!value.number || !value.headRefName || !value.baseRefName) {
+    const value = (await findPullRequestsForBranches(this.repoRoot, [remoteBranch])).get(remoteBranch);
+    if (!value?.number || !value.headRefName || !value.baseRefName) {
       throw new Error(`Pull request for '${remoteBranch}' could not be loaded.`);
     }
     return {
