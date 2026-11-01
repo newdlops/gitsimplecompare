@@ -37,7 +37,8 @@ export class GitHubWebReadContext {
   /** @param options 부모 취소·고정 마감·Host 네트워크 정책과 테스트용 HTTPS 경계 */
   constructor(options: Options = {}) {
     const capability = options.policy && gitHubHttpCapability("github.com", options.env ?? process.env, options.policy);
-    this.transport = options.transport ?? new GitHubWebTransport({ ownedAgent: capability?.supported === true });
+    this.transport = options.transport ?? new GitHubWebTransport({ ownedAgent: capability?.supported === true,
+      agentPolicy: JSON.stringify(options.policy) });
     this.parent = options.signal;
     this.parent?.addEventListener("abort", this.abort, { once: true });
     this.timer = setTimeout(this.abort, Math.max(0, Math.min(options.deadline ?? this.started + 30_000, this.started + 30_000) - this.started));

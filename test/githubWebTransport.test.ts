@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { gzipSync, deflateSync, brotliCompressSync } from "node:zlib";
 import { GitHubWebTransport } from "../src/git/githubWebTransport";
 import { GitHubWebReadContext } from "../src/git/githubWebReadContext";
+import { beginGitHubReadLifetime } from "../src/git/githubReadCache";
 
 const base = "https://github.com/owner/repo/pull/7";
 
@@ -25,14 +26,64 @@ async function fixture(t: test.TestContext, handler: (req: IncomingMessage, res:
   server.on("secureConnection", () => connections++);
   await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", resolve); });
   const port = (server.address() as { port: number }).port;
-  const transport = new GitHubWebTransport({ ...options, request: (args: RequestOptions, callback) => {
-    agents.push(args.agent);
-    return request({ ...args, hostname: "127.0.0.1", port, servername: "localhost", ca: cert }, callback);
-  } });
-  const context = new GitHubWebReadContext({ transport });
-  t.after(async () => { await context.dispose(); await transport.dispose(); await new Promise<void>(resolve => server.close(() => resolve())); await rm(root, { recursive: true, force: true }); });
-  return { context, transport, counts: () => ({ reads, connections }), agents };
+  const stop = beginGitHubReadLifetime();
+  const contexts: GitHubWebReadContext[] = [];
+  const make = () => {
+    const transport = new GitHubWebTransport({ ...options, request: (args: RequestOptions, callback) => {
+      agents.push(args.agent);
+      return request({ ...args, hostname: "127.0.0.1", port, servername: "localhost", ca: cert }, callback);
+    } });
+    const context = new GitHubWebReadContext({ transport }); contexts.push(context);
+    return { context, transport };
+  };
+  const first = make();
+  t.after(async () => { await Promise.all(contexts.map(context => context.dispose())); await stop(); await new Promise<void>(resolve => server.close(() => resolve())); await rm(root, { recursive: true, force: true }); });
+  return { ...first, make, stop, counts: () => ({ reads, connections }), agents };
 }
+
+test("sequential HTML contexts reuse TLS only within the same authorization and activation", async t => {
+  const f = await fixture(t, (_req, res) => res.end("<html>GitHub</html>"), { ownedAgent: true });
+  assert((await f.context.read(base, { Cookie: "account-one" }, true)).ok); await f.context.dispose();
+  const second = f.make();
+  assert((await second.context.read(base, { Cookie: "account-one" }, true)).ok); await second.context.dispose();
+  assert.equal(f.counts().connections, 1, "a completed context must return its TLS connection to the pool");
+  const changed = f.make();
+  assert((await changed.context.read(base, { Cookie: "account-two" }, true)).ok); await changed.context.dispose();
+  assert.equal(f.counts().connections, 2, "a new authorization must use a separate Agent");
+  const stopNext = beginGitHubReadLifetime(); t.after(stopNext);
+  const next = f.make();
+  assert((await next.context.read(base, { Cookie: "account-two" }, true)).ok);
+  assert.equal(f.counts().connections, 3, "a new activation cannot inherit the old pool");
+});
+
+test("cancelling one HTML context leaves another context's shared Agent usable", async t => {
+  let started!: () => void;
+  const receiving = new Promise<void>(resolve => { started = resolve; });
+  const f = await fixture(t, (req, res) => {
+    if (req.url?.endsWith("/slow")) { res.writeHead(200); res.write("<html>"); started(); }
+    else res.end("<html>GitHub</html>");
+  }, { ownedAgent: true });
+  const slow = f.context.read(base + "/slow", { Cookie: "same" });
+  await receiving;
+  const other = f.make();
+  assert((await other.context.read(base, { Cookie: "same" }, true)).ok);
+  await f.context.dispose(); assert(!(await slow).ok);
+  assert((await other.context.read(base + "?after=cancel", { Cookie: "same" }, true)).ok);
+  assert.ok(f.agents[0] === f.agents[1], "contexts must share an Agent while owning separate request cancellation");
+});
+
+test("activation disposal closes active and Agent-queued HTML requests before returning", async t => {
+  let started!: () => void; let requests = 0;
+  const receiving = new Promise<void>(resolve => { started = resolve; });
+  const f = await fixture(t, (_req, res) => {
+    res.writeHead(200); res.write("<html>"); if (++requests === 2) started();
+  }, { ownedAgent: true });
+  const pending = Array.from({ length: 3 }, (_, index) => f.transport.read(base + `?pending=${index}`, { Cookie: "same" }, new AbortController().signal));
+  await receiving;
+  await f.stop();
+  assert.ok((await Promise.all(pending)).every(result => !result.ok));
+  assert.equal(requests, 2, "the Agent-queued request cannot reopen a connection during disposal");
+});
 
 for (const [encoding, compress] of [["identity", (b: Buffer) => b], ["gzip", gzipSync], ["deflate", deflateSync], ["br", brotliCompressSync]] as const) {
   test(`HTML ${encoding} responses decode to identical content and reuse one verified Agent socket`, async t => {

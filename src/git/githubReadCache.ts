@@ -5,6 +5,7 @@ import { snapshotGitHubEnvironment } from "./githubReadContext";
 import { assertGitHubReadContext, captureGitHubRequestContext } from "./githubReadSession";
 import { logInfo } from "../ui/outputLog";
 import { GitHubReadRuntime } from "./githubReadRuntime";
+import { beginGitHubWebAgentLifetime } from "./githubWebAgentPool";
 
 interface Entry { value: string; at: number; expires: number; bytes: number; }
 interface Pending { controller: AbortController; promise: Promise<string>; users: number; }
@@ -193,11 +194,12 @@ export const readGitHubInteractive = (args: readonly string[], root: string, opt
 
 /** 새 활성화가 새 조회 수명을 소유하게 하고 이전 disposer가 새 실행을 취소하지 못하게 한다. */
 export function beginGitHubReadLifetime(): () => Promise<void> {
+  const stopWebAgents = beginGitHubWebAgentLifetime();
   const previous = Promise.all([shared.dispose(), interactive.dispose(), runtime.dispose()]);
   runtime = new GitHubReadRuntime();
   const ownedRuntime = runtime;
   shared = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
   interactive = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
   const owned = [shared, interactive];
-  return async () => { await Promise.all([previous, ...owned.map(cache => cache.dispose()), ownedRuntime.dispose()]); };
+  return async () => { await Promise.all([previous, ...owned.map(cache => cache.dispose()), ownedRuntime.dispose(), stopWebAgents()]); };
 }

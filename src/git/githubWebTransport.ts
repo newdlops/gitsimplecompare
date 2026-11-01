@@ -1,17 +1,19 @@
 // GitHub 웹 HTML의 HTTPS·압축·body 한도와 실제 close를 관리한다. API 인증 transport와 공유하지 않는다.
-import { Agent, request as httpsRequest, type RequestOptions } from "node:https";
+import { request as httpsRequest, type Agent, type RequestOptions } from "node:https";
 import type { ClientRequest, IncomingMessage } from "node:http";
 import { createGunzip, createInflate, createBrotliDecompress } from "node:zlib";
 import type { Readable } from "node:stream";
 import type { GitHubWebHtmlRead } from "./githubWebHtml";
+import { gitHubWebAgentPool, type GitHubWebAgentPool } from "./githubWebAgentPool";
 
 type RequestFactory = (options: RequestOptions, callback: (response: IncomingMessage) => void) => ClientRequest;
 interface Response { status: number; location?: string; html: string; }
-interface Dependencies { request?: RequestFactory; ownedAgent?: boolean; maxBytes?: number; }
+interface Dependencies { request?: RequestFactory; ownedAgent?: boolean; maxBytes?: number; agentPool?: GitHubWebAgentPool; agentPolicy?: string; }
 
 /** HTML 읽기 한 context만 소유한다. Host 정책 미확인 때 Agent를 지정하지 않아 기존 HTTPS 관리를 보존한다. */
 export class GitHubWebTransport {
-  private readonly agent?: Agent;
+  private readonly pool?: GitHubWebAgentPool;
+  private readonly policy: string;
   private readonly request: RequestFactory;
   private readonly maximum: number;
   private readonly active = new Map<AbortController, Promise<GitHubWebHtmlRead>>();
@@ -22,7 +24,8 @@ export class GitHubWebTransport {
   constructor(dependencies: Dependencies = {}) {
     this.request = dependencies.request ?? httpsRequest;
     this.maximum = dependencies.maxBytes ?? 64 * 1024 * 1024;
-    if (dependencies.ownedAgent) this.agent = new Agent({ keepAlive: true, maxSockets: 2, maxFreeSockets: 2, maxTotalSockets: 2 });
+    this.pool = dependencies.ownedAgent ? dependencies.agentPool ?? gitHubWebAgentPool() : undefined;
+    this.policy = dependencies.agentPolicy ?? "verified-direct";
   }
 
   /**
@@ -34,7 +37,7 @@ export class GitHubWebTransport {
     if (this.disposed || signal.aborted) return Promise.resolve({ ok: false, reason: "request cancelled" });
     const controller = new AbortController(), abort = () => controller.abort();
     signal.addEventListener("abort", abort, { once: true });
-    const execution = this.follow(source, { ...headers }, controller.signal).catch(() => ({ ok: false as const, reason: "web html connection failed" }))
+    const execution = this.readOwned(source, { ...headers }, controller).catch(() => ({ ok: false as const, reason: "web html connection failed" }))
       .finally(() => { signal.removeEventListener("abort", abort); this.active.delete(controller); });
     this.active.set(controller, execution);
     if (signal.aborted) abort();
@@ -44,21 +47,27 @@ export class GitHubWebTransport {
   /** 비민감 요청/byte/reuse 집계만 복사한다. URL·header·body는 포함하지 않는다. */
   metrics() { return { ...this.counts }; }
 
-  /** 소유 요청을 취소하고 세 종류 close를 기다린 뒤 Agent의 idle socket을 닫는다. 여러 번 호출해도 안전하다. */
+  /** 소유 요청의 세 종류 close를 기다린다. 공유 Agent는 반환하며 다른 context의 socket을 닫지 않는다. */
   async dispose(): Promise<void> {
     this.disposed = true;
     for (const controller of this.active.keys()) controller.abort();
     await Promise.allSettled([...this.active.values()]);
-    this.agent?.destroy();
+  }
+
+  /** 요청의 실제 close 후에만 lease를 반환해 pool 종료가 전송 중 응답을 놓치지 않게 한다. */
+  private async readOwned(source: string, headers: Record<string, string>, controller: AbortController): Promise<GitHubWebHtmlRead> {
+    const lease = await this.pool?.acquire(headers, this.policy, controller.signal, () => controller.abort());
+    try { return await this.follow(source, headers, controller.signal, lease?.agent); }
+    finally { lease?.release(); }
   }
 
   /** URL과 redirect의 origin을 매번 확인해 인증 header의 외부 전송을 막는다. */
-  private async follow(source: string, headers: Record<string, string>, signal: AbortSignal): Promise<GitHubWebHtmlRead> {
+  private async follow(source: string, headers: Record<string, string>, signal: AbortSignal, agent?: Agent): Promise<GitHubWebHtmlRead> {
     let url: URL;
     try { url = safeWebUrl(source); } catch { return { ok: false, reason: "unsafe web URL" }; }
     for (let redirects = 0; ; redirects++) {
       if (signal.aborted) return { ok: false, reason: "request cancelled" };
-      const response = await this.once(url, headers, signal);
+      const response = await this.once(url, headers, signal, agent);
       if ("ok" in response) return response;
       if (response.status >= 300 && response.status < 400 && response.location) {
         if (redirects >= 5) return { ok: false, reason: "too many web redirects" };
@@ -75,7 +84,7 @@ export class GitHubWebTransport {
   }
 
   /** wire/decoded 상한과 idle timeout을 독립 적용하고 자원 close 전에는 실행 슬롯을 반환하지 않는다. */
-  private once(url: URL, headers: Record<string, string>, signal: AbortSignal): Promise<Response | { ok: false; reason: string }> {
+  private once(url: URL, headers: Record<string, string>, signal: AbortSignal, agent?: Agent): Promise<Response | { ok: false; reason: string }> {
     return new Promise(resolve => {
       const chunks: Buffer[] = [];
       let request: ClientRequest | undefined, response: IncomingMessage | undefined, decoded: Readable | undefined;
@@ -94,7 +103,7 @@ export class GitHubWebTransport {
       try {
         const normalized = Object.fromEntries(Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value]));
         request = this.request({ protocol: "https:", hostname: url.hostname, port: 443, path: url.pathname + url.search,
-          method: "GET", ...(this.agent ? { agent: this.agent } : {}),
+          method: "GET", ...(agent ? { agent } : {}),
           headers: { "accept-encoding": "gzip, deflate, br", ...normalized } }, res => {
           response = res; responseClosed = false; decodedClosed = false; status = res.statusCode ?? 0; location = res.headers.location;
           this.counts.reused += request?.reusedSocket ? 1 : 0;
