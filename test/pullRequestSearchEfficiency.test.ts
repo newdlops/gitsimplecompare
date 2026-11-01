@@ -31,11 +31,18 @@ test("SHA associations reuse complete text PRs while hydrating only nonoverlappi
   const f = await safetyFixture(t, "search-overlap"); const hydrated: number[] = [];
   let finishText!: () => void;
   const textRead = new Promise<void>(resolve => { finishText = resolve; });
+  const textNode = node(1);
+  textNode.commits.pageInfo = { hasNextPage: true, endCursor: "overlap-tail" } as any;
   const result = await searchPullRequests(f.root, "abcdef0", undefined, undefined, async (args, _root, options) => {
     if (args[0] === "repo") return JSON.stringify({ nameWithOwner: "fixture/repo" });
-    if (options.operation === "pr-search") { finishText(); return JSON.stringify(search([node(1)])); }
+    if (options.operation === "pr-search") return JSON.stringify(search([textNode]));
+    if (options.operation === "graph-pr-commit-page") {
+      // 실제 tail 조회가 시작되면 공유 Promise가 등록된 상태다. 고정 시간 대기에 의존하지 않는다.
+      finishText();
+      return JSON.stringify({ data: { repository: { pullRequest: node(1) } } });
+    }
     if (options.operation === "pr-search-associated") {
-      await textRead; await new Promise(resolve => setTimeout(resolve, 30));
+      await textRead;
       return JSON.stringify([{ number: 1 }, { number: 2 }]);
     }
     const query = args.find(arg => arg.startsWith("query=")) || "";
