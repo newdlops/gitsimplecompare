@@ -65,7 +65,7 @@ export async function findPullRequestsForBranches(root: string, selectors: reado
   if (!unique.size) return new Map();
   if (options.states?.some(state => !["OPEN", "CLOSED", "MERGED"].includes(state))) throw new PullRequestBranchLookupError("selector");
   const owns = !gitHubReadSessionState(execute), read = createGitHubReadSession(root, execute);
-  const queue = new PriorityReadQueue(4), controller = new AbortController(), deadline = Date.now() + 30_000;
+  const queue = new PriorityReadQueue(4), controller = new AbortController();
   const abort = () => controller.abort(); options.signal?.addEventListener("abort", abort, { once: true });
   if (options.signal?.aborted) abort();
   try {
@@ -105,7 +105,7 @@ export async function findPullRequestsForBranches(root: string, selectors: reado
     let response: Response, originalError: unknown;
     try {
       response = JSON.parse(await queue.run(() => read(request.args, root, { operation: "branch-pr-lookup",
-        request: request.request, signal: controller.signal, deadline }), controller.signal)) as Response;
+        request: request.request, signal: controller.signal }), controller.signal)) as Response;
     } catch (error) {
       const partial = error instanceof GitHubApiError && error.kind === "graphql" ? graphQLResult(error)
         : error instanceof GhCliError && error.stdout ? parsePartial(error.stdout) : undefined;

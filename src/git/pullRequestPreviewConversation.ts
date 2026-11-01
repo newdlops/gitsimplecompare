@@ -114,9 +114,7 @@ export async function buildPullRequestConversation(
   const [owner, name] = splitRepositoryName(repository);
   const owns = !gitHubReadSessionState(runner), read = createGitHubReadSession(cwd, runner);
   const controller = new AbortController(), abort = () => controller.abort();
-  let timedOut = false;
   signal?.addEventListener("abort", abort, { once: true });
-  const timer = setTimeout(() => { timedOut = true; abort(); }, 30_000);
   if (signal?.aborted) abort();
   const streams = [
     readTimeline(cwd, owner, name, pr.number, read, controller.signal).catch(error => {
@@ -136,9 +134,8 @@ export async function buildPullRequestConversation(
       .sort(compareConversationItems);
   } catch (error) {
     controller.abort(); await Promise.allSettled(streams);
-    if (timedOut && !signal?.aborted) throw new GitHubApiError("timeout", "pr-preview-conversation");
     throw error;
-  } finally { clearTimeout(timer); signal?.removeEventListener("abort", abort); controller.abort(); }
+  } finally { signal?.removeEventListener("abort", abort); controller.abort(); }
 
 }
 

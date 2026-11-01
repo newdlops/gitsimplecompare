@@ -3,6 +3,7 @@ import { runGit, GitError } from "./gitExec";
 import { readGitConfigSnapshot } from "./gitConfigSnapshot";
 import { isGitLifecycleError } from "./gitError";
 import type { PullRequestBranchSelector } from "./pullRequestBranchLookup";
+import { resolveSshRemoteHost } from "./sshRemoteHost";
 
 /** 테스트는 읽기 전용 Git 경계만 대체하고 실제 설정 해석은 그대로 검증한다. */
 export type BranchSelectorGit = typeof runGit;
@@ -13,7 +14,8 @@ export type BranchSelectorGit = typeof runGit;
  * @returns PR-ref 번호 또는 head/remote identity. Git 설정·원격 주소 원문은 로그에 남기지 않는다.
  */
 export async function resolveCurrentPullRequestSelector(root: string, branch: string, signal?: AbortSignal,
-  runner: BranchSelectorGit = runGit, env?: Record<string, string>): Promise<PullRequestBranchSelector> {
+  runner: BranchSelectorGit = runGit, env?: Record<string, string>,
+  resolveSsh: typeof resolveSshRemoteHost = resolveSshRemoteHost): Promise<PullRequestBranchSelector> {
   signal?.throwIfAborted();
   if (!branch || /[\r\n\0]/.test(branch)) throw selectorError();
   const options = { signal, ...(env ? { env, inheritEnv: false } : {}) };
@@ -37,13 +39,18 @@ export async function resolveCurrentPullRequestSelector(root: string, branch: st
     ? remote : (await runner(["remote", "get-url", remote], root, options)).trim();
   const repository = repositoryIdentity(source);
   if (!repository) throw selectorError();
+  if (/^(?:git\+)?ssh:\/\//i.test(source) || !source.includes("://") && /^(?:[^@\s]+@)?[^:\s]+:/.test(source)) {
+    const hostname = repository.host.replace(/:\d+$/, "");
+    repository.host = await resolveSsh(hostname, root, { signal, env }) ?? repository.host;
+    signal?.throwIfAborted();
+  }
   return { key: branch, headRefName: head, headRepository: repository };
 }
 
 /** HTTPS/SSH/SCP 표기의 host와 owner/name만 반환하며 URL에 있는 인증 값은 버린다. */
 function repositoryIdentity(source: string): PullRequestBranchSelector["headRepository"] {
   try {
-    const scp = /^[^@\s]+@([^:\s]+):(.+)$/.exec(source);
+    const scp = source.includes("://") ? null : /^(?:[^@\s]+@)?([^:\s]+):(.+)$/.exec(source);
     const url = scp ? undefined : new URL(source);
     const host = scp?.[1] ?? url!.host, path = (scp?.[2] ?? url!.pathname).replace(/^\//, "").replace(/\.git\/?$/i, "").replace(/\/$/, "");
     const [owner, name, extra] = path.split("/");

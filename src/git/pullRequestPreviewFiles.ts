@@ -77,6 +77,8 @@ interface GhReviewComment {
 const PAGE_SIZE = 100;
 /** GitHub Pull Request files REST API 가 노출하는 최대 파일 수(3,000개)에 맞춘 페이지 상한 */
 const MAX_PAGES = 30;
+/** 리뷰 댓글은 Conversation/에디터와 같은 10페이지 한계를 사용하고 남은 tail은 오류로 알린다. */
+const MAX_REVIEW_COMMENT_PAGES = 10;
 
 /** 페이지네이션 결과와 다음 페이지가 남아 있을 가능성을 함께 보존하는 내부 타입 */
 interface PagedResult<T> {
@@ -177,8 +179,9 @@ async function readReviewComments(
     owner,
     name,
     `pulls/${number}/comments`,
-    ["Accept: application/vnd.github-commitcomment.full+json"], runner
+    ["Accept: application/vnd.github-commitcomment.full+json"], runner, MAX_REVIEW_COMMENT_PAGES
   );
+  if (page.truncated) throw new GitHubRestPageError("pagination");
   return page.items;
 }
 
@@ -196,10 +199,11 @@ async function readPagedResult<T>(
   name: string,
   route: string,
   headers: string[] = [],
-  runner: GhExecute = readGitHubInteractive
+  runner: GhExecute = readGitHubInteractive,
+  maximumPages = MAX_PAGES
 ): Promise<PagedResult<T>> {
   const all: T[] = [];
-  for (let page = 1; page <= MAX_PAGES; page++) {
+  for (let page = 1; page <= maximumPages; page++) {
     const path = `repos/${owner}/${name}/${route}?per_page=${PAGE_SIZE}&page=${page}`;
     const metadata = route.endsWith("/comments");
     const out = await runner([

@@ -147,3 +147,27 @@ test("fallback push remote priority and current push mode preserve the local hea
     assert.equal(result.headRefName, "topic"); assert.equal(selected, expected);
   }
 });
+
+test("an SSH host alias selects the same-repository PR after native hostname translation", async () => {
+  const git = localGit("branch.topic.remote\norigin\0", "refs/heads/topic\0origin\0refs/heads/topic\n", "git@github-work:owner/repo.git");
+  const selector = await resolveCurrentPullRequestSelector("/repo", "topic", undefined, git, undefined,
+    async () => "github.com");
+  const f = api({ topic: [node(7, "topic", "OPEN")] });
+  const result = await findPullRequestsForBranches("/repo", [selector], {}, f.execute);
+  assert.equal(result.get("topic")?.number, 7);
+});
+
+test("body enrichment receives its own request budget after a slow successful selection", async t => {
+  let now = Date.now(), calls = 0; const budgets: number[] = [];
+  t.mock.method(Date, "now", () => now);
+  const value = node(7, "topic", "OPEN", { body: "latest user body" });
+  const result = await findPullRequestsForBranches("/repo", ["topic"], { includeBody: true }, async (_args, _root, options) => {
+    const remaining = options.deadline! - now; budgets.push(remaining);
+    const duration = ++calls === 1 ? 20_000 : 15_000;
+    assert(duration <= remaining, "a successful prior request must not consume this request's budget");
+    now += duration;
+    return JSON.stringify({ data: { repository: { nameWithOwner: "owner/repo", url: "https://github.com/owner/repo", defaultBranchRef: { name: "main" },
+      p0: calls === 1 ? { nodes: [value] } : value } } });
+  });
+  assert.equal(result.get("topic")?.body, "latest user body"); assert.deepEqual(budgets, [30_000, 30_000]);
+});
