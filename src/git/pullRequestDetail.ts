@@ -3,11 +3,13 @@ import { CommitFileChange } from "../graph/graphTypes";
 import { FileChangeStatus } from "./gitTypes";
 import type { GhExecute } from "./ghRunner";
 import { readGitHubInteractive } from "./githubReadCache";
-import { createGitHubReadSession, completeGitHubReadSession, GitHubReadContextChangedError } from "./githubReadSession";
+import { createGitHubReadSession, completeGitHubReadSession, GitHubReadContextChangedError,
+  gitHubFileSnapshotHint, gitHubSnapshotIdentity, gitHubReadSessionState } from "./githubReadSession";
 import { graphQLRequest } from "./githubReadRequest";
 import { splitRepositoryName } from "./githubRepository";
 import { reviewThreadCommentCount } from "./pullRequestCommentCounts";
-import { logWarn } from "../ui/outputLog";
+import { logInfo, logWarn } from "../ui/outputLog";
+import type { RawPullRequestFile } from "./githubPullRequestSnapshots";
 
 /** changed file의 변경량과 파일별 리뷰 댓글 수다. */
 export interface PullRequestChangedFileInfo extends CommitFileChange { commentCount: number; }
@@ -50,10 +52,17 @@ const FILES_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
     files(first: 100) { totalCount ${FILE_FIELDS} }
   } }
 }`;
+/** 캐시 후보가 있으면 현재 인증의 앵커·합계·최신 댓글만 읽는다. raw body는 이 성공 뒤에만 접근한다. */
+const SNAPSHOT_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) { nameWithOwner url pullRequest(number: $number) {
+    ${ANCHOR_FIELDS} comments(first: 1) { totalCount } files { totalCount }
+    reviewThreads(first: 100) { ${THREAD_FIELDS} }
+  } }
+}`;
 
 interface PageInfo { hasNextPage: boolean; endCursor?: string | null; }
 interface Connection<T> { nodes: T[]; pageInfo: PageInfo; totalCount?: number; }
-interface ChangedFile { path: string; additions: number; deletions: number; changeType: string; }
+type ChangedFile = RawPullRequestFile;
 interface ReviewThread { path: string; comments: { totalCount: number }; }
 interface Detail {
   number: number; headRefOid: string; baseRefOid: string;
@@ -77,23 +86,35 @@ export async function fetchPullRequestDetail(
   onProgress?: (detail: PullRequestDetailInfo) => void
 ): Promise<PullRequestDetailInfo> {
   signal?.throwIfAborted();
+  const snapshotHint = gitHubFileSnapshotHint(runner, repository, number);
   runner = createGitHubReadSession(cwd, runner);
   const controller = new AbortController();
   const abort = () => controller.abort();
   signal?.addEventListener("abort", abort, { once: true });
   const [owner, name] = splitRepositoryName(repository);
   try {
-    const out = await runner(graphQlArgs(owner, name, number, onProgress ? FILES_QUERY : DETAIL_QUERY), cwd,
+    const query = snapshotHint ? SNAPSHOT_QUERY : onProgress ? FILES_QUERY : DETAIL_QUERY;
+    const out = await runner(graphQlArgs(owner, name, number, query), cwd,
       { operation: "pr-detail", signal: controller.signal,
-        request: graphQLRequest(onProgress ? FILES_QUERY : DETAIL_QUERY, { owner, name, number }) });
+        request: graphQLRequest(query, { owner, name, number }) });
     controller.signal.throwIfAborted();
     const pr = parseDetail(out, number);
-    const firstFiles = connection<ChangedFile>(pr, "files");
-    const firstThreads = onProgress ? undefined : connection<ReviewThread>(pr, "reviewThreads");
-    const total = count(firstFiles.totalCount, "file count");
+    const identity = gitHubSnapshotIdentity(runner, repository), snapshots = gitHubReadSessionState(runner)?.snapshots;
+    const total = count(pr.files?.totalCount, "file count");
+    const cached = snapshotHint && identity ? snapshots?.getFiles(identity, number, pr.headRefOid, pr.baseRefOid, total) : undefined;
+    let firstFiles: Connection<ChangedFile>;
+    if (cached) firstFiles = { nodes: cached, totalCount: total, pageInfo: { hasNextPage: false } };
+    else if (snapshotHint) {
+      const next = parseDetail(await runner(graphQlArgs(owner, name, number, FILES_QUERY), cwd,
+        { operation: "pr-detail-files", signal: controller.signal, request: graphQLRequest(FILES_QUERY, { owner, name, number }) }), number);
+      assertAnchor(next, pr); firstFiles = connection<ChangedFile>(next, "files");
+      if (count(firstFiles.totalCount, "file count") !== total) throw new Error("Pull request file count changed while loading details. Refresh to try again.");
+    } else firstFiles = connection<ChangedFile>(pr, "files");
+    if (identity) logInfo("pull request raw file snapshot", { operation: "pr-detail", hit: Boolean(cached) });
+    const firstThreads = snapshotHint || !onProgress ? connection<ReviewThread>(pr, "reviewThreads") : undefined;
     const conversation = count(pr.comments?.totalCount, "conversation count");
     const files = [...firstFiles.nodes], threads = [...(firstThreads?.nodes || [])];
-    let filesLoading = firstFiles.pageInfo.hasNextPage, reviewThreadsLoading = Boolean(onProgress);
+    let filesLoading = firstFiles.pageInfo.hasNextPage, reviewThreadsLoading = !firstThreads;
     let filesTruncated = false, reviewThreadsTruncated = false, reviewThreadsError: string | undefined;
     /** 완료된 파일은 댓글 대기와 독립적으로 게시한다. 모든 응답은 같은 head/base 앵커를 유지한다. */
     const progress = () => {
@@ -111,7 +132,9 @@ export async function fetchPullRequestDetail(
     const readFiles = async () => {
       filesTruncated = await appendPages(cwd, owner, name, pr, "files", firstFiles, files, runner, controller.signal,
         page => { filesLoading = page.pageInfo.hasNextPage; progress(); });
-      if (!filesTruncated && files.length !== total) throw new Error("Pull request file pagination is incomplete. Refresh to try again.");
+      if (!filesTruncated && (files.length !== total || new Set(files.map(file => file.path)).size !== files.length)) {
+        throw new Error("Pull request file pagination is incomplete. Refresh to try again.");
+      }
       filesLoading = false; progress();
     };
     /** 댓글 첫 페이지도 같은 PR 앵커로 검증하며 부분 집계가 정확한 개수처럼 표시되지 않게 한다. */
@@ -139,7 +162,10 @@ export async function fetchPullRequestDetail(
     try { await Promise.all(tails); }
     catch (error) { await Promise.allSettled(tails); throw failure ?? error; }
     controller.signal.throwIfAborted();
-    if (!filesTruncated && !reviewThreadsTruncated && !reviewThreadsError) await completeGitHubReadSession(runner, controller.signal);
+    if (!filesTruncated && !reviewThreadsTruncated && !reviewThreadsError) {
+      await completeGitHubReadSession(runner, controller.signal);
+      if (identity) snapshots?.putFiles(identity, number, pr.headRefOid, pr.baseRefOid, files);
+    }
     return { ...detailValue(number, conversation, total, files, threads, filesTruncated, reviewThreadsTruncated),
       ...(onProgress ? { headHash: pr.headRefOid, baseHash: pr.baseRefOid } : {}),
       ...(reviewThreadsError ? { reviewThreadsError } : {}) };

@@ -142,11 +142,11 @@ export class GitHubHttpTransport {
       const timings: Timings = { reused: false, bytes: 0, wireBytes: 0 };
       const chunks: Buffer[] = [];
       let response: IncomingMessage | undefined, decoded: Readable | undefined, request: ClientRequest;
-      let requestClosed = false, streamClosed = true, ended = false, failure: Error | undefined;
+      let requestClosed = false, streamClosed = true, responseClosed = true, ended = false, failure: Error | undefined;
       let status = 0, headers: IncomingHttpHeaders = {}, responseAt = started, settled = false;
       /** 실제 자원 종료 전에는 resolve/reject하지 않아 실행 슬롯이 먼저 반환되지 않게 한다. */
       const finish = () => {
-        if (settled || !requestClosed || !streamClosed || (!ended && !failure)) return;
+        if (settled || !requestClosed || !streamClosed || !responseClosed || (!ended && !failure)) return;
         settled = true; options.signal?.removeEventListener("abort", abort);
         timings.totalMs = Date.now() - started;
         logInfo("GitHub HTTP request closed", { operation: options.operation, transport: "http", status,
@@ -165,7 +165,8 @@ export class GitHubHttpTransport {
             "Accept-Encoding": "gzip, deflate, br", "X-GitHub-Api-Version": "2022-11-28",
             ...(etag ? { "If-None-Match": etag } : {}),
             ...(payload === undefined ? {} : { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) }) } }, res => {
-          response = res; streamClosed = false; status = res.statusCode ?? 0; headers = res.headers;
+          response = res; streamClosed = false; responseClosed = false; status = res.statusCode ?? 0; headers = res.headers;
+          res.once("close", () => { responseClosed = true; finish(); });
           responseAt = Date.now(); timings.responseMs = responseAt - started; timings.reused = request.reusedSocket;
           const encoding = res.headers["content-encoding"]?.toLowerCase();
           decoded = encoding === "gzip" ? createGunzip() : encoding === "deflate" ? createInflate()

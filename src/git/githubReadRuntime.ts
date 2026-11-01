@@ -6,6 +6,8 @@ import { GitHubHttpTransport } from "./githubHttpTransport";
 import { gitHubHttpCapability, type GitHubNetworkPolicy } from "./githubHttpPolicy";
 import { GitHubReadContextChangedError } from "./githubReadSession";
 import { logInfo } from "../ui/outputLog";
+import { GitHubPullRequestSnapshots } from "./githubPullRequestSnapshots";
+import { GitHubApiError } from "./githubApiError";
 
 type PolicyResolver = (root: string) => Promise<GitHubNetworkPolicy>;
 let policyResolver: PolicyResolver = async () => ({ transport: "auto", systemProxy: "unknown" });
@@ -29,6 +31,7 @@ export class GitHubReadRuntime {
   private readonly http: Pick<GitHubHttpTransport, "read" | "dispose">;
   private readonly cli: GhExecute;
   private disposed = false;
+  private readonly snapshots = new GitHubPullRequestSnapshots();
   constructor(dependencies: Dependencies = {}) {
     this.policy = dependencies.policy ?? policyResolver;
     this.credentials = dependencies.credentials ?? new GitHubCredentialProvider();
@@ -45,6 +48,7 @@ export class GitHubReadRuntime {
     if (!state) return;
     if (this.disposed || state.generation !== undefined && state.generation !== this.generation) throw new GitHubReadContextChangedError();
     state.generation = this.generation;
+    state.snapshots = this.snapshots;
     state.preparation ??= (async () => {
       const policy = await this.policy(root);
       const capability = state.scope ? gitHubHttpCapability(state.scope.host, state.env, policy)
@@ -72,8 +76,13 @@ export class GitHubReadRuntime {
       const request = options.request.kind === "graphql" ? { ...options.request,
         variables: Object.fromEntries(Object.entries(options.request.variables).map(([key, value]) =>
           [key, value === "{owner}" ? state.scope!.owner : value === "{repo}" ? state.scope!.repository : value])) } : options.request;
-      return this.http.read(request, await state.credential, { ...options, deadline: options.deadline ?? Date.now() + 30_000,
-        policyGeneration: this.generation });
+      try {
+        return await this.http.read(request, await state.credential, { ...options, deadline: options.deadline ?? Date.now() + 30_000,
+          policyGeneration: this.generation });
+      } catch (error) {
+        if (error instanceof GitHubApiError && error.kind === "auth" && state.credentialKey) this.snapshots.invalidateCredential(state.credentialKey);
+        throw error;
+      }
     }
     const started = Date.now();
     try { return await this.cli(args, root, options); }
@@ -82,6 +91,6 @@ export class GitHubReadRuntime {
 
   /** 실제 lookup/request 종료를 기다리고 새 runtime의 자원은 건드리지 않는다. */
   async dispose(): Promise<void> {
-    this.disposed = true; await Promise.all([this.credentials.dispose(), this.http.dispose()]);
+    this.disposed = true; this.snapshots.clear(); await Promise.all([this.credentials.dispose(), this.http.dispose()]);
   }
 }

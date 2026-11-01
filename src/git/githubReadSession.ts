@@ -5,6 +5,7 @@ import { captureGitHubRemoteContext } from "./githubRemoteContext";
 import { logInfo } from "../ui/outputLog";
 import { gitHubRepositoryScopes, type GitHubRepositoryScope } from "./githubRepositoryScope";
 import type { GitHubCredentialLease } from "./githubCredential";
+import type { GitHubPullRequestSnapshots, GitHubSnapshotIdentity } from "./githubPullRequestSnapshots";
 
 export interface GitHubReadSessionState {
   readonly root: string;
@@ -17,8 +18,23 @@ export interface GitHubReadSessionState {
   credentialKey?: string;
   generation?: number;
   preparation?: Promise<void>;
+  snapshots?: GitHubPullRequestSnapshots;
 }
 const sessions = new WeakMap<GhExecute, GitHubReadSessionState>();
+const snapshotHints = new WeakMap<GhExecute, GitHubPullRequestSnapshots>();
+
+/** body 접근 없이 다음 상세의 앵커 전용 query가 유용한지 판단한다. 인증 권한으로 사용하지 않는다. */
+export function gitHubFileSnapshotHint(execute: GhExecute, repository: string, number: number): boolean {
+  return snapshotHints.get(execute)?.hasFiles(repository, number) ?? false;
+}
+
+/** 성공한 현재 페이지가 고정한 canonical 저장소·실제 인증만 불변 캐시의 identity로 반환한다. */
+export function gitHubSnapshotIdentity(execute: GhExecute, repository: string): GitHubSnapshotIdentity | undefined {
+  const state = sessions.get(execute), scope = state?.scope;
+  if (!scope || !state?.credentialKey || !state.snapshots
+    || scope.name.toLowerCase() !== repository.toLowerCase() && repository !== "{owner}/{repo}") return undefined;
+  return { host: scope.host, repository: scope.name, credentialKey: state.credentialKey };
+}
 
 /** 완전한 도메인 조회가 끝난 뒤에만 bootstrap scope를 다음 논리 조회에 게시한다. */
 export async function completeGitHubReadSession(execute: GhExecute, signal?: AbortSignal): Promise<void> {
@@ -96,6 +112,7 @@ export function createGitHubReadSession(root: string, execute: GhExecute): GhExe
     options.signal?.throwIfAborted();
     await assertGitHubReadContext(root, env, ["repo"], expected, options.operation, "afterPage", options.signal);
     options.signal?.throwIfAborted();
+    if (state.snapshots) snapshotHints.set(execute, state.snapshots);
     try {
       const result = JSON.parse(value);
       if (!result.errors?.length) {
