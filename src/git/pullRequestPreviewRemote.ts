@@ -4,7 +4,8 @@ import { readGitHub } from "./githubReadCache";
 import type { PullRequestInfo } from "./pullRequestInfo";
 import type { PullRequestPreviewCommit } from "./pullRequestPreviewCommits";
 import { normalizePreviewStatus } from "./pullRequestPreviewFiles";
-import { createGitHubReadSession, completeGitHubReadSession, gitHubReadSessionState } from "./githubReadSession";
+import { createGitHubReadSession, completeGitHubReadSession, gitHubReadSessionState, gitHubSnapshotIdentity } from "./githubReadSession";
+import type { StablePullRequestSnapshot } from "./githubCommitSnapshots";
 import { graphQLRequest, restRead } from "./githubReadRequest";
 import { decodeRestPage, nextRestPage } from "./githubRestPages";
 import { readSessionRestApiBase } from "./githubRestSession";
@@ -33,7 +34,7 @@ export function previewReadRunner(root: string, pr?: PullRequestInfo, signal?: A
 
 const QUERY = `query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
   repository(owner: $owner, name: $name) { pullRequest(number: $number) {
-    headRefOid
+    headRefOid baseRefOid baseRefName
     commits(first: 100, after: $cursor) {
       nodes { commit { oid messageHeadline committedDate author { name } } }
       pageInfo { hasNextPage endCursor }
@@ -41,11 +42,11 @@ const QUERY = `query($owner: String!, $name: String!, $number: Int!, $cursor: St
   } }
 }`;
 interface CommitNode { oid: string; messageHeadline?: string; committedDate?: string; author?: { name?: string }; }
-interface SummaryPage { headRefOid?: string; title?: string; body?: string;
+interface SummaryPage { headRefOid?: string; baseRefOid?: string; baseRefName?: string; title?: string; body?: string;
   commits?: { nodes?: Array<{ commit?: CommitNode }>; pageInfo?: { hasNextPage?: boolean; endCursor?: string } }; }
 /** 미리보기 첫 요청으로 함께 얻는 저장소·본문·첫 커밋 페이지다. */
 export interface PreviewBootstrap { repository: string; title: string; body: string; firstPage: SummaryPage; }
-const bootstrapSessions = new WeakMap<SummaryPage, { root: string; session: GhExecute; owns: boolean }>();
+const bootstrapSessions = new WeakMap<SummaryPage, { root: string; session: GhExecute; owns: boolean; repository: string; known?: StablePullRequestSnapshot }>();
 const BOOTSTRAP_QUERY = QUERY.replace("{ pullRequest(number: $number) {", "{ nameWithOwner url pullRequest(number: $number) { title body");
 
 /**
@@ -65,7 +66,10 @@ export async function fetchPreviewBootstrap(root: string, pr: PullRequestInfo, r
   if (!repository?.nameWithOwner || !repository.pullRequest) throw new Error("GitHub pull request preview is not available.");
   const value = repository.pullRequest;
   if (!pr.headHash || value.headRefOid !== pr.headHash) throw new Error("The pull request head changed. Refresh pull requests before opening its preview.");
-  bootstrapSessions.set(value, { root, session: runner, owns });
+  const identity = gitHubSnapshotIdentity(runner, repository.nameWithOwner);
+  const known = identity && value.baseRefOid && value.baseRefName
+    ? gitHubReadSessionState(runner)?.snapshots?.commits.get(identity, pr.number, value.headRefOid, value.baseRefOid, value.baseRefName) : undefined;
+  bootstrapSessions.set(value, { root, session: runner, owns, repository: repository.nameWithOwner, known });
   return { repository: repository.nameWithOwner, title: value.title || pr.title, body: value.body ?? "", firstPage: value };
 }
 
@@ -81,7 +85,14 @@ export async function fetchPreviewCommitSummaries(root: string, pr: PullRequestI
   if (initial && (!bootstrap || bootstrap.root !== root)) throw new Error("GitHub preview continuation context is not available. Refresh to try again.");
   const owns = bootstrap?.owns ?? !gitHubReadSessionState(runner);
   runner = bootstrap?.session ?? createGitHubReadSession(root, runner);
+  if (bootstrap?.known) {
+    await completeGitHubReadSession(runner, undefined, owns);
+    const summaries = new Map(bootstrap.known.commitSummaries?.map(summary => [summary.hash, summary]));
+    return bootstrap.known.commitHashes.map(hash => ({ ...summaries.get(hash)!, shortHash: hash.slice(0, 7), files: [], filesLoaded: false }));
+  }
   let cursor: string | undefined;
+  let anchor: SummaryPage | undefined;
+  let completeTitles = true;
   const seen = new Set<string>();
   const commits = new Map<string, PullRequestPreviewCommit>();
   do {
@@ -97,9 +108,14 @@ export async function fetchPreviewCommitSummaries(root: string, pr: PullRequestI
       value = response.data?.repository?.pullRequest;
     }
     if (!pr.headHash || value?.headRefOid !== pr.headHash) throw new Error("The pull request head changed. Refresh pull requests before opening its preview.");
+    anchor ??= value;
+    if (anchor.baseRefOid && (value.baseRefOid !== anchor.baseRefOid || value.baseRefName !== anchor.baseRefName)) {
+      throw new Error("The pull request base changed while reading commit summaries. Refresh to try again.");
+    }
     if (!value.commits?.nodes || typeof value.commits.pageInfo?.hasNextPage !== "boolean") throw new Error("GitHub returned incomplete commit summaries.");
     for (const { commit } of value.commits.nodes) {
       if (!commit?.oid) throw new Error("GitHub returned an invalid commit summary.");
+      if (typeof commit.messageHeadline !== "string") completeTitles = false;
       commits.set(commit.oid, { hash: commit.oid, shortHash: commit.oid.slice(0, 7), title: commit.messageHeadline || commit.oid.slice(0, 12),
         author: commit.author?.name, dateIso: commit.committedDate, files: [], filesLoaded: false });
     }
@@ -108,7 +124,13 @@ export async function fetchPreviewCommitSummaries(root: string, pr: PullRequestI
     if (!cursor || seen.has(cursor)) throw new Error("GitHub commit pagination did not advance.");
     seen.add(cursor);
   } while (cursor);
-  if (owns) await completeGitHubReadSession(runner);
+  await completeGitHubReadSession(runner, undefined, owns);
+  const identity = bootstrap && gitHubSnapshotIdentity(runner, bootstrap.repository);
+  // 목록에서 확인한 파일 합계까지 같은 앵커일 때만 공용 stable snapshot으로 저장한다.
+  if (identity && completeTitles && anchor?.baseRefOid === pr.baseHash && anchor?.baseRefName === pr.baseRefName) {
+    gitHubReadSessionState(runner)?.snapshots?.commits.put(identity, { ...pr, commitHashes: [...commits.keys()],
+      commitSummaries: [...commits.values()].map(({ hash, title, author, dateIso }) => ({ hash, title, author, dateIso })), commitHashesComplete: true });
+  }
   return [...commits.values()];
 }
 

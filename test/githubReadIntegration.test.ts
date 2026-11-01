@@ -117,6 +117,47 @@ test("publish reads use independent HTTP sessions and the created PR identity", 
   assert.deepEqual({ http, credentials }, { http: 3, credentials: 3 });
 });
 
+test("preview reuses 201 complete commit summaries only after a fresh matching authorized anchor", async t => {
+  const f = await fixture(t);
+  const context = await captureGitHubRequestContext(f.root, { ...process.env }, ["repo"]);
+  gitHubRepositoryScopes.learn(f.root, context, { nameWithOwner: "owner/repo", url: "https://github.com/owner/repo" });
+  let http = 0, token = "account-one", base = "base", head = "head", incomplete = false;
+  const hashes = Array.from({ length: 200 }, (_, i) => `commit-${i}`).concat("head");
+  const selected = { ...pr(), headHash: "head", baseHash: "base", fileCount: 3, fileCountComplete: true, commitHashes: hashes };
+  const runtime = new GitHubReadRuntime({ policy: async () => ({ transport: "auto", systemProxy: "none" }),
+    credentials: new GitHubCredentialProvider(async () => token),
+    cli: async () => { throw new Error("unexpected CLI"); },
+    http: { read: async request => {
+      http++; if (request.kind !== "graphql") throw new Error("GraphQL required");
+      const start = Number(request.variables.cursor ?? 0), values = hashes.slice(start, start + 100);
+      return JSON.stringify({ data: { repository: { nameWithOwner: "owner/repo", url: "https://github.com/owner/repo", pullRequest: {
+        title: `Fresh title ${http}`, body: "fresh body", headRefOid: head, baseRefOid: base, baseRefName: "main",
+        commits: { nodes: values.map(oid => ({ commit: { oid, messageHeadline: incomplete && oid === "commit-0" ? undefined : `Title ${oid}`, committedDate: "2026-11-01T00:00:00Z", author: { name: "Author" } } })),
+          pageInfo: { hasNextPage: start + 100 < hashes.length, endCursor: String(start + 100) } },
+      } } } });
+    }, dispose: async () => {} } });
+  const cache = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
+  t.after(async () => { await cache.dispose(); await runtime.dispose(); });
+  const runner: GhExecute = (args, root, options) => cache.read(args, root, options);
+  const load = async () => {
+    const initial = await fetchPreviewBootstrap(f.root, selected, runner);
+    const commits = await fetchPreviewCommitSummaries(f.root, selected, runner, initial.firstPage);
+    assert.equal(commits.length, 201); assert.equal(commits[200].title, "Title head");
+    assert.equal(commits[0].author, "Author"); return initial;
+  };
+  await load(); assert.equal(http, 3);
+  const warm = await load(); assert.equal(http, 4); assert.equal(warm.title, "Fresh title 4");
+  token = "account-two";
+  await load(); assert.equal(http, 7, "a new credential cannot consume another account's summaries");
+  base = "new-base";
+  await load(); assert.equal(http, 10, "a changed base cannot reuse the old commit connection");
+  base = "base"; token = "account-three"; incomplete = true;
+  await load(); assert.equal(http, 13);
+  await load(); assert.equal(http, 16, "fallback SHA titles are not complete reusable summaries");
+  head = "new-head";
+  await assert.rejects(load(), /head changed/i); assert.equal(http, 17);
+});
+
 for (const operation of ["refs", "prerequisites", "prerequisite-details"] as const) {
   test(`production ${operation} uses typed HTTP after scope discovery with one actual credential lease`, async t => {
     const f = await fixture(t);
