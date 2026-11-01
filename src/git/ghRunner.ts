@@ -1,11 +1,14 @@
 // GitHub review 서비스가 gh 프로세스 구현 대신 안정된 요청 계약에 의존하게 하는 어댑터.
 // - 각 서비스는 operation 이름, 취소, JSON parsing을 명시하고 fake runner로 단위 테스트할 수 있다.
 import { runGh, type RunGhOptions } from "./ghCli";
+import type { GitHubReadRequest } from "./githubReadRequest";
 
 /** review 서비스가 gh 실행에 전달할 관찰 가능한 옵션. */
 export interface GhRunnerOptions extends RunGhOptions {
   /** 오류·로그에서 raw args를 대체할 안정된 작업 이름 */
   operation: string;
+  /** 서비스가 명시적으로 만든 읽기 계약. 없으면 기존 CLI 실행을 보존한다. */
+  request?: GitHubReadRequest;
 }
 
 /** 실제 gh 실행을 대체할 수 있는 작은 함수 타입. */
