@@ -19,6 +19,7 @@ Trace-*.json
 .lh
 .lh/**
 .codex/**
+.superpowers/**
 .django-shell/**
 .impeccable/**
 .plan/**

@@ -2,7 +2,7 @@
   "name": "gitsimplecompare",
   "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
-  "version": "0.1.72184",
+  "version": "0.1.72185",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -1766,16 +1766,28 @@
         },
         "gitSimpleCompare.cloneMode": {
           "type": "string",
-          "enum": ["full", "blobless"],
-          "enumDescriptions": ["%config.cloneMode.full%", "%config.cloneMode.blobless%"],
+          "enum": [
+            "full",
+            "blobless"
+          ],
+          "enumDescriptions": [
+            "%config.cloneMode.full%",
+            "%config.cloneMode.blobless%"
+          ],
           "default": "full",
           "scope": "machine-overridable",
           "description": "%config.cloneMode.desc%"
         },
         "gitSimpleCompare.githubReadTransport": {
           "type": "string",
-          "enum": ["auto", "cli"],
-          "enumDescriptions": ["%config.githubReadTransport.auto%", "%config.githubReadTransport.cli%"],
+          "enum": [
+            "auto",
+            "cli"
+          ],
+          "enumDescriptions": [
+            "%config.githubReadTransport.auto%",
+            "%config.githubReadTransport.cli%"
+          ],
           "default": "auto",
           "scope": "machine-overridable",
           "description": "%config.githubReadTransport.desc%"

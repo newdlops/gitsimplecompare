@@ -2,6 +2,35 @@
 
 ## [Unreleased]
 
+## [0.1.72185] - 2026-11-02
+
+### Performance
+
+- Route supported GitHub reads through shared HTTPS connections while preserving
+  GitHub CLI fallback for Enterprise, proxy and Host-managed environments.
+- Reuse authorized, complete pull request file and commit snapshots after fresh
+  identity checks, and batch mixed metadata, search, ref and stack lookups.
+- Bind changed-file and publish metadata reads to logical sessions, avoid
+  redundant final REST pages, and share duplicate PR reads within one search.
+- Show API review comments before optional HTML enrichment; deduplicate HTML
+  fragments and reuse bounded connections across reads with the same authentication.
+- Revalidate OAuth repository pages with bounded ETag caching and reuse verified
+  native inspector port hints on reconnect.
+
+### Added
+
+- Add opt-in blobless repository cloning and proactive native Git credential
+  preparation. Existing clone and authentication defaults remain unchanged.
+
+### Fixes
+
+- Preserve repository and authentication boundaries across HTTP, CLI fallback,
+  pagination, snapshot reuse and network-setting changes.
+- Keep per-request time budgets, partial GraphQL alias handling, full comment
+  pagination and conservative 3,000-file API limits intact.
+- Reject cross-host pull request matches and retain original commit-title
+  fallbacks when preview summaries come from cached list metadata.
+
 ## [0.1.72184] - 2026-11-01
 
 ### Performance
