@@ -119,13 +119,34 @@ for (const action of ["row", "commit"] as const) test(`production PR ${action} c
   }
   await until(async () => !f.panel.loading && await renderer.countElements(`.pr-focused-row[data-hash="${f.target}"]`) === 1, "unloaded PR row revealed");
   const oracle = (await git(f.root, "rev-list", "--date-order", "--branches", "--remotes", "--tags", f.navigationHead)).split("\n");
+  // 첫 DOM 읽기 도중에도 실제 UI의 다음 페이지가 도착할 수 있다. 별도 시점의 snapshot을 비교하지 않는다.
+  const readRendered = renderer.readRenderedHashes.bind(renderer); let interleavedPage = false;
+  if (action === "commit") t.mock.method(renderer, "readRenderedHashes", async () => {
+    if (!interleavedPage && f.panel.rangeStartIndex > 0) {
+      interleavedPage = true;
+      const count = requests.filter(request => request.type === "loadMore" && request.direction === "newer").length;
+      await renderer.scrollGraph("newer");
+      await until(() => !f.panel.loading && requests.filter(request => request.type === "loadMore" && request.direction === "newer").length > count,
+        "native pagination interleaved with the DOM read");
+    }
+    return readRendered();
+  });
   /** backend 위치와 실제 DOM 순서를 독립 Native 전체 이력에 동시에 대조한다. */
   const verifyTimeline = async () => {
-    await renderer.waitForPendingFrame();
-    const hashes = f.panel.commits.map((commit: { hash: string }) => commit.hash);
-    assert.deepEqual(hashes, oracle.slice(f.panel.rangeStartIndex, f.panel.rangeStartIndex + hashes.length));
-    assert.deepEqual(await renderer.readRenderedHashes(), hashes);
-    assert.ok(hashes.includes(f.target));
+    await until(async () => {
+      if (f.panel.loading) return false;
+      const start = f.panel.rangeStartIndex;
+      const hashes = f.panel.commits.map((commit: { hash: string }) => commit.hash);
+      await renderer.waitForPendingFrame();
+      const rendered = await renderer.readRenderedHashes();
+      // 실제 paint/DOM 읽기 중 도착한 정상 pagination은 다음 안정된 snapshot에서 비교한다.
+      if (f.panel.loading || start !== f.panel.rangeStartIndex || hashes.length !== f.panel.commits.length
+        || hashes.some((hash: string, index: number) => hash !== f.panel.commits[index].hash)) return false;
+      assert.deepEqual(hashes, oracle.slice(start, start + hashes.length));
+      assert.deepEqual(rendered, hashes);
+      assert.ok(hashes.includes(f.target));
+      return true;
+    }, "the same native timeline snapshot reaches the renderer");
   };
   await verifyTimeline();
   for (const direction of ["older", "newer"] as const) {
@@ -140,6 +161,7 @@ for (const action of ["row", "commit"] as const) test(`production PR ${action} c
   }
   for (const direction of ["older", "newer"]) assert.ok(requests.some(request => request.type === "loadMore" && request.direction === direction),
     `the production renderer must actually request ${direction} history`);
+  if (action === "commit") assert.equal(interleavedPage, true);
   await renderer.clickControl(`.row[data-hash="${f.target}"] .commit-hash`);
   await until(() => f.messages.some(message => message.type === "commitDetail" && message.detail.hash === f.target && !message.detail.loading),
     "complete selected PR commit history");
