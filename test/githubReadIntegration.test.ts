@@ -23,6 +23,7 @@ import { fetchPullRequestRefs } from "../src/git/pullRequestRefLookup";
 import { lookupPullRequestDependencies, lookupPullRequestDependencyDetails } from "../src/git/pullRequestDependencyLookup";
 import { fetchPullRequestChangedFiles } from "../src/git/pullRequestPreviewFiles";
 import { fetchRemotePreviewCommit } from "../src/git/pullRequestPreviewRemote";
+import { PullRequestPublishService } from "../src/git/pullRequestPublishService";
 
 /** 실제 세션의 파일 metadata 관찰을 쓰며 환경·GitHub 설정은 임시 fixture에 격리한다. */
 async function fixture(t: test.TestContext) {
@@ -82,6 +83,38 @@ test("selected commit file object stops at a known final full page", async t => 
   const result = await fetchRemotePreviewCommit(f.root, "owner/repo", hash);
   assert.equal(result.files.length, 100); assert.equal(result.files.at(-1)?.path, "file-99");
   assert.equal(Number(await readFile(count, "utf8")), 1);
+});
+
+test("publish reads use independent HTTP sessions and the created PR identity", async t => {
+  const f = await fixture(t), executable = join(f.root, "gh-publish-read");
+  await writeFile(executable, `#!${process.execPath}\nconsole.log(process.argv[3]==='list'?'[]':JSON.stringify({number:7,title:'legacy'}));\n`);
+  await chmod(executable, 0o755); process.env.GITHUB_CLI_PATH = executable;
+  const context = await captureGitHubRequestContext(f.root, { ...process.env }, ["repo"]);
+  gitHubRepositoryScopes.learn(f.root, context, { nameWithOwner: "owner/repo", url: "https://github.com/owner/repo" });
+  let http = 0, credentials = 0, duplicate = false;
+  const runtime = new GitHubReadRuntime({ policy: async () => ({ transport: "auto", systemProxy: "none" }),
+    credentials: new GitHubCredentialProvider(async () => { credentials++; return "fixture-token"; }),
+    cli: async () => { throw new Error("unexpected CLI"); },
+    http: { read: async request => {
+      http++; assert.equal(request.kind, "graphql");
+      if (request.kind !== "graphql") throw new Error("graphql required");
+      if (request.variables.head !== undefined) {
+        assert.equal(request.variables.head, "fork-topic");
+        return JSON.stringify({ data: { repository: { pullRequests: { nodes: duplicate ? [{ number: 7, url: "https://github.com/owner/repo/pull/7" }] : [] } } } });
+      }
+      assert.equal(request.variables.number, 7);
+      return JSON.stringify({ data: { repository: { pullRequest: { number: 7, title: "fresh created PR", state: "OPEN", url: "https://github.com/owner/repo/pull/7", headRefName: "fork-topic", headRefOid: "head", baseRefName: "main", author: { login: "creator" } } } } });
+    }, dispose: async () => {} } });
+  const cache = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
+  t.after(async () => { await cache.dispose(); await runtime.dispose(); });
+  const service = new PullRequestPublishService(f.root, (args, root, options) => cache.read(args, root, options));
+  // 실제 게시 파이프라인이 호출하는 검증/보완 단계를 쓰기 없이 실행한다.
+  await (service as any).assertNoOpenPullRequest("fork-topic");
+  const value = await (service as any).readPublishedPullRequest("fork-topic", "https://github.com/owner/repo/pull/7", "fallback", "main", "head", false);
+  assert.equal(value.title, "fresh created PR"); assert.equal(value.author, "creator");
+  duplicate = true;
+  await assert.rejects((service as any).assertNoOpenPullRequest("fork-topic"), /already exists/);
+  assert.deepEqual({ http, credentials }, { http: 3, credentials: 3 });
 });
 
 for (const operation of ["refs", "prerequisites", "prerequisite-details"] as const) {

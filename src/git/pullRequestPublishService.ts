@@ -6,6 +6,9 @@ import { runGit } from "./gitExec";
 import { pushBranchCommits, type PushExecutionOptions } from "./sequentialPush";
 import type { PullRequestInfo } from "./pullRequestInfo";
 import { resolvePreviewTargetRef } from "./pullRequestPreviewTarget";
+import type { GhExecute } from "./ghRunner";
+import { readGitHubInteractive } from "./githubReadCache";
+import { readOpenPublishPullRequest, readCreatedPullRequest } from "./pullRequestPublishReads";
 
 /** 새 GitHub Pull Request를 만들 때 필요한 공통 입력이다. */
 export interface CreatePullRequestOptions {
@@ -86,29 +89,9 @@ export class PullRequestPublishError extends Error {
   }
 }
 
-interface GhOpenPullRequest {
-  number?: number;
-  url?: string;
-}
-
-interface GhPublishedPullRequest {
-  number?: number;
-  title?: string;
-  state?: string;
-  url?: string;
-  headRefName?: string;
-  headRefOid?: string;
-  baseRefName?: string;
-  baseRefOid?: string;
-  author?: { login?: string };
-  isDraft?: boolean;
-  reviewDecision?: string;
-  updatedAt?: string;
-}
-
 /** 로컬 commit/push와 GitHub PR 생성을 하나의 검증 가능한 작업으로 제공한다. */
 export class PullRequestPublishService {
-  constructor(public readonly repoRoot: string) {}
+  constructor(public readonly repoRoot: string, private readonly read: GhExecute = readGitHubInteractive) {}
 
   /**
    * Preview 선택을 변경하지 않고 게시 가능 상태와 remote 후보를 조사한다.
@@ -307,12 +290,7 @@ export class PullRequestPublishService {
 
   /** 같은 head branch의 열린 PR이 이미 있으면 중복 생성 전에 URL과 함께 중단한다. */
   private async assertNoOpenPullRequest(headBranch: string): Promise<void> {
-    const output = await runGh([
-      "pr", "list", "--state", "open", "--head", headBranch,
-      "--json", "number,url", "--limit", "1",
-    ], this.repoRoot);
-    const values = JSON.parse(output) as GhOpenPullRequest[];
-    const existing = values[0];
+    const existing = await readOpenPublishPullRequest(this.repoRoot, headBranch, this.read);
     if (existing?.number) {
       throw new Error(
         `Pull request #${existing.number} already exists for '${headBranch}'${existing.url ? `: ${existing.url}` : "."}`
@@ -343,11 +321,7 @@ export class PullRequestPublishService {
     fallbackHeadHash: string,
     draft: boolean
   ): Promise<PullRequestInfo> {
-    const output = await runGh([
-      "pr", "view", headBranch, "--json",
-      "number,title,state,url,headRefName,headRefOid,baseRefName,baseRefOid,author,isDraft,reviewDecision,updatedAt",
-    ], this.repoRoot);
-    const value = JSON.parse(output) as GhPublishedPullRequest;
+    const value = await readCreatedPullRequest(this.repoRoot, headBranch, createdUrl, this.read);
     return {
       number: Number(value.number) || pullRequestNumber(value.url || createdUrl),
       title: value.title || fallbackTitle,
