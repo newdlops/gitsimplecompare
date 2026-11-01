@@ -222,3 +222,16 @@ test("busy setup ignores duplicate commands and errors release the next attempt"
   assert.ok(__outputLines.some(line => line.includes("operation-pending")));
   assert.ok(__executedCommands.some(command => command.args[0] === "gitSimpleCompare.onboarding.busy" && command.args[1] === false));
 });
+
+
+for (const explicit of [undefined, "full"] as const) {
+  test(`clone command freezes configured blobless choice before authentication (override ${explicit ?? "none"})`, async t => {
+    const service = new RepositorySetupService(), calls: any[] = [];
+    const f = await fixture(t, false, { service }); f.current.cloneMode = "blobless";
+    t.mock.method(vscode.authentication, "getSession", async () => { f.current.cloneMode = "full"; return undefined; });
+    t.mock.method(service, "clone", async (...args) => { calls.push(args); return { root: f.root, branch: "main", created: true }; });
+    await vscode.commands.executeCommand("gitSimpleCompare.cloneRepository", { source: "https://github.com/fixture/repository.git", parentDirectory: f.directory,
+      folderName: "clone", cloneMode: explicit, open: "none" });
+    assert.equal(calls[0][3].cloneMode, explicit ?? "blobless");
+  });
+}

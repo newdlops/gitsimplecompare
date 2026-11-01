@@ -2,6 +2,9 @@
 // - Clone/Init은 모든 Git 서비스와 같은 runGit을 사용하고 입력은 셸 없이 인자로 전달한다.
 // - 기존 저장소를 초기화하거나 이미 존재하는 복제 대상의 내용을 덮어쓰지 않는다.
 import path from "node:path";
+import { selectRepositoryClonePolicy, type RepositoryCloneMode } from "./repositoryClonePolicy";
+import { logInfo } from "../ui/outputLog";
+export type { RepositoryCloneMode } from "./repositoryClonePolicy";
 import { lstat, mkdir, realpath, rmdir } from "node:fs/promises";
 import { runGit, withGitConfigOverrides, type RunGitOptions } from "./gitExec";
 
@@ -17,6 +20,8 @@ export interface RepositorySetupResult {
 export interface RepositoryCloneOptions {
   signal?: AbortSignal;
   githubToken?: string;
+  /** 기본 full. blobless는 native 인증과 Git 호환 preflight를 통과할 때만 사용한다. */
+  cloneMode?: RepositoryCloneMode;
 }
 export type RepositorySetupErrorCode = "invalid-source" | "invalid-name" | "invalid-folder" |
   "destination-exists" | "cancelled" | "git-failed";
@@ -187,6 +192,10 @@ export class RepositorySetupService {
    */
   async clone(source: string, parentDirectory: string, folderName: string,
     options: RepositoryCloneOptions = {}): Promise<RepositorySetupResult> {
+    options = { ...options };
+    if (options.cloneMode !== undefined && !["full", "blobless"].includes(options.cloneMode)) {
+      throw new RepositorySetupError("invalid-source", "Choose a supported repository clone mode.");
+    }
     assertNotCancelled(options.signal);
     const url = normalizeCloneSource(source);
     const name = validateRepositoryFolderName(folderName);
@@ -202,7 +211,10 @@ export class RepositorySetupService {
     const owned = await lstat(destination);
     try {
       assertNotCancelled(options.signal);
-      await this.execute(["clone", "--progress", "--", url, destination], parent, cloneExecutionOptions(url, options));
+      const selected = await selectRepositoryClonePolicy(url, destination, options.cloneMode ?? "full", this.execute, REPOSITORY_ENV, options.signal);
+      logInfo("repository clone mode selected", { requested: options.cloneMode ?? "full", selected: selected.mode, reason: selected.reason, probeMs: selected.probeMs });
+      assertNotCancelled(options.signal);
+      await this.execute(["clone", "--progress", ...(selected.mode === "blobless" ? ["--filter=blob:none"] : []), "--", url, destination], parent, cloneExecutionOptions(url, options));
       assertNotCancelled(options.signal);
       const root = await realpath(destination);
       return { root, branch: await this.currentBranch(root, options.signal), created: true };

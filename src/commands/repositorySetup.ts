@@ -7,7 +7,7 @@ import * as vscode from "vscode";
 import {
   RepositorySetupError, RepositorySetupService, normalizeCloneSource,
   suggestedRepositoryFolderName, validateRepositoryFolderName,
-  type RepositorySetupResult,
+  type RepositorySetupResult, type RepositoryCloneMode,
 } from "../git/repositorySetupService";
 import { GitHubRepositoryCatalog, RepositoryCatalogError, type GitHubCloneRepository } from "../git/githubRepositoryCatalog";
 import { logInfo, showErrorWithOutput } from "../ui/outputLog";
@@ -18,6 +18,7 @@ import type { CommandDeps } from "./shared";
 /** 자동화에서도 같은 검증 경계를 사용하는 선택적 명령 인자. 웹뷰에서는 action만 전달한다. */
 export interface RepositorySetupArgs {
   source?: string;
+  cloneMode?: RepositoryCloneMode;
   parentDirectory?: string;
   folderName?: string;
   directory?: string;
@@ -82,6 +83,10 @@ async function runRepositorySetup(deps: SetupDeps, service: RepositorySetupServi
     return;
   }
   activeSetup = true;
+  if (action === "clone" || action === "github") {
+    const configured = vscode.workspace.getConfiguration("gitSimpleCompare", args.parentDirectory ? vscode.Uri.file(args.parentDirectory) : undefined).get<string>("cloneMode", "full");
+    args = { ...args, cloneMode: args.cloneMode ?? (configured === "blobless" ? "blobless" : "full") };
+  }
   let completed = false;
   try {
     await vscode.commands.executeCommand("setContext", "gitSimpleCompare.onboarding.busy", true);
@@ -182,7 +187,7 @@ async function cloneRepository(service: RepositorySetupService, catalog: GitHubR
   });
   if (folderName === undefined) return undefined;
   return cancellableOperation(vscode.l10n.t("Cloning repository with Git Simple Compare..."),
-    signal => service.clone(source!, parent, folderName, { signal, githubToken }));
+    signal => service.clone(source!, parent, folderName, { signal, githubToken, cloneMode: args.cloneMode }));
 }
 
 /**

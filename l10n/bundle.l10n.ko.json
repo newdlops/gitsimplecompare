@@ -1952,5 +1952,6 @@
   "Cannot read a complete GitHub REST page. Refresh and try again.": "GitHub REST 페이지를 완전히 읽을 수 없습니다. 새로고침한 뒤 다시 시도하세요.",
   "Cannot read complete pull request refs. Refresh and try again.": "Pull Request 참조를 완전히 읽을 수 없습니다. 새로고침한 뒤 다시 시도하세요.",
   "Cannot read complete branch pull requests. Refresh and try again.": "브랜치의 Pull Request를 완전히 읽을 수 없습니다. 새로고침한 뒤 다시 시도하세요.",
-  "Cannot resolve the current pull request branch. Refresh and try again.": "현재 Pull Request 브랜치를 확인할 수 없습니다. 새로고침한 뒤 다시 시도하세요."
+  "Cannot resolve the current pull request branch. Refresh and try again.": "현재 Pull Request 브랜치를 확인할 수 없습니다. 새로고침한 뒤 다시 시도하세요.",
+  "Choose a supported repository clone mode.": "지원되는 저장소 복제 방식을 선택하세요."
 }

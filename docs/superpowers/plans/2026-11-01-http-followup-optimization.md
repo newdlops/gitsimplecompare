@@ -131,11 +131,11 @@
 **Files:** modify/split `repositorySetupService.ts`, `commands/repositorySetup.ts`, package contribution/nls/l10n; add clone capability/preflight helper and controlled smart HTTP fixture/tests.
 **Interfaces:** `cloneMode?: "full" | "blobless"` in command and clone options; native setting `gitSimpleCompare.cloneMode` defaults full. Full mode adds no probes. Blobless requires Git>=2.46, HTTP(S), and native read access in <=5s without app OAuth injection or interactive askpass; otherwise select full before clone.
 
-- [ ] Add RED cases for default parity, frozen choice, Git floor, URL/protocol selection, native access probe without OAuth, timeout/cancel/full fallback, no destination retry/deletion and secret diagnostics.
-- [ ] Add RED smart HTTP checks for refs/all parents/current checkout equality, old-blob hydration with native access, unsupported filter and OAuth-only-private fallback.
-- [ ] Implement filtered clone and EN/KO native Settings descriptions, preserving current destination/auth/cancellation policies.
-- [ ] Run setup/command/integration/types and render Settings; expected green with same history and explicit later-network wording.
-- [ ] Commit `feat: add verified optional blobless repository cloning`.
+- [x] Add RED cases for default parity, frozen choice, Git floor, URL/protocol selection, native access probe without OAuth, timeout/cancel/full fallback, no destination retry/deletion and secret diagnostics.
+- [x] Add RED smart HTTP checks for refs/all parents/current checkout equality, old-blob hydration with native access, unsupported filter and OAuth-only-private fallback.
+- [x] Implement filtered clone and EN/KO native Settings descriptions, preserving current destination/auth/cancellation policies.
+- [x] Run setup/command/integration/types and render Settings; expected green with same history and explicit later-network wording.
+- [x] Commit `feat: add verified optional blobless repository cloning`.
 
 ## Task 11: Whole-scope verification and performance judgment
 

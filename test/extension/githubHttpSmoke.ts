@@ -132,6 +132,34 @@ async function verifySettings(root: string, owned: IsolatedTestWindow, directory
   return states;
 }
 
+/** 기존 native Settings의 full 기본값·blobless 선택·지역화/긴 설명을 두 desktop 크기에서 확인한다. */
+async function verifyCloneSettings(root: string, owned: IsolatedTestWindow, directory: string): Promise<any[]> {
+  const key = "gitSimpleCompare.cloneMode", states: any[] = [];
+  const config = () => vscode.workspace.getConfiguration("gitSimpleCompare", vscode.Uri.file(root));
+  await vscode.commands.executeCommand("workbench.action.openSettings", "@id:" + key);
+  await waitFor(async () => (await owned.githubSettingsState([key])).rows.length === 1, "Clone Settings row");
+  assert.equal(config().get("cloneMode"), "full");
+  for (const [width, height] of [[1440, 900], [900, 700]]) {
+    await owned.settingsViewport(width, height);
+    await waitFor(async () => (await owned.githubSettingsState([key])).width === width, "Clone Settings viewport");
+    const state = await owned.githubSettingsState([key]);
+    assert.equal(state.rows.length, 1); assert(state.rows[0].bounds.right <= state.width && state.rows[0].bounds.left >= 0);
+    assert.match(state.rows[0].text, /2\.46/); states.push(state);
+    await writeFile(path.join(directory, `clone-settings-${vscode.env.language}-${width}.png`), await owned.screenshot());
+  }
+  await owned.clickGithubSetting(key); await owned.githubSettingsKeys(["Home", "Down", "Enter"]);
+  await waitFor(async () => config().get("cloneMode") === "blobless"
+    && (await owned.githubSettingsState([key])).rows[0]?.value === "blobless", "Blobless rendered selection");
+  await writeFile(path.join(directory, `clone-settings-${vscode.env.language}-blobless.png`), await owned.screenshot());
+  states.push({ phase: "blobless", ...await owned.githubSettingsState([key]) });
+  await owned.clickGithubSetting(key); await owned.githubSettingsKeys(["Up", "Enter"]);
+  await waitFor(async () => config().get("cloneMode") === "full"
+    && (await owned.githubSettingsState([key])).rows[0]?.value === "full", "Full rendered selection");
+  states.push({ phase: "restored-full", ...await owned.githubSettingsState([key]) });
+  await config().update("cloneMode", undefined, vscode.ConfigurationTarget.Global);
+  return states;
+}
+
 /** 활성화 후 실 host의 네트워크 정책·자원·화면을 모두 검증한 aggregate만 저장한다. */
 export async function run(): Promise<void> {
   const root = process.env.GSC_EXTENSION_TEST_FIXTURE!, profile = process.env.GSC_EXTENSION_TEST_PROFILE!;
@@ -144,10 +172,11 @@ export async function run(): Promise<void> {
   await owned.connect();
   try {
     const settings = await verifySettings(root, owned, directory);
+    const cloneSettings = await verifyCloneSettings(root, owned, directory);
     const record = { node: process.versions.node, vscode: vscode.version, language: vscode.env.language,
       actualPublicHttpRead: true, actualSearchHttpReads: true, forcedCli: true, unsupportedPoliciesBeforeHttp: true,
       defaultOverrideAgentPolicyUsesCli: true, verifiedDirectAgentPolicy: "on (isolated test profile only)",
-      tlsValidation: true, cancellationIsolation: true, keepAliveReuse: true, disposalClose: true, settings };
+      tlsValidation: true, cancellationIsolation: true, keepAliveReuse: true, disposalClose: true, settings, cloneSettings };
     await writeFile(path.join(directory, `host-${vscode.env.language}.json`), JSON.stringify(record, null, 2) + "\n");
     console.log(JSON.stringify({ githubHttpHostSmoke: "passed", node: record.node, vscode: record.vscode, language: record.language }));
   } finally { owned.close(); }

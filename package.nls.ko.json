@@ -268,5 +268,8 @@
   "config.githubReadTransport.desc": "GitHub 읽기 전송 방식입니다. 자동 모드는 저장소 검증 후 지원되는 네트워크 정책에서 HTTPS 연결을 재사용합니다. 프록시·사용자 CA·미지원 호스트는 GitHub CLI를 사용합니다. 변경하면 진행 중인 읽기를 취소합니다.",
   "config.githubReadTransport.auto": "지원되는 GitHub.com 읽기에 직접 HTTPS를 사용하고 그 외에는 GitHub CLI를 사용합니다.",
   "config.githubReadTransport.cli": "읽기에 항상 GitHub CLI를 사용합니다.",
-  "config.githubGitProactiveAuth.desc": "GitHub.com HTTPS 인증 요청 전에 기존 Git 자격 증명을 사용합니다. 호환성이 검증된 native Git 작업에만 적용하며 명시적 인증 설정을 우선합니다. 이전에 익명으로 접근하던 공개 저장소에서도 자격 증명을 요구할 수 있습니다."
+  "config.githubGitProactiveAuth.desc": "GitHub.com HTTPS 인증 요청 전에 기존 Git 자격 증명을 사용합니다. 호환성이 검증된 native Git 작업에만 적용하며 명시적 인증 설정을 우선합니다. 이전에 익명으로 접근하던 공개 저장소에서도 자격 증명을 요구할 수 있습니다.",
+  "config.cloneMode.desc": "새 저장소의 복제 방식입니다. blobless는 전체 커밋·브랜치와 현재 파일을 유지하고 과거 파일 내용은 필요할 때 받습니다. Git 2.46 이상과 native Git 접근 확인이 필요하며, 조건을 충족하지 못하면 full을 사용합니다.",
+  "config.cloneMode.full": "전체 파일 내용과 이력을 다운로드합니다.",
+  "config.cloneMode.blobless": "과거 파일 내용을 필요할 때 다운로드합니다. 이후 조회에도 native Git 접근이 유지되어야 합니다. 서버가 미지원하면 전체 내용을 받을 수 있습니다."
 }

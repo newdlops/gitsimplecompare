@@ -268,5 +268,8 @@
   "config.githubReadTransport.desc": "GitHub read transport. Auto reuses HTTPS connections after repository verification when network policy is supported. Proxy, custom CA and unsupported hosts use GitHub CLI. Changing this cancels active reads.",
   "config.githubReadTransport.auto": "Use direct HTTPS for supported GitHub.com reads, otherwise GitHub CLI.",
   "config.githubReadTransport.cli": "Always use GitHub CLI for reads.",
-  "config.githubGitProactiveAuth.desc": "Use existing Git credentials before a GitHub.com HTTPS authentication challenge. Applies only to proven compatible native Git operations and respects explicit authentication settings. May require credentials for public repositories that previously allowed anonymous access."
+  "config.githubGitProactiveAuth.desc": "Use existing Git credentials before a GitHub.com HTTPS authentication challenge. Applies only to proven compatible native Git operations and respects explicit authentication settings. May require credentials for public repositories that previously allowed anonymous access.",
+  "config.cloneMode.desc": "Clone mode for new repositories. Blobless keeps all commits, branches and current files, then downloads older file contents when needed. It requires Git 2.46+ and verified native Git access; otherwise Full is used.",
+  "config.cloneMode.full": "Download all file contents and history.",
+  "config.cloneMode.blobless": "Download historical file contents on demand. Native Git access must remain available for later reads. Unsupported servers may transfer all contents."
 }

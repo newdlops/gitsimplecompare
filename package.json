@@ -1764,6 +1764,14 @@
           "scope": "resource",
           "description": "%config.cancelUnusedGitReads.desc%"
         },
+        "gitSimpleCompare.cloneMode": {
+          "type": "string",
+          "enum": ["full", "blobless"],
+          "enumDescriptions": ["%config.cloneMode.full%", "%config.cloneMode.blobless%"],
+          "default": "full",
+          "scope": "machine-overridable",
+          "description": "%config.cloneMode.desc%"
+        },
         "gitSimpleCompare.githubReadTransport": {
           "type": "string",
           "enum": ["auto", "cli"],
