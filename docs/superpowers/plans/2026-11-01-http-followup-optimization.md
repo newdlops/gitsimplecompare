@@ -65,11 +65,11 @@
 **Files:** modify `pullRequestStackSubmitService.ts`, shared branch lookup fields/options and `test/pullRequestStackLifecycle.test.ts`; add targeted submit tests if needed to keep tests focused.
 **Interfaces:** consume Task 3 lookup; query only submitted heads before writes and refresh number/URL/body for those heads after ordered remote actions. Existing result and recovery types stay intact.
 
-- [ ] Write RED cases proving no all-open-1000 scan, bounded head lookup, fresh footer bodies, unchanged source/lease/hook/order, fork filtering and partial failure recovery.
-- [ ] Run stack submit/lifecycle and relevant push safety tests; expected RED.
-- [ ] Replace broad snapshot/read-per-layer phases; preserve every native write gate and current-state check.
-- [ ] Run same tests and types; expected green.
-- [ ] Commit `perf: narrow stack submit metadata reads to target heads`.
+- [x] Write RED cases proving no all-open-1000 scan, bounded head lookup, fresh footer bodies, unchanged source/lease/hook/order, fork filtering and partial failure recovery.
+- [x] Run stack submit/lifecycle and relevant push safety tests; expected RED.
+- [x] Replace broad snapshot/read-per-layer phases; preserve every native write gate and current-state check.
+- [x] Run same tests and types; expected green.
+- [x] Commit `perf: narrow stack submit metadata reads to target heads`.
 
 ## Task 5: Bounded shared HTML context
 

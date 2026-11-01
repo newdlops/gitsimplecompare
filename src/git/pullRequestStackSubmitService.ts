@@ -8,6 +8,7 @@ import { PullRequestPublishService } from "./pullRequestPublishService";
 import { PullRequestStackMetadataService } from "./pullRequestStackMetadata";
 import type { StackLocalBranch } from "./pullRequestStackModel";
 import { PullRequestStackService } from "./pullRequestStackService";
+import { findPullRequestsForBranches } from "./pullRequestBranchLookup";
 
 const STACK_BODY_START = "<!-- git-simple-compare-stack:start -->";
 const STACK_BODY_END = "<!-- git-simple-compare-stack:end -->";
@@ -80,25 +81,20 @@ export class PullRequestStackSubmitService {
       throw new Error(`Branch '${options.branch}' is not part of a local pull request stack.`);
     }
     await this.assertRestacked(stack);
-    const openSnapshot = await new PullRequestStackService(this.repoRoot)
-      .getSnapshot()
-      .catch(() => undefined);
-    const existingByHead = new Map(
-      (openSnapshot?.pullRequests || []).map((pr) => [pr.headRefName, pr])
-    );
     const layers: SubmitLayer[] = stack.map(({ branch, depth }) => ({
       branch,
       parentBranch: branch.parentBranch!,
       depth,
       remoteBranch: remoteBranchFor(branch, remote),
     }));
-    const results: PullRequestStackSubmitLayerResult[] = [];
-    const pullRequests = new Map<string, GitHubStackPullRequest>();
+    // 전체 OPEN PR 목록 대신 실제 push 대상 head만 검증한다. 조회 실패는 쓰기 전에 전파한다.
+    const heads = layers.map(layer => layer.remoteBranch);
+    const existingByHead = await findPullRequestsForBranches(this.repoRoot, heads, { states: ["OPEN"] });
+    const pending: Array<Omit<PullRequestStackSubmitLayerResult, "pullRequestNumber" | "pullRequestUrl">> = [];
 
     for (const layer of layers) {
       const push = await this.pushLayer(layer.branch.name, remote, layer.remoteBranch);
-      const existing = existingByHead.get(layer.remoteBranch)
-        || existingByHead.get(layer.branch.name);
+      const existing = existingByHead.get(layer.remoteBranch);
       let createdPullRequest = false;
       let changedBase = false;
       if (!existing) {
@@ -116,20 +112,28 @@ export class PullRequestStackSubmitService {
           .changeBase(existing.number, layer.parentBranch);
         changedBase = true;
       }
-      const pr = await this.pullRequestForHead(layer.remoteBranch);
-      pullRequests.set(layer.remoteBranch, pr);
-      results.push({
+      pending.push({
         branch: layer.branch.name,
         parentBranch: layer.parentBranch,
         remoteBranch: layer.remoteBranch,
         push,
-        pullRequestNumber: pr.number,
-        pullRequestUrl: pr.url,
         createdPullRequest,
         changedBase,
       });
     }
 
+    // 모든 생성/base 변경 뒤 선택 PR만 최신 body로 읽어 사용자가 도중에 쓴 본문을 보존한다.
+    const current = await findPullRequestsForBranches(this.repoRoot, heads, { states: ["OPEN"], includeBody: true });
+    const pullRequests = new Map<string, GitHubStackPullRequest>();
+    for (const layer of layers) {
+      const pr = current.get(layer.remoteBranch);
+      if (!pr || pr.baseRefName !== layer.parentBranch || typeof pr.body !== "string") {
+        throw new Error(`Pull request for '${layer.remoteBranch}' could not be loaded after submit.`);
+      }
+      pullRequests.set(layer.remoteBranch, { ...pr, body: pr.body });
+    }
+    const results = pending.map(layer => ({ ...layer, pullRequestNumber: pullRequests.get(layer.remoteBranch)!.number,
+      pullRequestUrl: pullRequests.get(layer.remoteBranch)!.url }));
     await this.updateStackBodies(layers, pullRequests);
     return { remote, layers: results };
   }
@@ -198,30 +202,6 @@ export class PullRequestStackSubmitService {
         );
       }
     }
-  }
-
-  /** GitHub에서 head branch에 대응하는 열린 PR과 현재 본문을 읽는다. */
-  private async pullRequestForHead(headBranch: string): Promise<GitHubStackPullRequest> {
-    const output = await runGh([
-      "pr",
-      "view",
-      headBranch,
-      "--json",
-      "number,title,url,body,headRefName,baseRefName,state",
-    ], this.repoRoot);
-    const value = JSON.parse(output) as Partial<GitHubStackPullRequest>;
-    if (!value.number || !value.url) {
-      throw new Error(`Pull request for '${headBranch}' could not be loaded after submit.`);
-    }
-    return {
-      number: Number(value.number),
-      title: value.title || headBranch,
-      url: value.url,
-      body: value.body || "",
-      headRefName: value.headRefName || headBranch,
-      baseRefName: value.baseRefName || "",
-      state: value.state || "OPEN",
-    };
   }
 
   /** stack layer branch의 마지막 commit 제목을 새 PR 기본 제목으로 사용한다. */

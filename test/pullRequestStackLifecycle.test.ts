@@ -31,6 +31,8 @@ interface FakePullRequest {
   state: "OPEN" | "MERGED";
   isDraft: boolean;
   author: { login: string };
+  isCrossRepository?: boolean;
+  headRepositoryOwner?: { login: string };
 }
 
 /** 테스트 중 여러 gh 프로세스가 공유하는 저장소/PR 상태. */
@@ -38,6 +40,8 @@ interface FakeGitHubState {
   repository: string;
   defaultBranch: string;
   pullRequests: FakePullRequest[];
+  refreshFirstBodyOnSecondCreate?: boolean;
+  failMetadata?: boolean;
 }
 
 /** 실제 local 저장소, bare remote, 실행 가능한 가짜 gh와 상태 파일을 준비한다. */
@@ -217,10 +221,11 @@ async function writeFakeGh(executable: string): Promise<void> {
     'if (args[0] === "auth") { output("fixture-token"); process.exit(0); }',
     'fs.appendFileSync(stateFile + ".reads", args.slice(0, 2).join(" ") + "\\n");',
     'if (args[0] === "api" && args[1] === "graphql") {',
+    '  if (state.failMetadata) { process.stderr.write("HTTP 403: forbidden"); process.exit(1); }',
     '  const query = args.find((arg) => arg.startsWith("query="))?.slice(6) || "";',
     '  const vars = Object.fromEntries(args.filter((arg) => /^[A-Za-z][A-Za-z0-9_]*=/.test(arg)).map((arg) => { const i=arg.indexOf("=");return [arg.slice(0,i),arg.slice(i+1)]; }));',
     '  const repository = { nameWithOwner: state.repository, url: "https://github.com/" + state.repository, defaultBranchRef: { name: state.defaultBranch } };',
-    '  const node = (pr) => ({ ...pr, isCrossRepository: pr.isCrossRepository || false, headRepositoryOwner: pr.headRepositoryOwner || { login: state.repository.split("/")[0] }, createdAt: pr.createdAt || "2020-01-01T00:00:00Z" });',
+    '  const node = (pr) => pr ? ({ ...pr, isCrossRepository: pr.isCrossRepository || false, headRepositoryOwner: pr.headRepositoryOwner || { login: state.repository.split("/")[0] }, createdAt: pr.createdAt || "2020-01-01T00:00:00Z" }) : null;',
     '  for (const match of query.matchAll(/(p\\d+):\\s*pullRequests\\(headRefName:\\s*\\$(head\\d+)/g)) repository[match[1]] = { nodes: state.pullRequests.filter((pr) => pr.headRefName === vars[match[2]]).map(node).reverse().slice(0, 30) };',
     '  for (const match of query.matchAll(/(p\\d+):\\s*pullRequest\\(number:\\s*\\$(number\\d+)/g)) repository[match[1]] = node(state.pullRequests.find((pr) => String(pr.number) === vars[match[2]]));',
     '  output({ data: { repository } }); process.exit(0);',
@@ -248,6 +253,7 @@ async function writeFakeGh(executable: string): Promise<void> {
     '    author: { login: "stack-test" },',
     "  };",
     "  state.pullRequests.push(pr);",
+    '  if (state.refreshFirstBodyOnSecondCreate && state.pullRequests.length === 2) state.pullRequests[0].body = "Latest user body during second create";',
     "  save();",
     "  output(pr.url);",
     "  process.exit(0);",
@@ -407,6 +413,48 @@ test("Advance reads eight parent PRs through one bounded metadata query", async 
     assert.deepEqual(candidates.map(candidate => candidate.branch), ["parent-0", "parent-1", "parent-2", "parent-3", "parent-4", "parent-5", "parent-6", "parent-7"]);
     const reads = (await readFile(fixture.ghStatePath + ".reads", "utf8")).trim().split("\n");
     assert.deepEqual(reads, ["api graphql"]);
+  } finally {
+    if (oldGh === undefined) delete process.env.GITHUB_CLI_PATH; else process.env.GITHUB_CLI_PATH = oldGh;
+    if (oldState === undefined) delete process.env.GSC_FAKE_GH_STATE; else process.env.GSC_FAKE_GH_STATE = oldState;
+    await rm(fixture.fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test("Submit scopes metadata to target heads and refreshes bodies after all ordered creates", async () => {
+  const fixture = await createLifecycleFixture();
+  const oldGh = process.env.GITHUB_CLI_PATH, oldState = process.env.GSC_FAKE_GH_STATE;
+  process.env.GITHUB_CLI_PATH = fixture.ghPath; process.env.GSC_FAKE_GH_STATE = fixture.ghStatePath;
+  try {
+    await createTwoLayerStack(fixture.repoRoot);
+    const state = await readFakeGitHubState(fixture.ghStatePath);
+    state.refreshFirstBodyOnSecondCreate = true;
+    await writeFakeGitHubState(fixture.ghStatePath, state);
+    const result = await new PullRequestStackSubmitService(fixture.repoRoot).submit({ branch: "stack/two", remote: "origin", draft: false });
+    assert.equal(result.layers.length, 2);
+    const updated = await readFakeGitHubState(fixture.ghStatePath);
+    assert.match(updated.pullRequests[0].body, /^Latest user body during second create/);
+    const calls = (await readFile(fixture.ghStatePath + ".reads", "utf8")).trim().split("\n");
+    assert(!calls.includes("pr list")); assert(!calls.includes("repo view")); assert(!calls.includes("pr view"));
+    assert.deepEqual(calls, ["api graphql", "pr create", "pr create", "api graphql", "api graphql", "pr edit", "pr edit"]);
+    assert.equal(await git(fixture.repoRoot, "branch", "--show-current"), "main");
+  } finally {
+    if (oldGh === undefined) delete process.env.GITHUB_CLI_PATH; else process.env.GITHUB_CLI_PATH = oldGh;
+    if (oldState === undefined) delete process.env.GSC_FAKE_GH_STATE; else process.env.GSC_FAKE_GH_STATE = oldState;
+    await rm(fixture.fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test("Submit metadata failure stops before any push or PR write", async () => {
+  const fixture = await createLifecycleFixture();
+  const oldGh = process.env.GITHUB_CLI_PATH, oldState = process.env.GSC_FAKE_GH_STATE;
+  process.env.GITHUB_CLI_PATH = fixture.ghPath; process.env.GSC_FAKE_GH_STATE = fixture.ghStatePath;
+  try {
+    await createTwoLayerStack(fixture.repoRoot);
+    const state = await readFakeGitHubState(fixture.ghStatePath); state.failMetadata = true;
+    await writeFakeGitHubState(fixture.ghStatePath, state);
+    await assert.rejects(new PullRequestStackSubmitService(fixture.repoRoot).submit({ branch: "stack/two", remote: "origin", draft: false }));
+    assert.equal(await git(fixture.remoteRoot, "for-each-ref", "--format=%(refname)", "refs/heads/stack"), "");
+    const updated = await readFakeGitHubState(fixture.ghStatePath); assert.equal(updated.pullRequests.length, 0);
   } finally {
     if (oldGh === undefined) delete process.env.GITHUB_CLI_PATH; else process.env.GITHUB_CLI_PATH = oldGh;
     if (oldState === undefined) delete process.env.GSC_FAKE_GH_STATE; else process.env.GSC_FAKE_GH_STATE = oldState;
