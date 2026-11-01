@@ -77,5 +77,7 @@ test("Explorer changed files skip repo view and retain rename metadata", async (
   assert.deepEqual(result.files, [{ path: "owner-one-a.ts", oldPath: "old.ts", status: "R", additions: 2, deletions: 1 }]);
   const requests = await calls();
   assert.equal(requests.length, 1);
-  assert.equal(requests[0][1], "repos/{owner}/{repo}/pulls/42/files?per_page=100&page=1");
+  assert.equal(requests[0][0], "api");
+  assert.ok(requests[0].includes("repos/{owner}/{repo}/pulls/42/files?per_page=100&page=1"));
+  assert.ok(requests[0].includes("--include"), "final-page detection needs the response headers");
 });

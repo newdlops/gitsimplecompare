@@ -1,0 +1,886 @@
+{
+  "sourceBefore": "fd2a7b9",
+  "sourceAfter": "c40a75a96cc39531f5ef52d60143036feb81e79c",
+  "node": "v22.22.2",
+  "fixtureDelayMs": 8,
+  "pairsPerCandidate": 5,
+  "scope": "controlled service/CLI/TLS fixtures; not live GitHub latency",
+  "bytesMetric": "response body bytes excluding internal page envelopes, request documents, HTTP headers and TLS; native CLI bytes/auth unknown=null; native CLI fixture models one API read per invocation",
+  "results": {
+    "N1": {
+      "payloadEqual": true,
+      "before": {
+        "p50Ms": 555.2194169999998,
+        "p95Ms": 824.3241249999999,
+        "samples": [
+          {
+            "wallMs": 482.371792,
+            "counts": {
+              "api": 1,
+              "cli": 1,
+              "credentials": null,
+              "bytes": null,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 505.63308300000006,
+            "counts": {
+              "api": 1,
+              "cli": 1,
+              "credentials": null,
+              "bytes": null,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 824.3241249999999,
+            "counts": {
+              "api": 1,
+              "cli": 1,
+              "credentials": null,
+              "bytes": null,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 555.2194169999998,
+            "counts": {
+              "api": 1,
+              "cli": 1,
+              "credentials": null,
+              "bytes": null,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 685.034584,
+            "counts": {
+              "api": 1,
+              "cli": 1,
+              "credentials": null,
+              "bytes": null,
+              "connections": 0,
+              "hydrated": 0
+            }
+          }
+        ]
+      },
+      "after": {
+        "p50Ms": 11.657166999999959,
+        "p95Ms": 14.826874999999973,
+        "samples": [
+          {
+            "wallMs": 14.826874999999973,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 72,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 11.657166999999959,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 72,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 11.684249999999793,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 72,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 11.35412499999984,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 72,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 11.161124999999629,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 72,
+              "connections": 0,
+              "hydrated": 0
+            }
+          }
+        ]
+      }
+    },
+    "N2": {
+      "payloadEqual": true,
+      "before": {
+        "p50Ms": 20.312332999999853,
+        "p95Ms": 21.554333000000042,
+        "samples": [
+          {
+            "wallMs": 21.554333000000042,
+            "counts": {
+              "api": 3,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 7095,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 19.31179199999997,
+            "counts": {
+              "api": 3,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 7095,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 20.15804100000014,
+            "counts": {
+              "api": 3,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 7095,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 20.39766699999973,
+            "counts": {
+              "api": 3,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 7095,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 20.312332999999853,
+            "counts": {
+              "api": 3,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 7095,
+              "connections": 0,
+              "hydrated": 0
+            }
+          }
+        ]
+      },
+      "after": {
+        "p50Ms": 10.726667000000361,
+        "p95Ms": 10.951082999999926,
+        "samples": [
+          {
+            "wallMs": 10.766166999999768,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 7093,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 10.726667000000361,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 7093,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 10.951082999999926,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 7093,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 10.508249999999862,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 7093,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 10.568333000000166,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 7093,
+              "connections": 0,
+              "hydrated": 0
+            }
+          }
+        ]
+      }
+    },
+    "N3": {
+      "payloadEqual": true,
+      "before": {
+        "p50Ms": 598.2880829999995,
+        "p95Ms": 816.7865000000002,
+        "samples": [
+          {
+            "wallMs": 550.7914589999996,
+            "counts": {
+              "api": 2,
+              "cli": 2,
+              "credentials": null,
+              "bytes": null,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 522.6786249999996,
+            "counts": {
+              "api": 2,
+              "cli": 2,
+              "credentials": null,
+              "bytes": null,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 598.2880829999995,
+            "counts": {
+              "api": 2,
+              "cli": 2,
+              "credentials": null,
+              "bytes": null,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 816.7865000000002,
+            "counts": {
+              "api": 2,
+              "cli": 2,
+              "credentials": null,
+              "bytes": null,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 601.1624999999995,
+            "counts": {
+              "api": 2,
+              "cli": 2,
+              "credentials": null,
+              "bytes": null,
+              "connections": 0,
+              "hydrated": 0
+            }
+          }
+        ]
+      },
+      "after": {
+        "p50Ms": 23.62474999999995,
+        "p95Ms": 25.433499999999185,
+        "samples": [
+          {
+            "wallMs": 25.433499999999185,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 2,
+              "bytes": 614,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 23.287625000000844,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 2,
+              "bytes": 614,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 23.62474999999995,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 2,
+              "bytes": 614,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 23.95708299999933,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 2,
+              "bytes": 614,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 22.470500000000357,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 2,
+              "bytes": 614,
+              "connections": 0,
+              "hydrated": 0
+            }
+          }
+        ]
+      }
+    },
+    "N4": {
+      "payloadEqual": true,
+      "before": {
+        "p50Ms": 10.141083000000435,
+        "p95Ms": 11.880874999999833,
+        "samples": [
+          {
+            "wallMs": 11.880874999999833,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 8576,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 10.473333000000821,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 8576,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 10.141083000000435,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 8576,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 9.785250000000815,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 8576,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 9.021333000000595,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 8576,
+              "connections": 0,
+              "hydrated": 0
+            }
+          }
+        ]
+      },
+      "after": {
+        "p50Ms": 9.656957999999577,
+        "p95Ms": 11.153374999999869,
+        "samples": [
+          {
+            "wallMs": 11.153374999999869,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 8564,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 9.4965830000001,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 8564,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 10.087333000000399,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 8564,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 9.609959000000345,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 8564,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 9.656957999999577,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 8564,
+              "connections": 0,
+              "hydrated": 0
+            }
+          }
+        ]
+      }
+    },
+    "N5": {
+      "payloadEqual": true,
+      "before": {
+        "p50Ms": 32.85095799999999,
+        "p95Ms": 35.929707999999664,
+        "samples": [
+          {
+            "wallMs": 35.929707999999664,
+            "counts": {
+              "api": 4,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 2294,
+              "connections": 0,
+              "hydrated": 2
+            }
+          },
+          {
+            "wallMs": 33.24799999999959,
+            "counts": {
+              "api": 4,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 2294,
+              "connections": 0,
+              "hydrated": 2
+            }
+          },
+          {
+            "wallMs": 32.85095799999999,
+            "counts": {
+              "api": 4,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 2294,
+              "connections": 0,
+              "hydrated": 2
+            }
+          },
+          {
+            "wallMs": 31.721457999999984,
+            "counts": {
+              "api": 4,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 2294,
+              "connections": 0,
+              "hydrated": 2
+            }
+          },
+          {
+            "wallMs": 31.788292000001093,
+            "counts": {
+              "api": 4,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 2294,
+              "connections": 0,
+              "hydrated": 2
+            }
+          }
+        ]
+      },
+      "after": {
+        "p50Ms": 33.193999999999505,
+        "p95Ms": 35.22425000000021,
+        "samples": [
+          {
+            "wallMs": 35.22425000000021,
+            "counts": {
+              "api": 4,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 1765,
+              "connections": 0,
+              "hydrated": 1
+            }
+          },
+          {
+            "wallMs": 33.38837500000045,
+            "counts": {
+              "api": 4,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 1765,
+              "connections": 0,
+              "hydrated": 1
+            }
+          },
+          {
+            "wallMs": 32.49912499999937,
+            "counts": {
+              "api": 4,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 1765,
+              "connections": 0,
+              "hydrated": 1
+            }
+          },
+          {
+            "wallMs": 33.01899999999932,
+            "counts": {
+              "api": 4,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 1765,
+              "connections": 0,
+              "hydrated": 1
+            }
+          },
+          {
+            "wallMs": 33.193999999999505,
+            "counts": {
+              "api": 4,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 1765,
+              "connections": 0,
+              "hydrated": 1
+            }
+          }
+        ]
+      }
+    },
+    "N6": {
+      "payloadEqual": true,
+      "before": {
+        "p50Ms": 34.295374999999694,
+        "p95Ms": 36.384249999999156,
+        "samples": [
+          {
+            "wallMs": 34.295374999999694,
+            "counts": {
+              "api": 3,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 27753,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 32.818750000000364,
+            "counts": {
+              "api": 3,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 27753,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 36.384249999999156,
+            "counts": {
+              "api": 3,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 27753,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 33.77083300000049,
+            "counts": {
+              "api": 3,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 27753,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 35.04383300000154,
+            "counts": {
+              "api": 3,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 27753,
+              "connections": 0,
+              "hydrated": 0
+            }
+          }
+        ]
+      },
+      "after": {
+        "p50Ms": 12.567082999999911,
+        "p95Ms": 12.862959000000046,
+        "samples": [
+          {
+            "wallMs": 12.862959000000046,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 13563,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 12.610791999999492,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 13563,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 11.903166000000056,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 13563,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 11.44825000000128,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 13563,
+              "connections": 0,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 12.567082999999911,
+            "counts": {
+              "api": 1,
+              "cli": 0,
+              "credentials": 1,
+              "bytes": 13563,
+              "connections": 0,
+              "hydrated": 0
+            }
+          }
+        ]
+      }
+    },
+    "N7": {
+      "payloadEqual": true,
+      "before": {
+        "p50Ms": 26.4927919999991,
+        "p95Ms": 36.83033299999988,
+        "samples": [
+          {
+            "wallMs": 36.83033299999988,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 54,
+              "connections": 2,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 26.4927919999991,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 54,
+              "connections": 2,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 26.811208999999508,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 54,
+              "connections": 2,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 24.294834000000264,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 54,
+              "connections": 2,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 23.82983299999978,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 54,
+              "connections": 2,
+              "hydrated": 0
+            }
+          }
+        ]
+      },
+      "after": {
+        "p50Ms": 23.531166999999186,
+        "p95Ms": 24.476833000000624,
+        "samples": [
+          {
+            "wallMs": 24.476833000000624,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 54,
+              "connections": 1,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 23.531166999999186,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 54,
+              "connections": 1,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 22.656082999999853,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 54,
+              "connections": 1,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 23.034083999998984,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 54,
+              "connections": 1,
+              "hydrated": 0
+            }
+          },
+          {
+            "wallMs": 24.246417000000292,
+            "counts": {
+              "api": 2,
+              "cli": 0,
+              "credentials": 0,
+              "bytes": 54,
+              "connections": 1,
+              "hydrated": 0
+            }
+          }
+        ]
+      }
+    }
+  }
+}
