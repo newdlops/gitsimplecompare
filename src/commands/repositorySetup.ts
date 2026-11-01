@@ -41,6 +41,7 @@ let activeSetup = false;
 export function registerRepositorySetupCommands(deps: SetupDeps, dependencies: RepositorySetupDependencies = {}): vscode.Disposable[] {
   const service = dependencies.service ?? new RepositorySetupService();
   const catalog = dependencies.catalog ?? new GitHubRepositoryCatalog();
+  let closed = false;
   return [
     vscode.commands.registerCommand("gitSimpleCompare.getStarted", async () => {
       await chooseOwnGit();
@@ -51,6 +52,7 @@ export function registerRepositorySetupCommands(deps: SetupDeps, dependencies: R
     ...Object.entries(REPOSITORY_SETUP_COMMANDS).map(([action, command]) =>
       vscode.commands.registerCommand(command, (args?: RepositorySetupArgs) =>
         runRepositorySetup(deps, service, catalog, action as RepositorySetupAction, args ?? {}))),
+    { dispose() { if (!closed) { closed = true; if (!dependencies.catalog) void catalog.dispose(); } } },
   ];
 }
 

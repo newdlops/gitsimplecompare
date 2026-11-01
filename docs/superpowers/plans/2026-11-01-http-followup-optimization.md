@@ -109,11 +109,11 @@
 **Files:** modify/split `githubRepositoryCatalog.ts`, `commands/repositorySetup.ts`; extend `test/githubRepositoryCatalog.test.ts` and command lifecycle tests.
 **Interfaces:** retain `listPage` and injected fetch; add owned cache/singleflight/dispose. Cache max32 pages/4MiB/1MiB per page/2min idle. Always reauthorize a reopening with conditional GET; no stale private list before authorization.
 
-- [ ] Add RED cases for 200→304 body/Link reuse, no-body 304 once-only repair, token/account isolation, expiry/LRU/oversize, auth invalidation, rate cooldown, independent cancellation and owned-only dispose.
-- [ ] Run catalog/command tests; expected RED.
-- [ ] Implement bounded representation cache and in-flight sharing using current OAuth fetch, without gh/Git dependency.
-- [ ] Run focused tests/types; expected green.
-- [ ] Commit `perf: revalidate OAuth repository pages with bounded cache`.
+- [x] Add RED cases for 200→304 body/Link reuse, no-body 304 once-only repair, token/account isolation, expiry/LRU/oversize, auth invalidation, rate cooldown, independent cancellation and owned-only dispose.
+- [x] Run catalog/command tests; expected RED.
+- [x] Implement bounded representation cache and in-flight sharing using current OAuth fetch, without gh/Git dependency.
+- [x] Run focused tests/types; expected green.
+- [x] Commit `perf: revalidate OAuth repository pages with bounded cache`.
 
 ## Task 9: Inspector successful-port hints
 

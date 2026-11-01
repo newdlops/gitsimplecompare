@@ -82,7 +82,7 @@ test("cancellation before fetch, during fetch and during JSON reading never retu
     const controller = new AbortController();
     if (stage === "before") controller.abort();
     const request: RepositoryCatalogFetch = async (_url, options) => {
-      assert.equal(options.signal, controller.signal);
+      assert.ok(options.signal instanceof AbortSignal, "shared fetch owns its worker signal");
       if (stage === "fetch") { controller.abort(); throw new Error("cancelled token"); }
       return { ...response([]), json: async () => { controller.abort(); return [{ full_name: "user/repo" }]; } };
     };

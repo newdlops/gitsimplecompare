@@ -64,6 +64,7 @@ async function fixture(t: TestContext, enabled = false, dependencies: Repository
     selected: () => selected, setSelected: (value: string) => { selected = value; },
     updateFolders: (callback: typeof workspace.updateWorkspaceFolders) => { workspace.updateWorkspaceFolders = callback; },
     folderEvent: () => folderEvent?.(),
+    disposeSubscriptions: () => subscriptions.forEach(subscription => subscription.dispose()),
   };
 }
 
@@ -124,6 +125,16 @@ test("GitHub setup pages through repositories, keeps OAuth transient and adopts 
   assert.equal(f.selected(), f.root);
   assert.equal(f.native.enabled, false);
   assert.equal(JSON.stringify([...f.states, ...__executedCommands, ...__outputLines]).includes("ephemeral-token"), false);
+});
+
+test("setup registration disposes only the repository catalog it created", async t => {
+  let disposed = 0;
+  const original = GitHubRepositoryCatalog.prototype.dispose;
+  t.mock.method(GitHubRepositoryCatalog.prototype, "dispose", function (this: GitHubRepositoryCatalog) { disposed++; return original.call(this); });
+  const own = await fixture(t); own.disposeSubscriptions(); assert.equal(disposed, 1);
+  const catalog = new GitHubRepositoryCatalog(async () => ({ ok: true, status: 200, headers: new Headers(), json: async () => [] }));
+  t.after(() => catalog.dispose());
+  const borrowed = await fixture(t, false, { catalog }); borrowed.disposeSubscriptions(); assert.equal(disposed, 1);
 });
 
 test("clone from an empty window opens a verified folder with a durable handoff", async t => {

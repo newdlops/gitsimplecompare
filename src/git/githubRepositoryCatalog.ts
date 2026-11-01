@@ -1,5 +1,8 @@
 // GitHub 온보딩에서 접근 가능한 저장소를 조회하는 read-only 서비스.
 // - OAuth session은 UI가 제공하며 Git·gh·VS Code 기본 Git API에 의존하지 않는다.
+import { SharedGitRead } from "./sharedGitRead";
+import { GitHubRepositoryPageCache, cloneRepositoryPage, type RepositoryPageCacheOptions } from "./githubRepositoryPageCache";
+import { logInfo } from "../ui/outputLog";
 export interface GitHubCloneRepository {
   nameWithOwner: string;
   cloneUrl: string;
@@ -12,7 +15,7 @@ export interface GitHubRepositoryPage {
   nextPage?: number;
 }
 export type RepositoryCatalogFetch = (url: string, options: RequestInit) => Promise<
-  Pick<Response, "ok" | "status" | "headers" | "json">
+  Pick<Response, "ok" | "status" | "headers" | "json"> & { body?: Pick<NonNullable<Response["body"]>, "cancel"> | null }
 >;
 export type RepositoryCatalogErrorKind = "authentication" | "rate-limit" | "http" | "invalid-data" | "cancelled" | "network";
 
@@ -61,49 +64,159 @@ function nextPage(link: string | null, current: number): number | undefined {
  * 공개·개인·조직 저장소를 같은 API에서 페이지 단위로 조회한다.
  * @param request 테스트에서 응답·취소를 주입할 fetch 경계. production은 Node의 fetch 사용
  */
+interface PendingPage { identity: string; reader: SharedGitRead<GitHubRepositoryPage>; users: number; }
+const ACCEPT = "application/vnd.github+json", API_VERSION = "2022-11-28";
+
 export class GitHubRepositoryCatalog {
-  constructor(private readonly request: RepositoryCatalogFetch = fetch) {}
+  private readonly cache: GitHubRepositoryPageCache;
+  private readonly pending = new Map<string, PendingPage>();
+  private readonly active = new Set<PendingPage>();
+  private readonly cooldowns = new Map<string, { until: number; status: number }>();
+  private disposed = false;
+  private disposal?: Promise<void>;
+
+  /** @param request 기존 fetch 경계, options cache 한계/clock을 위한 테스트 전용 값 */
+  constructor(private readonly request: RepositoryCatalogFetch = fetch, private readonly options: RepositoryPageCacheOptions = {}) {
+    this.cache = new GitHubRepositoryPageCache(options);
+  }
 
   /**
-   * 인증된 사용자가 접근 가능한 저장소의 한 페이지를 읽는다.
-   * @param token UI가 현재 작업에만 제공한 GitHub OAuth token
-   * @param page 첫 페이지는 1. 많은 저장소는 사용자 선택에 따라 다음 페이지를 읽는다.
-   * @param signal 목록 조회를 중단할 선택적 취소 신호
-   * @returns 복제 항목과 다음 페이지 번호. token·raw response body는 결과에 포함하지 않는다.
+   * 현재 OAuth로 재인가한 저장소 한 페이지를 반환한다. 완료 캐시를 먼저 표시하지 않는다.
+   * @param token 현재 OAuth 값, page 사용자 선택 페이지, signal 이 소비자만의 취소
+   * @returns 현재 200 또는 conditional 304로 검증된 목록. 동시 소비자는 실제 fetch 하나를 공유한다.
    */
   async listPage(token: string, page = 1, signal?: AbortSignal): Promise<GitHubRepositoryPage> {
-    if (!token || /[\r\n]/.test(token)) throw new RepositoryCatalogError("authentication");
+    if (!token || /[\r\n\0]/.test(token)) throw new RepositoryCatalogError("authentication");
     if (!Number.isSafeInteger(page) || page < 1) throw new RepositoryCatalogError("invalid-data");
-    if (signal?.aborted) throw new RepositoryCatalogError("cancelled");
+    if (this.disposed || signal?.aborted) throw new RepositoryCatalogError("cancelled");
     const url = new URL("https://api.github.com/user/repos");
-    url.search = new URLSearchParams({
-      per_page: "100", page: String(page), sort: "updated", direction: "desc",
-      affiliation: "owner,collaborator,organization_member",
-    }).toString();
-    let response: Awaited<ReturnType<RepositoryCatalogFetch>>;
-    try {
-      response = await this.request(url.toString(), {
-        method: "GET", redirect: "error", signal,
-        headers: { Accept: "application/vnd.github+json", Authorization: "Bearer " + token,
-          "X-GitHub-Api-Version": "2022-11-28" },
-      });
-    } catch {
-      throw new RepositoryCatalogError(signal?.aborted ? "cancelled" : "network");
+    url.search = new URLSearchParams({ per_page: "100", page: String(page), sort: "updated", direction: "desc",
+      affiliation: "owner,collaborator,organization_member" }).toString();
+    const identity = this.cache.identity(token), key = [identity, url.toString(), ACCEPT, API_VERSION].join("\0");
+    this.checkCooldown(identity);
+    let entry = this.pending.get(key);
+    if (!entry) {
+      const reader = new SharedGitRead<GitHubRepositoryPage>(ownedSignal => this.readPage(token, page, url.toString(), identity, key, ownedSignal), cloneRepositoryPage);
+      entry = { identity, reader, users: 0 }; this.pending.set(key, entry); this.active.add(entry);
+    } else logInfo("GitHub repository catalog read shared", { page });
+    const owned = entry; owned.users++;
+    try { return await owned.reader.read({ signal, maxCacheAgeMs: 0 }); }
+    catch (error) {
+      if (this.disposed || signal?.aborted || error instanceof Error && error.name === "AbortError") throw new RepositoryCatalogError("cancelled");
+      throw error instanceof RepositoryCatalogError ? error : new RepositoryCatalogError("network");
+    } finally {
+      if (--owned.users === 0) {
+        if (this.pending.get(key) === owned) this.pending.delete(key);
+        void owned.reader.dispose().finally(() => this.active.delete(owned));
+      }
     }
-    if (signal?.aborted) throw new RepositoryCatalogError("cancelled");
-    if (!response.ok) {
-      const exhausted = response.status === 429 || response.headers.get("x-ratelimit-remaining") === "0";
-      throw new RepositoryCatalogError(exhausted ? "rate-limit" : [401, 403].includes(response.status) ? "authentication" : "http",
-        response.status);
-    }
-    let payload: unknown;
-    try { payload = await response.json(); }
-    catch { throw new RepositoryCatalogError(signal?.aborted ? "cancelled" : "invalid-data"); }
-    if (signal?.aborted) throw new RepositoryCatalogError("cancelled");
-    if (!Array.isArray(payload)) throw new RepositoryCatalogError("invalid-data");
-    const parsed = payload.map(parseRepository);
-    // 부분적으로 잘못된 payload를 빈 목록처럼 보여 주지 않고 재시도 가능한 오류로 구분한다.
-    if (parsed.some(item => !item)) throw new RepositoryCatalogError("invalid-data");
-    return { repositories: parsed as GitHubCloneRepository[], nextPage: nextPage(response.headers.get("link"), page) };
   }
+
+  /** 소유한 fetch/JSON 읽기를 취소하고 종료까지 기다린 뒤 private 표현과 timer/cooldown을 해제한다. */
+  dispose(): Promise<void> {
+    return this.disposal ??= (async () => {
+      this.disposed = true;
+      await Promise.allSettled([...this.active].map(entry => entry.reader.dispose()));
+      this.cache.dispose(); this.pending.clear(); this.active.clear(); this.cooldowns.clear();
+      logInfo("GitHub repository catalog disposed", { pending: 0 });
+    })();
+  }
+
+  /** private 목록/identity 없이 수명·용량 검증에 필요한 집계만 반환한다. */
+  metrics() { return { cachePages: this.cache.metrics().pages, cacheBytes: this.cache.metrics().bytes, pending: this.active.size }; }
+
+  /** 30초 마감과 한 번의 body-less 304 복구를 포함한 실제 OAuth GET을 소유한다. */
+  private async readPage(token: string, page: number, url: string, identity: string, key: string, signal: AbortSignal): Promise<GitHubRepositoryPage> {
+    const controller = new AbortController(), abort = () => controller.abort();
+    signal.addEventListener("abort", abort, { once: true });
+    const timer = setTimeout(abort, 30_000);
+    if (signal.aborted) abort();
+    let cached = this.cache.get(key);
+    try {
+      for (let repair = 0; repair <= 1; repair++) {
+        let response: Awaited<ReturnType<RepositoryCatalogFetch>>;
+        try {
+          this.checkCancelled(controller.signal); this.checkCooldown(identity);
+          response = await this.request(url, { method: "GET", redirect: "error", signal: controller.signal,
+            headers: { Accept: ACCEPT, Authorization: "Bearer " + token, "X-GitHub-Api-Version": API_VERSION,
+              ...(cached ? { "If-None-Match": cached.etag } : {}) } });
+        } catch (error) {
+          if (error instanceof RepositoryCatalogError) throw error;
+          throw new RepositoryCatalogError(controller.signal.aborted ? "cancelled" : "network");
+        }
+        this.checkCancelled(controller.signal);
+        if (response.status === 304) {
+          await releaseResponseBody(response);
+          this.checkCancelled(controller.signal);
+          if (!cached) { if (repair) throw new RepositoryCatalogError("invalid-data", 304); continue; }
+          const link = response.headers.get("link");
+          const value = cloneRepositoryPage(cached.page);
+          // Link 없는 304는 오래된 full terminal 페이지에 새 tail이 없다고 확정하지 않는다.
+          value.nextPage = link !== null ? nextPage(link, page) : cached.page.nextPage ?? (value.repositories.length >= 100 ? page + 1 : undefined);
+          this.cache.put(key, identity, value, response.headers.get("etag") ?? cached.etag);
+          logInfo("GitHub repository catalog page revalidated", { page, status: 304, repositories: value.repositories.length });
+          return value;
+        }
+        if (!response.ok) {
+          let secondary = response.status === 429 || response.status === 403 && response.headers.has("retry-after");
+          const primary = response.headers.get("x-ratelimit-remaining") === "0";
+          if (response.status === 403 && !secondary && !primary) {
+            try { const body = await response.json() as { message?: unknown }; secondary = typeof body?.message === "string" && /secondary rate limit|abuse detection/i.test(body.message); }
+            catch { /* 원문을 보관하거나 로그로 보내지 않는다. */ }
+            this.checkCancelled(controller.signal);
+          }
+          await releaseResponseBody(response);
+          this.checkCancelled(controller.signal);
+          if (primary || secondary) {
+            const until = retryAt(response.headers, this.now()) ?? this.now() + 60_000;
+            this.cooldowns.set(primary ? identity : "origin", { until, status: response.status });
+            while (this.cooldowns.size > 128) this.cooldowns.delete(this.cooldowns.keys().next().value!);
+            throw new RepositoryCatalogError("rate-limit", response.status);
+          }
+          if ([401, 403].includes(response.status)) {
+            this.cache.invalidate(identity);
+            for (const [otherKey, pending] of this.pending) if (otherKey !== key && pending.identity === identity) void pending.reader.dispose();
+            throw new RepositoryCatalogError("authentication", response.status);
+          }
+          throw new RepositoryCatalogError("http", response.status);
+        }
+        let payload: unknown;
+        try { payload = await response.json(); }
+        catch { throw new RepositoryCatalogError(controller.signal.aborted ? "cancelled" : "invalid-data"); }
+        this.checkCancelled(controller.signal);
+        if (!Array.isArray(payload)) throw new RepositoryCatalogError("invalid-data");
+        const repositories = payload.map(parseRepository);
+        if (repositories.some(item => !item)) throw new RepositoryCatalogError("invalid-data");
+        const value: GitHubRepositoryPage = { repositories: repositories as GitHubCloneRepository[], nextPage: nextPage(response.headers.get("link"), page) };
+        this.cache.put(key, identity, value, response.headers.get("etag"));
+        logInfo("GitHub repository catalog page loaded", { page, status: response.status, repositories: value.repositories.length });
+        return value;
+      }
+      throw new RepositoryCatalogError("invalid-data");
+    } finally { clearTimeout(timer); signal.removeEventListener("abort", abort); controller.abort(); }
+  }
+
+  /** 부모 취소/폐기 후의 private body는 UI나 캐시에 게시하지 않는다. */
+  private checkCancelled(signal: AbortSignal): void { if (signal.aborted || this.disposed) throw new RepositoryCatalogError("cancelled"); }
+
+  /** 만료된 cooldown을 정리하고 현재 계정 또는 origin의 대기 시간을 준수한다. */
+  private checkCooldown(identity: string): void {
+    for (const [key, value] of this.cooldowns) if (value.until <= this.now()) this.cooldowns.delete(key);
+    const blocked = this.cooldowns.get(identity) ?? this.cooldowns.get("origin");
+    if (blocked) throw new RepositoryCatalogError("rate-limit", blocked.status);
+  }
+  /** 테스트용 clock과 production 시각을 같은 경계에서 읽는다. */
+  private now(): number { return this.options.now?.() ?? Date.now(); }
+}
+
+/** Retry-After의 초/HTTP date와 primary reset을 epoch로 읽되 원문은 보존하지 않는다. */
+function retryAt(headers: Headers, now: number): number | undefined {
+  const retry = headers.get("retry-after"), reset = headers.get("x-ratelimit-reset");
+  const value = retry ? /^\d+(?:\.\d+)?$/.test(retry) ? now + Number(retry) * 1000 : Date.parse(retry) : Number(reset) * 1000;
+  return Number.isFinite(value) && value > now ? value : undefined;
+}
+
+/** JSON으로 소비하지 않은 오류/304 body를 닫되 이미 닫힌 body의 오류 원문은 노출하지 않는다. */
+async function releaseResponseBody(response: Awaited<ReturnType<RepositoryCatalogFetch>>): Promise<void> {
+  try { await response.body?.cancel(); } catch { /* 소비 완료/취소로 이미 닫힌 body도 정상 정리다. */ }
 }
