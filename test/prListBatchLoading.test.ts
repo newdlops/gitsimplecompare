@@ -3,6 +3,7 @@ import test from "node:test";
 import type { GhExecute } from "../src/git/ghRunner";
 import { pullRequestInfoFromGraphQl, type GhPullRequestNode } from "../src/git/pullRequestInfo";
 import { fetchPullRequestListPage } from "../src/git/pullRequestListService";
+import { readPullRequestNodes } from "../src/git/pullRequestListReads";
 
 type IdentifiedNode = GhPullRequestNode & { id: string; __typename: "PullRequest" };
 
@@ -31,9 +32,39 @@ function page(nodes: IdentifiedNode[], hasMore = true): string {
 /** API가 반환 순서를 바꿔도 요청 identity를 기준으로 원래 목록 순서를 보존해야 한다. */
 function nodePage(args: readonly string[], nodes: IdentifiedNode[]): string {
   const byId = new Map(nodes.map(node => [node.id, node]));
+  if (args.some(arg => arg.startsWith("warmIds[]="))) {
+    const read = (name: string) => args.filter(arg => arg.startsWith(`${name}[]=`)).map(arg => byId.get(arg.slice(name.length + 3)));
+    return JSON.stringify({ data: { warm: read("warmIds"), cold: read("coldIds") } });
+  }
   const requested = args.filter(arg => arg.startsWith("ids[]=")).map(arg => arg.slice(6));
   return JSON.stringify({ data: { nodes: requested.reverse().map(id => byId.get(id)) } });
 }
+
+test("one mixed metadata request keeps cold connections and reuses only warm immutable data", async () => {
+  const nodes = records(20), warm = nodes.slice(0, 10);
+  const known = new Map(warm.map(node => [node.number!, pullRequestInfoFromGraphQl(node)]));
+  let requests = 0;
+  const result = await readPullRequestNodes("/repo", nodes, new AbortController(), async (_args, _root, options) => {
+    requests++;
+    if (options.request?.kind !== "graphql") throw new Error("typed GraphQL required");
+    const groups = options.request.variables;
+    if (groups.warmIds && groups.coldIds) {
+      const byId = new Map(nodes.map(node => [node.id, node]));
+      const values = (ids: unknown, stable: boolean) => (ids as string[]).map(id => {
+        const node = { ...byId.get(id)!, title: `fresh ${id}` };
+        if (!stable) { delete node.commits; delete node.files; }
+        return node;
+      });
+      return JSON.stringify({ data: { warm: values(groups.warmIds, false), cold: values(groups.coldIds, true) } });
+    }
+    return JSON.stringify({ data: { nodes: nodes.filter(node => (groups.ids as string[]).includes(node.id)) } });
+  }, () => {}, known);
+  assert.equal(requests, 1);
+  assert.deepEqual(result.map(node => node.number), Array.from({ length: 20 }, (_, i) => i + 1));
+  assert.equal(result[0].title, "fresh PR-1"); assert.equal(result[19].title, "fresh PR-20");
+  assert.equal(result[0].commits?.nodes?.[0].commit?.oid, "start-1");
+  assert.equal(result[19].commits?.nodes?.[0].commit?.oid, "start-20");
+});
 
 /** 문맥 파일 검증 뒤 실제 metadata/페이지 실행을 관찰해 고정 event-loop 횟수에 기대지 않는다. */
 async function waitFor(condition: () => boolean): Promise<void> {
@@ -302,10 +333,12 @@ function projectedPage(args: readonly string[], nodes: IdentifiedNode[], summary
       node.headRefOid = nodes[index].headRefOid; node.baseRefOid = nodes[index].baseRefOid;
     });
   }
-  for (const node of summary ? response.data.repository.pullRequests.nodes : response.data.nodes) {
+  const groups = summary ? response.data.repository.pullRequests.nodes : response.data.nodes ?? [...response.data.warm, ...response.data.cold];
+  for (const node of groups) {
     if (!query.includes("commits(")) delete node.commits;
     if (!query.includes("files(")) delete node.files;
   }
+  for (const node of response.data.warm ?? []) { delete node.commits; delete node.files; }
   return JSON.stringify(response);
 }
 
@@ -345,7 +378,7 @@ test("a changed refresh head rereads only that PR before completing the cached l
     if (options.operation === "graph-pr-list-page") {
       return projectedPage(args, nodes, true);
     }
-    if (/commits\(/.test(args.find(arg => arg.startsWith("query=")) || "")) heavy.push(args.filter(arg => arg.startsWith("ids[]=")));
+    if (/commits\(/.test(args.find(arg => arg.startsWith("query=")) || "")) heavy.push(args.filter(arg => /^(?:ids|coldIds)\[\]=/.test(arg)).map(arg => arg.replace(/^coldIds/, "ids")));
     return projectedPage(args, nodes, false);
   }, { previous });
   assert.deepEqual(result.pullRequests.map(pr => pr.number), Array.from({ length: 80 }, (_, index) => index + 1));

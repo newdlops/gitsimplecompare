@@ -39,11 +39,7 @@ export async function readPullRequestNodes(root: string, references: Array<GhPul
       const reusable = batch.filter(node => canReuseStableConnections(node, known.get(node.number!)));
       let current: GhPullRequestNode[];
       if (reusable.length && reusable.length < batch.length) {
-        const ids = new Set(reusable.map(node => node.id));
-        const groups = await Promise.all([readNodeBatch(root, reusable, controller.signal, runner, false),
-          readNodeBatch(root, batch.filter(node => !ids.has(node.id)), controller.signal, runner, true)]);
-        const values = new Map(groups.flat().map(node => [node.id, node]));
-        current = batch.map(node => values.get(node.id)!);
+        current = await readMixedNodeBatch(root, batch, reusable, controller.signal, runner);
       } else current = await readNodeBatch(root, batch, controller.signal, runner, !reusable.length);
       for (let index = 0; index < batch.length; index++) {
         let node = current[index];
@@ -78,11 +74,43 @@ async function readNodeBatch(root: string, references: readonly GhPullRequestNod
     { signal, operation: "graph-pr-list-nodes", request: graphQLRequest(query, { ids }) });
   signal.throwIfAborted();
   const response = JSON.parse(output) as { errors?: unknown[]; data?: { nodes?: Array<GhPullRequestNode | null> } };
-  if (response.errors?.length || !Array.isArray(response.data?.nodes) || response.data.nodes.length !== ids.length) {
+  if (response.errors?.length) throw new Error("GitHub pull request information is not available.");
+  return validateNodeBatch(response.data?.nodes, references);
+}
+
+/**
+ * 한 HTTP query에서 warm/cold 필드를 분리해 안정 연결은 필요한 PR에만 요청한다.
+ * @param references 원래 순서의 묶음, warm 현재 인증에서 재사용 가능한 항목
+ * @returns 두 alias의 identity를 각각 검증한 뒤 원래 순서로 합친 metadata
+ */
+async function readMixedNodeBatch(root: string, references: readonly GhPullRequestNode[], warm: readonly GhPullRequestNode[],
+  signal: AbortSignal, runner: GhExecute): Promise<GhPullRequestNode[]> {
+  signal.throwIfAborted();
+  const warmIds = warm.map(node => node.id!), warmSet = new Set(warmIds);
+  const cold = references.filter(node => !warmSet.has(node.id!)), coldIds = cold.map(node => node.id!);
+  const query = `query($warmIds: [ID!]!, $coldIds: [ID!]!) {
+    warm: nodes(ids: $warmIds) { ... on PullRequest { id ${buildPullRequestInfoQuery(100, 100, false)} } }
+    cold: nodes(ids: $coldIds) { ... on PullRequest { id ${buildPullRequestInfoQuery(100, 100, true)} } }
+  }`;
+  const output = await runner(["api", "graphql", ...warmIds.flatMap(id => ["-F", `warmIds[]=${id}`]),
+    ...coldIds.flatMap(id => ["-F", `coldIds[]=${id}`]), "-f", `query=${query}`], root,
+    { signal, operation: "graph-pr-list-nodes", request: graphQLRequest(query, { warmIds, coldIds }) });
+  signal.throwIfAborted();
+  const response = JSON.parse(output);
+  if (response.errors?.length) throw new Error("GitHub pull request information is not available.");
+  const values = new Map([...validateNodeBatch(response.data?.warm, warm), ...validateNodeBatch(response.data?.cold, cold)]
+    .map(node => [node.id, node]));
+  return references.map(node => values.get(node.id)!);
+}
+
+/** 원격 배열의 순서에 의존하지 않고 요청한 ID/PR 번호와 완전성을 검사한다. alias 간 교환도 거절한다. */
+function validateNodeBatch(nodes: unknown, references: readonly GhPullRequestNode[]): GhPullRequestNode[] {
+  const ids = references.map(node => node.id!);
+  if (!Array.isArray(nodes) || nodes.length !== ids.length) {
     throw new Error("GitHub pull request information is not available.");
   }
   const byId = new Map<string, GhPullRequestNode>(), numbers = new Map(references.map(node => [node.id, node.number]));
-  for (const node of response.data.nodes) {
+  for (const node of nodes) {
     if (!node?.id || !ids.includes(node.id) || byId.has(node.id) || !Number.isSafeInteger(node.number) || Number(node.number) <= 0
       || node.number !== numbers.get(node.id)) throw new Error("GitHub pull request identity is incomplete.");
     byId.set(node.id, node);
