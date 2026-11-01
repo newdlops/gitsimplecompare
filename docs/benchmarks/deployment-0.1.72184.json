@@ -1,0 +1,68 @@
+{
+  "version": "0.1.72184",
+  "verifiedAtUtc": "2026-11-01T04:29:12.176Z",
+  "extensionId": "newdlops.gitsimplecompare",
+  "productCommit": "e0d76991e7e734da50654f13f22cf5e690b30246",
+  "branch": "main",
+  "pushedToOrigin": true,
+  "artifact": "gitsimplecompare-0.1.72184.vsix",
+  "bytes": 946414,
+  "sha256": "d6954e609887f52d94fa3074ffac021a33082c60e5c1c5fd1a824d68acd469cd",
+  "publish": {
+    "exitCode": 0,
+    "method": "vsce publish --packagePath (the verified VSIX, without rebuilding)",
+    "logSha256": "d68375244e6580c29ff3e7d8432c2b54de6107d8045b67c322c6a772bbe8b797",
+    "url": "https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare"
+  },
+  "marketplace": {
+    "versionedPublicDownloadVerified": true,
+    "latestPublicDownloadVerified": true,
+    "bothArchivesByteIdenticalToRelease": true,
+    "downloads": {
+      "versioned": {
+        "version": "0.1.72184",
+        "bytes": 946414,
+        "sha256": "d6954e609887f52d94fa3074ffac021a33082c60e5c1c5fd1a824d68acd469cd"
+      },
+      "latest": {
+        "version": "0.1.72184",
+        "bytes": 946414,
+        "sha256": "d6954e609887f52d94fa3074ffac021a33082c60e5c1c5fd1a824d68acd469cd"
+      }
+    },
+    "catalogObservedVersion": "0.1.72183",
+    "catalogVersionMatchesRelease": false,
+    "catalogResponseSha256": "f00565ac238e7d2edf9a5ff30bd166e3a1b105c4ead92e7f435ba89637dc6c9f",
+    "publisherValidation": {
+      "version": "0.1.72184",
+      "exists": true,
+      "validated": true,
+      "hasValidationMessage": false,
+      "observedAtUtc": "2026-11-01T04:28:41.421Z"
+    },
+    "publisherValidationResponseSha256": "82805b4b622f1c927ee003c7313e223b250aeb93cb97aec97cd9e72c935fcb5c",
+    "catalogNote": "The public listing query still returned the previous version at observation. The exact version passed Marketplace validation, and both public versioned and latest downloads matched the release byte for byte."
+  },
+  "install": {
+    "exitCode": 0,
+    "registeredVersion": "0.1.72184",
+    "registeredEntries": 1,
+    "runtimeFilesVerified": 84,
+    "allRuntimeBytesMatched": true,
+    "existingRepositoryWindowsReloaded": false,
+    "activationNote": "The extracted VSIX passed an isolated Extension Host smoke. Existing repository windows need Reload Window to activate the installed update."
+  },
+  "validation": {
+    "artifactRecord": "release-artifact-0.1.72184.json",
+    "fullSuiteTests": 2497,
+    "fullSuitePassed": 2496,
+    "fullSuiteFailed": 0,
+    "fullSuiteSkipped": 1,
+    "productionRendererTestsPassed": 4,
+    "extractedVsixExtensionHostSmokeExitCode": 0,
+    "typecheckExitCode": 0,
+    "productionPackageExitCode": 0,
+    "lintExitCode": 127,
+    "lintReason": "ESLint is not installed."
+  }
+}
