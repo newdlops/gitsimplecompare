@@ -131,7 +131,7 @@ function runGhOnce(
  * - macOS GUI 앱에서 빠지기 쉬운 login shell PATH 와 Homebrew 기본 경로를 보완한다.
  * @returns execFile 에 전달할 gh 실행 파일 경로. 찾지 못하면 기존 PATH 조회를 위해 "gh" 를 반환한다.
  */
-async function resolveGhExecutable(env: NodeJS.ProcessEnv, cwd: string): Promise<string> {
+export async function resolveGhExecutable(env: NodeJS.ProcessEnv, cwd: string): Promise<string> {
   const relative = (env.GITHUB_CLI_PATH && !path.isAbsolute(env.GITHUB_CLI_PATH)) ||
     env.PATH?.split(path.delimiter).some(directory => !path.isAbsolute(directory));
   const context = JSON.stringify([env.GITHUB_CLI_PATH, env.PATH, env.SHELL, relative ? cwd : ""]);

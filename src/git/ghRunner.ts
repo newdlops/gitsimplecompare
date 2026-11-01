@@ -2,6 +2,7 @@
 // - 각 서비스는 operation 이름, 취소, JSON parsing을 명시하고 fake runner로 단위 테스트할 수 있다.
 import { runGh, type RunGhOptions } from "./ghCli";
 import type { GitHubReadRequest } from "./githubReadRequest";
+import type { GitHubReadSessionState } from "./githubReadSession";
 
 /** review 서비스가 gh 실행에 전달할 관찰 가능한 옵션. */
 export interface GhRunnerOptions extends RunGhOptions {
@@ -9,6 +10,10 @@ export interface GhRunnerOptions extends RunGhOptions {
   operation: string;
   /** 서비스가 명시적으로 만든 읽기 계약. 없으면 기존 CLI 실행을 보존한다. */
   request?: GitHubReadRequest;
+  /** 논리 조회가 고정한 문맥. 기본 전송만 소비하며 테스트 실행기는 그대로 무시할 수 있다. */
+  readSession?: GitHubReadSessionState;
+  /** 세션 준비·인증·큐를 포함한 개별 요청의 절대 마감 시각. */
+  deadline?: number;
 }
 
 /** 실제 gh 실행을 대체할 수 있는 작은 함수 타입. */

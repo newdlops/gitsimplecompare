@@ -3,6 +3,8 @@ import type { GhExecute, GhRunnerOptions } from "./ghRunner";
 import { snapshotGitHubEnvironment } from "./githubReadContext";
 import { readGitHubRemoteContext, clearGitHubRemoteContextCache } from "./githubRemoteContext";
 import { SharedGitRead } from "./sharedGitRead";
+import { captureGitHubRequestContext, assertGitHubReadContext } from "./githubReadSession";
+import { gitHubRepositoryScopes } from "./githubRepositoryScope";
 
 interface CachedName { key: string; name?: string; readers: Map<GhExecute, SharedGitRead<string>>; }
 const cache = new Map<string, CachedName>();
@@ -35,10 +37,15 @@ export async function readGitHubRepositoryName(repoRoot: string, runner: GhExecu
     const owned = entry;
     reader = new SharedGitRead<string>(async signal => {
       try {
-        const out = await runner(["repo", "view", "--json", "nameWithOwner"], repoRoot, { ...options, env, signal });
+        const context = await captureGitHubRequestContext(repoRoot, env, ["repo"], signal);
+        const out = await runner(["repo", "view", "--json", "nameWithOwner,url"], repoRoot, { ...options, env, signal });
         signal.throwIfAborted();
-        const name = (JSON.parse(out) as { nameWithOwner?: string }).nameWithOwner || "";
+        const repository = JSON.parse(out) as { nameWithOwner?: string };
+        const name = repository.nameWithOwner || "";
         if (typeof name !== "string") throw new Error("GitHub repository name is invalid.");
+        await assertGitHubReadContext(repoRoot, env, ["repo"], context, options.operation, "repositoryName", signal);
+        signal.throwIfAborted();
+        gitHubRepositoryScopes.learn(repoRoot, context, repository);
         if (name && cache.get(repoRoot) === owned) owned.name = name;
         return name;
       } finally {
@@ -54,6 +61,7 @@ export async function readGitHubRepositoryName(repoRoot: string, runner: GhExecu
 /** 인증 변경·확장 종료 때 캐시를 비우고 소유한 진행 조회를 취소한다. 늦은 완료는 재삽입하지 않는다. */
 export function clearGitHubRepositoryNameCache(): void {
   clearGitHubRemoteContextCache();
+  gitHubRepositoryScopes.clear();
   cache.clear();
   for (const reader of active) void reader.dispose().catch(() => undefined);
 }

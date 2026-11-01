@@ -3,6 +3,33 @@ import type { GhExecute } from "./ghRunner";
 import { captureGitHubReadContext, snapshotGitHubEnvironment } from "./githubReadContext";
 import { captureGitHubRemoteContext } from "./githubRemoteContext";
 import { logInfo } from "../ui/outputLog";
+import { gitHubRepositoryScopes, type GitHubRepositoryScope } from "./githubRepositoryScope";
+import type { GitHubCredentialLease } from "./githubCredential";
+
+export interface GitHubReadSessionState {
+  readonly root: string;
+  readonly env: NodeJS.ProcessEnv;
+  context?: string;
+  scope?: GitHubRepositoryScope;
+  candidate?: unknown;
+  transport?: "cli" | "http";
+  credential?: Promise<GitHubCredentialLease>;
+  credentialKey?: string;
+  generation?: number;
+}
+const sessions = new WeakMap<GhExecute, GitHubReadSessionState>();
+
+/** 완전한 도메인 조회가 끝난 뒤에만 bootstrap scope를 다음 논리 조회에 게시한다. */
+export async function completeGitHubReadSession(execute: GhExecute, signal?: AbortSignal): Promise<void> {
+  const state = sessions.get(execute);
+  if (!state?.candidate) return;
+  await assertGitHubReadContext(state.root, state.env, ["repo"], state.context, "read-scope", "complete", signal);
+  signal?.throwIfAborted();
+  gitHubRepositoryScopes.learn(state.root, state.context, state.candidate);
+}
+
+/** 캐시를 사용하는 서비스가 현재 인증의 성공한 응답 이후에만 불투명 identity를 읽게 한다. */
+export function gitHubReadSessionState(execute: GhExecute): GitHubReadSessionState | undefined { return sessions.get(execute); }
 
 /** 오래된 원격·인증 응답을 일반 네트워크 실패나 사용자 취소와 구분한다. */
 export class GitHubReadContextChangedError extends Error {
@@ -55,16 +82,28 @@ export async function captureGitHubRequestContext(root: string, env: NodeJS.Proc
 export function createGitHubReadSession(root: string, execute: GhExecute): GhExecute {
   const env = snapshotGitHubEnvironment();
   let context: Promise<string | undefined> | undefined;
-  return async (args, cwd, options) => {
+  const state: GitHubReadSessionState = { root, env };
+  const session: GhExecute = async (args, cwd, options) => {
+    const deadline = options.deadline ?? Date.now() + 30_000;
     options.signal?.throwIfAborted();
     if (cwd !== root) throw new Error("GitHub read session repository does not match.");
     const expected = await (context ??= captureGitHubRequestContext(root, env, ["repo"], options.signal));
+    if (!state.transport) { state.context = expected; state.scope = gitHubRepositoryScopes.get(root, expected); }
     await assertGitHubReadContext(root, env, ["repo"], expected, options.operation, "beforePage", options.signal);
     options.signal?.throwIfAborted();
-    const value = await execute(args, cwd, { ...options, env });
+    const value = await execute(args, cwd, { ...options, env, readSession: state, deadline });
     options.signal?.throwIfAborted();
     await assertGitHubReadContext(root, env, ["repo"], expected, options.operation, "afterPage", options.signal);
     options.signal?.throwIfAborted();
+    try {
+      const result = JSON.parse(value);
+      if (!result.errors?.length) {
+        const repository = result.data?.repository ?? (args[0] === "repo" ? result : undefined);
+        if (repository?.url && repository?.nameWithOwner) state.candidate = repository;
+      }
+    } catch { /* 응답 JSON·완전성 검사는 원래 서비스가 소유하며 scope는 추측하지 않는다. */ }
     return value;
   };
+  sessions.set(session, state);
+  return session;
 }
