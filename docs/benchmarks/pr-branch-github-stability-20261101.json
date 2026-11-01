@@ -1,0 +1,435 @@
+{
+  "verifiedAtUtc": "2026-10-31T15:56:26.012Z",
+  "objective": "Optimize PR and branch operations and stabilize GitHub communication.",
+  "baselineCommit": "e82d1e1903400202dff272e96b557110f772ab54",
+  "previousEvidence": "pr-branch-github-optimization-20261030.json",
+  "sourceSha256": {
+    "src/git/comparisonService.ts": "1318b2967a7a81751af166a3be68b32c0fcc4a90d00af84c6950a612560b16f1",
+    "src/git/gitBranchListCache.ts": "93d81e01cf1801016cac4cae78713d6cd0904ec725ce6165ad19fab315edc55f",
+    "src/git/gitExec.ts": "ad36161523710d05c07e7d99fa16efc090b9dccf35538508f7700c84c07b004f",
+    "src/git/gitProcessRunner.ts": "33786363fc7ec293f5b861905e5bae96e1f7b363d7a65cb00cfb784268d5a79b",
+    "src/git/githubReadCache.ts": "f372f5283b656f90002b7ad1d556f6a94c4c5b4a92cf187c467c211103106302",
+    "src/git/githubReadContext.ts": "203d71204879306f3fc9d68a8f46f9b669697f01825e3731d30336ef910acd04",
+    "src/git/githubReadSession.ts": "a6e6688ccae3173fe5a2cffe1214e96c269cf339c7b147c18c08f459ae858e05",
+    "src/git/githubRemoteContext.ts": "1e0ff9e2a9d5a2cf838abf62b8709a4939c66ff4f4b2e54a0a66cfb201f882a5",
+    "src/git/pullRequestDetail.ts": "c6c592bd3efa83da1ffb8859cd0b007a4dbd746f1972a4c7d01bc46cb8c1f5ae",
+    "src/git/pullRequestListService.ts": "e863024a3cd4f79a539c69426cef68051e14d2ae92e75066f53d9eb03915f283",
+    "src/git/pullRequestSearchReads.ts": "48777393ee59bc764e5a4e6c2453b05e0a3b0596a9a064c79f8db66569a35df1",
+    "src/git/pullRequestSearchService.ts": "a18b8f08203219545b82dcd6effa01a734bca514af6a5a375d6304561930d188",
+    "src/git/remoteBranchService.ts": "cc230a635bfdae150606208f126296ba45007b3d2f4ef25fa9da5f7ba779240e",
+    "src/git/remoteBranchState.ts": "024520c7b6ded22f528d372ee326846c913346f40fa4823743e3e82f7dbcd0d3",
+    "test/conflictDocumentBatch.test.ts": "4aead1ed52f4fc93660198f870ee99d11043e424b74e92c9c9ff8ec3cce578a2",
+    "test/diffReadPerformance.test.ts": "5407d6a4527d14ec9d69d91e13d32aab587fdb06abd79a0eefad250cb0f591cd",
+    "test/gitBranchListCache.test.ts": "c9eb8b02d438c1f9349720698cfcb2566b107028b136e3c34b49abe5aa3198fc",
+    "test/githubReadCache.test.ts": "06c404683d5d1d8a59a439368b9da9d5266e56b090afa12eee32d969dd5a2db4",
+    "test/githubReadContextRace.test.ts": "43c81440746ae62ded925e10647250971aa9a79f5afa89322817c6fb6db58541",
+    "test/githubReadIncludes.test.ts": "b95031b33ca79507e67cad6187d16807eedc53f9a0d8f3ed38e1372a983e6e4b",
+    "test/githubReadSession.test.ts": "c6082f9b7f186f829d6dcefb4bf98003dcc5dbbe3ea2a45fff2f5195daa1043a",
+    "test/githubReadStability.test.ts": "9e05d640f2eea7829804d035899d89d9cb28e93ed40c4e7789838bc7888cad1f",
+    "test/graphDetailLifecycle.test.ts": "92b6aa3aca3ebc68a2af1ac493565b8c1881e3bddce5e7036d91b025183ad949",
+    "test/prListBatchLoading.test.ts": "655762d92a33ae5bdc6781f55df168dc491fb652a866e36abc7f4e59446ff85c",
+    "test/prLoadingPerformance.test.ts": "7f245a1fb9485996fdfbf70ee5be4c315f2e513b17b6dc945f6ecadf8d516229",
+    "test/prSnapshotReadSafety.test.ts": "59dc2dd6b5385bffcca093398e67076bc1ede9bbff51d864a0ed84e22bcfab52",
+    "test/pullRequestCommentBatch.test.ts": "64ca8c881541f81c666a934cfe534845c39131fff5a14ee98e9d0368013edd7e",
+    "test/pullRequestDetailStability.test.ts": "61d3cc2a9d7f8f18cfc7700d58f947dbb6e42b70353443b45ae9048629f8ba76",
+    "test/pullRequestGraphJump.test.ts": "1b615bd39bd6aa61f6d3cef975715a1baceb3df41e4d1cd2bb198e83f013b1a0",
+    "test/pullRequestListService.test.ts": "9446ba4f97404dddbe21f9e4774c9c80b7097940bc8d6549f9b374e8f4593214",
+    "test/pullRequestMatching.test.ts": "f7e8ad8e7abad31facea0ddf4f6b58ef0aff805f57c24d16335b947cc82bdd68",
+    "test/pullRequestSearchEfficiency.test.ts": "8a965bf14b0d594732ea52e194d1ed9df48784bbac7ee6fdeddaf7b0d923914a",
+    "test/rebaseProgressPerformance.test.ts": "b888f3c5433a178ab1497ac0dcd92772309324616398276de55840b0c15ee8b6",
+    "test/remoteBranchState.test.ts": "f59be46366a235665981d25026d445c9395dd3f36f6db811e65dfdf19fb84aee",
+    "test/upstreamComparisonIdentity.test.ts": "58ac770a7c36d46d4afa0ac2ecb38840b323d3d51bc3899fede89b4f4abf7b96"
+  },
+  "fixesVerified": [
+    "Environment snapshots preserve absent variables through nested GitHub readers and Git config subprocesses.",
+    "Completed and in-flight repository queries observe the actual Git include origins, with warm metadata reuse.",
+    "Upstream comparisons use full refs for remote/local/custom-fetch endpoints and current branches despite colliding names.",
+    "Commit association pages beyond 100 remain available; repeated pages and tail failures never return partial success.",
+    "Only NOT_FOUND errors for a requested PR alias with null data are omitted; text matches and valid batch nodes survive."
+  ],
+  "checks": {
+    "fullSuite": {
+      "tests": 2490,
+      "passed": 2489,
+      "failed": 0,
+      "skipped": 1
+    },
+    "productionRenderer": {
+      "passed": 4,
+      "includedInFullSuite": true,
+      "names": [
+        "production PR details survive preceding commit cancellation ACKs and display the first page before completion",
+        "production PR row control reaches the native timeline, paginates both ways, and opens history",
+        "production PR commit control reaches the native timeline, paginates both ways, and opens history",
+        "production PR commit details open an unloaded native commit without requiring a graph jump"
+      ]
+    },
+    "typecheckExitCode": 0,
+    "productionBuildExitCode": 0,
+    "gitDiffCheckExitCode": 0,
+    "lintExitCode": 127,
+    "lintReason": "ESLint is not installed.",
+    "originalFullSuiteFailures": 9,
+    "baselineHeadFailuresReproduced": 5,
+    "testCorrections": [
+      "Count Git commands past global options.",
+      "Allow cached metadata to remove redundant rev-parse processes while retaining process budgets and literal result checks.",
+      "Represent complete commit metadata in stable snapshot fixtures.",
+      "Check merge OID alongside the requested metadata fields.",
+      "Wait for actual CLI/page starts before testing cancellation, concurrency and queue fairness."
+    ]
+  },
+  "review": {
+    "independentReadOnlyReviewer": true,
+    "importantFindings": 5,
+    "remainingImportantFindings": 0,
+    "finalEnvironmentCompositionProbeRejectedMixedContext": true
+  },
+  "performance": {
+    "measuredAtUtc": "2026-10-31T15:40:10.064Z",
+    "baselineCommit": "e82d1e1903400202dff272e96b557110f772ab54",
+    "fixture": {
+      "remoteBranches": 2118,
+      "historyCommits": 400,
+      "upstreamBehindBy": 200,
+      "relatedPullRequests": 45,
+      "simulatedApiRoundTripMs": 10
+    },
+    "method": "One warmup and seven paired rounds in alternating order. Real Git reads; PR responses use deterministic fixtures with 10ms simulated latency. No live network timing claim.",
+    "branchState": {
+      "summary": {
+        "baseline": {
+          "elapsedMs": 524.3923750000004,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        },
+        "current": {
+          "elapsedMs": 464.8486670000002,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        }
+      },
+      "runs": [
+        {
+          "round": 0,
+          "variant": "current",
+          "elapsedMs": 440.31591600000047,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        },
+        {
+          "round": 0,
+          "variant": "baseline",
+          "elapsedMs": 553.0457909999996,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        },
+        {
+          "round": 1,
+          "variant": "baseline",
+          "elapsedMs": 491.7589159999998,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        },
+        {
+          "round": 1,
+          "variant": "current",
+          "elapsedMs": 448.0773340000005,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        },
+        {
+          "round": 2,
+          "variant": "current",
+          "elapsedMs": 482.9717499999997,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        },
+        {
+          "round": 2,
+          "variant": "baseline",
+          "elapsedMs": 524.3923750000004,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        },
+        {
+          "round": 3,
+          "variant": "baseline",
+          "elapsedMs": 489.25324999999975,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        },
+        {
+          "round": 3,
+          "variant": "current",
+          "elapsedMs": 464.8486670000002,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        },
+        {
+          "round": 4,
+          "variant": "current",
+          "elapsedMs": 493.9254579999997,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        },
+        {
+          "round": 4,
+          "variant": "baseline",
+          "elapsedMs": 489.283958,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        },
+        {
+          "round": 5,
+          "variant": "baseline",
+          "elapsedMs": 525.5110000000004,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        },
+        {
+          "round": 5,
+          "variant": "current",
+          "elapsedMs": 438.446750000001,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        },
+        {
+          "round": 6,
+          "variant": "current",
+          "elapsedMs": 529.1662080000006,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        },
+        {
+          "round": 6,
+          "variant": "baseline",
+          "elapsedMs": 581.5582919999997,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        }
+      ]
+    },
+    "search": {
+      "summary": {
+        "baseline": {
+          "elapsedMs": 188.00987499999974,
+          "requests": 48,
+          "metadataRequests": 45
+        },
+        "current": {
+          "elapsedMs": 72.39541699999972,
+          "requests": 6,
+          "metadataRequests": 3
+        }
+      },
+      "runs": [
+        {
+          "round": 0,
+          "variant": "current",
+          "elapsedMs": 73.92512500000066,
+          "requests": 6,
+          "metadataRequests": 3
+        },
+        {
+          "round": 0,
+          "variant": "baseline",
+          "elapsedMs": 205.4454999999998,
+          "requests": 48,
+          "metadataRequests": 45
+        },
+        {
+          "round": 1,
+          "variant": "baseline",
+          "elapsedMs": 182.42183300000033,
+          "requests": 48,
+          "metadataRequests": 45
+        },
+        {
+          "round": 1,
+          "variant": "current",
+          "elapsedMs": 59.59174999999959,
+          "requests": 6,
+          "metadataRequests": 3
+        },
+        {
+          "round": 2,
+          "variant": "current",
+          "elapsedMs": 79.43091700000059,
+          "requests": 6,
+          "metadataRequests": 3
+        },
+        {
+          "round": 2,
+          "variant": "baseline",
+          "elapsedMs": 218.95187499999975,
+          "requests": 48,
+          "metadataRequests": 45
+        },
+        {
+          "round": 3,
+          "variant": "baseline",
+          "elapsedMs": 190.1165000000001,
+          "requests": 48,
+          "metadataRequests": 45
+        },
+        {
+          "round": 3,
+          "variant": "current",
+          "elapsedMs": 70.2915410000005,
+          "requests": 6,
+          "metadataRequests": 3
+        },
+        {
+          "round": 4,
+          "variant": "current",
+          "elapsedMs": 154.82345799999894,
+          "requests": 6,
+          "metadataRequests": 3
+        },
+        {
+          "round": 4,
+          "variant": "baseline",
+          "elapsedMs": 182.81183299999975,
+          "requests": 48,
+          "metadataRequests": 45
+        },
+        {
+          "round": 5,
+          "variant": "baseline",
+          "elapsedMs": 188.00987499999974,
+          "requests": 48,
+          "metadataRequests": 45
+        },
+        {
+          "round": 5,
+          "variant": "current",
+          "elapsedMs": 72.39541699999972,
+          "requests": 6,
+          "metadataRequests": 3
+        },
+        {
+          "round": 6,
+          "variant": "current",
+          "elapsedMs": 61.731166999999914,
+          "requests": 6,
+          "metadataRequests": 3
+        },
+        {
+          "round": 6,
+          "variant": "baseline",
+          "elapsedMs": 182.27449999999953,
+          "requests": 48,
+          "metadataRequests": 45
+        }
+      ]
+    },
+    "allResultsEquivalent": true,
+    "protectedHeadIndexConfigAndWorkingFilesUnchanged": true
+  },
+  "liveGitHub": {
+    "verifiedAtUtc": "2026-10-31T15:40:08.145Z",
+    "repository": "cli/cli",
+    "readOnly": true,
+    "missingNumberSearch": {
+      "completed": true,
+      "resultCount": 0,
+      "requests": 3
+    },
+    "mixedExistingAndNotFoundBatch": {
+      "requested": 2,
+      "returned": 1,
+      "existingNumber": 14879,
+      "completeOriginalCommits": true,
+      "requests": 1
+    },
+    "detail": {
+      "files": 1,
+      "expectedFiles": 1,
+      "stableHeadBase": true,
+      "snapshotSha256": "e398169ec1b216de7fff40a144786e4ab53a0824914f185e5d0c9190d744d701",
+      "progress": [
+        {
+          "files": 1,
+          "filesLoading": false,
+          "reviewThreadsLoading": true
+        },
+        {
+          "files": 1,
+          "filesLoading": false,
+          "reviewThreadsLoading": true
+        },
+        {
+          "files": 1,
+          "filesLoading": false,
+          "reviewThreadsLoading": false
+        }
+      ],
+      "backendMs": 1038.9220830000004
+    },
+    "list": {
+      "pullRequests": 80,
+      "completeConnections": true,
+      "requests": 6
+    },
+    "operations": [
+      "pr-search-repository",
+      "pr-search",
+      "pr-search-number",
+      "pr-search-number-batch",
+      "pr-detail",
+      "pr-detail-threads",
+      "graph-pr-list-page",
+      "graph-pr-list-nodes",
+      "graph-pr-list-nodes",
+      "graph-pr-list-nodes",
+      "graph-pr-list-nodes",
+      "graph-pr-commit-page"
+    ],
+    "noRepositoryWrites": true
+  },
+  "runtimeSha256": {
+    "extension": "714ee7a7f0a02d8685915fb35785d71e12b650b0173aae06695a16cbbcd6a976",
+    "graph": "b44ae56777062527f6d54b1468f1d54974ddd047401636e24c10557e7258cbef",
+    "liveReadBundle": "9bc6b1181a4e62458eb92888ecfcb6f50fe8e1be5e89a5148eaa6ce22104ab19"
+  },
+  "logSha256": {
+    "fullSuite": "859156cf42d2506c8dc785e91d957d9e4057ec826512351eab0bb953e00e3810",
+    "originalFullSuite": "4a7618ee67b25fb8d982a5765bae7e76fd5745af7277269611e5e9ad7153b397",
+    "baselineFailures": "d399fdd16b29008c14b46ecfc05e35e911f1d3c33d3ef68df39a3d4400b59a7b",
+    "environmentRed": "fcc45dcd07f02493c9bceea2f962c586937b0142874d12fdd4f8d4820436fc09",
+    "includesRed": "2c45cc12fe81c7a7bb8c62639863144ad0b456b3351da37151483e2b2249be85",
+    "reviewRed": "110ecc6e091adfebc178110d607a5e51088ac3728f26221de029ceb634cd16e1",
+    "gitProbeEnvironmentRed": "675eac73b5fa9f48768541311920129c754271202b973d57864a4d41477abe61",
+    "gitProbeEnvironmentGreen": "6c551334665524eed675a5ea498a91347f240610c89431af7503107aea2cebe7",
+    "live": "11d3a0c8edc9d615f7d6649120bc78327b553adb3782dd9ea2289e2e63ffdd5a",
+    "publicNotFoundOracle": "1cad66b0c14919271b39370761e62c336f29ae5e35bb0091d00608c94977a7ca",
+    "performance": "549ac8d2734de0fa3a11514e22f588f0e71f94e602d906ebcad7c0762740674c",
+    "typecheck": "edf728c6927e9150e727307e7b6281959a870d981546f9ba82f57f2960742f41",
+    "build": "75fa09efb928aee3903e32fe689198927fc9ab35ef68697bb99d79c00638d1e9",
+    "lint": "0d1ec75f1ea33ff330d528e3a64ec48118586888fc6526bcbffaf80b387f4720"
+  },
+  "limitations": [
+    "ESLint is not installed.",
+    "Search timing uses deterministic fixtures with simulated 10ms response latency; live network speedup is not claimed.",
+    "Full refs increase local branch response bytes; verified improvements are fewer Git calls and no divergence walk.",
+    "The opt-in live host/browser transport test is skipped. Production renderer checks run within the full suite; live service checks are recorded separately.",
+    "No UI layout was changed; this pass does not claim a new manual visual audit."
+  ]
+}

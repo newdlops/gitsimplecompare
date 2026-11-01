@@ -14,7 +14,8 @@ import { prSafetyFixture } from "./helpers/prOperationSafetyFixture";
 /** 실제 Git OID를 사용하는 GraphQL PR node를 만든다. */
 function node(hashes: string[], repository = "fixture/repo"): GhPullRequestNode {
   return { number: 42, title: "Snapshot safety", state: "OPEN", headRefName: "source", baseRefName: "main",
-    headRefOid: hashes.at(-1), url: `https://github.com/${repository}/pull/42`,
+    headRefOid: hashes.at(-1), baseRefOid: "base", url: `https://github.com/${repository}/pull/42`,
+    files: { totalCount: hashes.length }, comments: { totalCount: 0 }, reviewThreads: { nodes: [], pageInfo: { hasNextPage: false } },
     commits: { nodes: hashes.map(oid => ({ commit: { oid } })), pageInfo: { hasNextPage: false } } };
 }
 
@@ -53,7 +54,7 @@ for (const changed of [true, false]) {
   test(`search refuses ${changed ? "head changes" : "missing pages"} before publishing partial commit data`, async () => {
     const first = node(["first", "head"]);
     first.commits!.pageInfo = { hasNextPage: true, endCursor: "next" };
-    const next = changed ? node(["other-head"]) : { headRefOid: "head" };
+    const next = changed ? node(["other-head"]) : { headRefOid: "head", baseRefOid: "base" };
     await assert.rejects(searchPullRequests("/repo", "snapshot", undefined, undefined, searchRunner(first, next)), /head changed|incomplete/);
   });
 }

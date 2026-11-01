@@ -58,7 +58,7 @@ test("PR 응답에서 merge commit을 작업 commit과 분리해 정규화한다
 });
 
 test("공통 PR GraphQL selection이 merge 결과 commit OID를 요청한다", () => {
-  assert.match(PULL_REQUEST_INFO_QUERY, /mergeCommit\s*\{\s*oid\s*\}/);
+  assert.match(PULL_REQUEST_INFO_QUERY, /mergeCommit\s*\{\s*oid\b/);
 });
 
 test("PR 검색은 단독 7~40자리 commit hash를 대소문자와 공백에 무관하게 인식한다", () => {

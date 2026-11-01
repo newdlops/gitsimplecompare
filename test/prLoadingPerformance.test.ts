@@ -58,7 +58,8 @@ test("PR list is visible before slow commit/comment pages and published snapshot
 
 for (const boundary of ["same", "repository", "head", "base", "baseName", "incomplete"]) {
   test(`commit pagination reuses only a complete identical snapshot: ${boundary}`, async () => {
-    const known = { ...pullRequestInfoFromGraphQl(node()), commitHashes: ["first", "middle", "head"], commitHashesComplete: true };
+    const known = { ...pullRequestInfoFromGraphQl(node()), commitHashes: ["first", "middle", "head"], commitHashesComplete: true,
+      commitSummaries: [{ hash: "first", title: "First" }, { hash: "middle", title: "Middle" }, { hash: "head", title: "Head" }] };
     const previous = { repository: "owner/repo", pullRequests: [known] };
     if (boundary === "repository") previous.repository = "other/repo";
     if (boundary === "head") known.headHash = "old-head";

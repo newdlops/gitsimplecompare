@@ -2,6 +2,7 @@
 // - UI 레이어가 remote URL 형식(git@, ssh://, https://)을 직접 해석하지 않도록 분리한다.
 import { GitError, runGit } from "./gitExec";
 import { pushBranchCommits, type PushExecutionOptions } from "./sequentialPush";
+import { readCurrentRemoteBranchState } from "./remoteBranchState";
 
 /** 현재 브랜치 upstream 을 웹에서 열기 위한 링크 정보 */
 export type RemoteBranchLink =
@@ -19,6 +20,8 @@ export interface RemoteTrackingBranch {
 export interface CurrentRemoteBranchState {
   branch?: string;
   upstream?: string;
+  /** 표시 이름이 다른 branch/tag와 겹쳐도 Git 실행에는 이 정확한 full ref를 사용한다. */
+  upstreamRef?: string;
   upstreamGone: boolean;
   remotes: string[];
   remoteBranches: RemoteTrackingBranch[];
@@ -54,8 +57,7 @@ export class RemoteBranchService {
       if (!/^refs\/[^\r\n]+\r?\n$/.test(output)) throw new Error("Cannot verify the current branch upstream.");
       return true;
     } catch (error) {
-      if (error instanceof GitError && (error.code === 1 && !error.stderr.trim() || error.code === 128 &&
-          /no upstream configured|HEAD does not point to a branch|no such branch:|upstream branch .*not stored as a remote-tracking branch/i.test(error.stderr))) return false;
+      if (isMissingUpstream(error)) return false;
       throw error;
     }
   }
@@ -66,13 +68,14 @@ export class RemoteBranchService {
    * - remote URL 을 웹 URL 로 해석할 수 없으면 unsupported 를 반환해 UI 가 안내하게 한다.
    */
   async getCurrentBranchLink(): Promise<RemoteBranchLink | undefined> {
-    const upstream = (await runGit(
-      ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
-      this.repoRoot
-    ).catch(() => "")).trim();
-    if (!upstream) {
+    const fullRef = (await runGit(
+      ["rev-parse", "--verify", "--quiet", "--symbolic-full-name", "@{upstream}"],
+      this.repoRoot, { env: { LC_ALL: "C" } }
+    ).catch(error => { if (isMissingUpstream(error)) return ""; throw error; })).trim();
+    if (!fullRef || !fullRef.startsWith("refs/remotes/")) {
       return undefined;
     }
+    const upstream = fullRef.slice("refs/remotes/".length);
 
     const remote = await this.remoteNameFor(upstream);
     if (!remote) {
@@ -99,40 +102,7 @@ export class RemoteBranchService {
    * - UI 는 이 결과만 보고 "기존 upstream 지정" 또는 "push 로 생성" 흐름을 결정한다.
    */
   async getCurrentBranchRemoteState(): Promise<CurrentRemoteBranchState> {
-    const branch = await optionalGit(
-      ["symbolic-ref", "--quiet", "--short", "HEAD"],
-      this.repoRoot
-    );
-    const remotes = await this.listRemotes();
-    if (!branch) {
-      return {
-        remotes,
-        upstreamGone: false,
-        remoteBranches: await this.listRemoteBranches(remotes),
-      };
-    }
-    const [upstream, track, remoteBranches] = await Promise.all([
-      optionalGit(
-        ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
-        this.repoRoot
-      ),
-      optionalGit(
-        [
-          "for-each-ref",
-          "--format=%(upstream:track)",
-          `refs/heads/${branch}`,
-        ],
-        this.repoRoot
-      ),
-      this.listRemoteBranches(remotes),
-    ]);
-    return {
-      branch,
-      upstream,
-      upstreamGone: /\[gone\]/i.test(track ?? ""),
-      remotes,
-      remoteBranches,
-    };
+    return readCurrentRemoteBranchState(this.repoRoot);
   }
 
   /**
@@ -151,7 +121,7 @@ export class RemoteBranchService {
       throw new Error(`Invalid remote branch: ${upstream}`);
     }
     await runGit(
-      ["branch", "--set-upstream-to", upstream, state.branch],
+      ["branch", "--set-upstream-to", `refs/remotes/${upstream}`, state.branch],
       this.repoRoot
     );
     return {
@@ -242,34 +212,13 @@ export class RemoteBranchService {
    * - remote 가 없는 저장소도 정상 상태이므로 빈 배열로 반환한다.
    */
   private async listRemotes(): Promise<string[]> {
-    const out = await optionalGit(["remote"], this.repoRoot);
-    return (out ?? "")
+    const out = await runGit(["remote"], this.repoRoot);
+    return out
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
   }
 
-  /**
-   * refs/remotes 아래의 remote tracking branch 목록을 반환한다.
-   * - `origin/HEAD` 같은 symbolic 기본 ref 는 사용자가 upstream 으로 고를 수 없으므로 제외한다.
-   * @param remotes 현재 등록된 remote 이름 목록
-   */
-  private async listRemoteBranches(
-    remotes: string[]
-  ): Promise<RemoteTrackingBranch[]> {
-    const out = await optionalGit(
-      ["for-each-ref", "--format=%(refname:short)", "refs/remotes"],
-      this.repoRoot
-    );
-    return (out ?? "")
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((name) => name && !name.endsWith("/HEAD"))
-      .flatMap((name) => {
-        const parsed = splitRemoteBranchName(name, remotes);
-        return parsed ? [{ name, ...parsed }] : [];
-      });
-  }
 }
 
 /**
@@ -290,18 +239,10 @@ function splitRemoteBranchName(
   return { remote, branch: name.slice(remote.length + 1) };
 }
 
-/**
- * 실패할 수 있는 git 조회 명령을 선택적으로 실행한다.
- * @param args git 인자 배열
- * @param repoRoot git 저장소 루트
- */
-async function optionalGit(
-  args: string[],
-  repoRoot: string
-): Promise<string | undefined> {
-  const out = await runGit(args, repoRoot).catch(() => undefined);
-  const text = out?.trim();
-  return text ? text : undefined;
+/** 정상적인 upstream 미설정·detached·unborn·gone만 구분하고 실제 Git 오류는 보존한다. */
+function isMissingUpstream(error: unknown): boolean {
+  return error instanceof GitError && (error.code === 1 && !error.stderr.trim() || error.code === 128 &&
+    /no upstream configured|HEAD does not point to a branch|no such branch:|upstream branch .*not stored as a remote-tracking branch/i.test(error.stderr));
 }
 
 /**

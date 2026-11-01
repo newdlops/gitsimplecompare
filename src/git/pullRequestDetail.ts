@@ -3,6 +3,7 @@ import { CommitFileChange } from "../graph/graphTypes";
 import { FileChangeStatus } from "./gitTypes";
 import type { GhExecute } from "./ghRunner";
 import { readGitHubInteractive } from "./githubReadCache";
+import { createGitHubReadSession, GitHubReadContextChangedError } from "./githubReadSession";
 import { splitRepositoryName } from "./githubRepository";
 import { reviewThreadCommentCount } from "./pullRequestCommentCounts";
 import { logWarn } from "../ui/outputLog";
@@ -75,6 +76,7 @@ export async function fetchPullRequestDetail(
   onProgress?: (detail: PullRequestDetailInfo) => void
 ): Promise<PullRequestDetailInfo> {
   signal?.throwIfAborted();
+  runner = createGitHubReadSession(cwd, runner);
   const controller = new AbortController();
   const abort = () => controller.abort();
   signal?.addEventListener("abort", abort, { once: true });
@@ -122,7 +124,7 @@ export async function fetchPullRequestDetail(
         }
         reviewThreadsTruncated = await appendPages(cwd, owner, name, pr, "reviewThreads", initial, threads, runner, controller.signal);
       } catch (error) {
-        if (!onProgress || controller.signal.aborted) throw error;
+        if (!onProgress || controller.signal.aborted || error instanceof GitHubReadContextChangedError) throw error;
         threads.length = 0; reviewThreadsError = error instanceof Error ? error.message : String(error);
         logWarn("pull request file comments failed; changed files retained", { repoRoot: cwd, number, message: reviewThreadsError });
       }

@@ -23,7 +23,7 @@ test("three consumers share one read and cancelling one keeps the other two", as
   const one = cache.read(["api", "same"], "/repo", { operation: "test", signal: controller.signal, ttlMs: 1000 });
   const two = cache.read(["api", "same"], "/repo", { operation: "test", ttlMs: 1000 });
   const three = cache.read(["api", "same"], "/repo", { operation: "test", ttlMs: 1000 });
-  await settle(); controller.abort();
+  await waitFor(() => calls === 1); controller.abort();
   await assert.rejects(one, /cancelled/); assert.equal(signal?.aborted, false);
   response.resolve("value"); assert.deepEqual(await Promise.all([two, three]), ["value", "value"]);
   assert.equal(await cache.read(["api", "same"], "/repo", { operation: "test", ttlMs: 1000 }), "value");
@@ -51,7 +51,7 @@ test("last consumer cancellation aborts the process and queued cancelled reads n
   const controller = new AbortController();
   const pending = Array.from({ length: 9 }, (_, n) => cache.read([String(n)], "/repo", { operation: "test", signal: controller.signal }));
   const results = Promise.allSettled(pending);
-  await settle(); controller.abort(); await results;
+  await waitFor(() => calls === 4); controller.abort(); await results;
   assert.equal(calls, 4); assert.ok(signals.every(signal => signal.aborted));
 });
 

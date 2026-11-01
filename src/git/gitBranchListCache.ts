@@ -70,52 +70,50 @@ export class GitBranchListCache {
     includeRemote: boolean,
     runner: GitBranchListRunner
   ): Promise<GitBranchListRead> {
-    this.syncRepositoryGeneration();
     const started = this.now();
-    const cached = this.freshEntry(includeRemote);
-    if (cached) {
-      const branches = selectBranches(cached.branches, includeRemote);
-      this.report("hit", includeRemote, branches.length, this.now() - started);
-      return { branches, source: "hit" };
-    }
-    const reusablePending = this.pending.get(includeRemote) ?? (
-      includeRemote ? undefined : this.pending.get(true)
-    );
-    if (reusablePending?.generation === this.generation) {
-      const branches = selectBranches(await reusablePending.promise, includeRemote);
-      this.report("coalesced", includeRemote, branches.length, this.now() - started);
-      return {
-        branches,
-        source: "coalesced",
-      };
-    }
-
-    const generation = this.generation;
-    const refs = includeRemote ? ["refs/heads", "refs/remotes"] : ["refs/heads"];
-    const promise = runner([
-      "for-each-ref",
-      `--format=%(HEAD)${FIELD_SEPARATOR}%(refname:short)${FIELD_SEPARATOR}%(refname)`,
-      ...refs,
-    ]).then(parseGitBranchList);
-    this.pending.set(includeRemote, { generation, promise });
-    try {
-      const branches = await promise;
-      if (generation === this.generation) {
-        const entry = { at: this.now(), generation, branches: cloneBranches(branches) };
-        this.completed.set(includeRemote, entry);
-        if (includeRemote) {
-          this.completed.set(false, {
-            ...entry,
-            branches: selectBranches(branches, false),
-          });
-        }
+    for (;;) {
+      this.syncRepositoryGeneration();
+      const cached = this.freshEntry(includeRemote);
+      if (cached) {
+        const branches = selectBranches(cached.branches, includeRemote);
+        this.report("hit", includeRemote, branches.length, this.now() - started);
+        return { branches, source: "hit" };
       }
-      this.report("miss", includeRemote, branches.length, this.now() - started);
-      return { branches: cloneBranches(branches), source: "miss" };
-    } finally {
-      if (this.pending.get(includeRemote)?.promise === promise) {
-        this.pending.delete(includeRemote);
+      const generation = this.generation;
+      let entry = this.pending.get(includeRemote) ?? (includeRemote ? undefined : this.pending.get(true));
+      const coalesced = entry?.generation === generation;
+      if (!coalesced) {
+        const refs = includeRemote ? ["refs/heads", "refs/remotes"] : ["refs/heads"];
+        const promise = runner(["for-each-ref",
+          `--format=%(HEAD)${FIELD_SEPARATOR}%(refname:short)${FIELD_SEPARATOR}%(refname)`, ...refs]).then(parseGitBranchList);
+        entry = { generation, promise };
+        this.pending.set(includeRemote, entry);
       }
+      let branches: BranchInfo[];
+      try { branches = await entry!.promise; }
+      catch (error) {
+        this.syncRepositoryGeneration();
+        // 이미 무효화한 요청의 실패도 최신 snapshot을 기다리는 소비자를 실패시키지 않는다.
+        if (generation !== this.generation) continue;
+        throw error;
+      } finally {
+        if (!coalesced && this.pending.get(includeRemote) === entry) this.pending.delete(includeRemote);
+      }
+      this.syncRepositoryGeneration();
+      // 다른 서비스의 checkout/commit이 진행 중 조회를 앞질렀으면 같은 최신 pass로 다시 합친다.
+      if (generation !== this.generation) {
+        if (this.repoRoot) logInfo("branch list response skipped", { repoRoot: this.repoRoot, reason: "generationChanged" });
+        continue;
+      }
+      if (!coalesced) {
+        const completed = { at: this.now(), generation, branches: cloneBranches(branches) };
+        this.completed.set(includeRemote, completed);
+        if (includeRemote) this.completed.set(false, { ...completed, branches: selectBranches(branches, false) });
+      }
+      const source = coalesced ? "coalesced" : "miss";
+      const selected = selectBranches(branches, includeRemote);
+      this.report(source, includeRemote, selected.length, this.now() - started);
+      return { branches: selected, source };
     }
   }
 

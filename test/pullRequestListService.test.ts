@@ -38,8 +38,14 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-/** 현재 microtask chain이 끝날 때까지만 진행해 다음 worker의 시작을 관측한다. */
-function settle(): Promise<void> { return new Promise((resolve) => setImmediate(resolve)); }
+/** 비동기 문맥 검증이 끝난 실제 페이지 실행을 관찰해 고정 event-loop 횟수에 기대지 않는다. */
+async function waitFor(condition: () => boolean): Promise<void> {
+  const until = Date.now() + 2_000;
+  while (!condition()) {
+    assert.ok(Date.now() < until, "expected PR page did not start");
+    await new Promise(resolve => setTimeout(resolve, 2));
+  }
+}
 
 /** 후속 페이지 한 장이 필요한 PR을 만들어 여러 PR의 독립 요청을 재현한다. */
 function pagedPullRequest(number: number): GhPullRequestNode {
@@ -164,11 +170,11 @@ test("independent large PRs overlap with at most four outstanding network reques
     finally { active--; }
   };
   const result = fetchPullRequestListPage("/repo", undefined, undefined, runner);
-  await settle();
+  await waitFor(() => pending.length === 4);
   assert.equal(pending.length, 4);
   for (let index = 0; index < 9; index++) {
+    await waitFor(() => pending.length > index);
     pending[index].resolve(commitPage([`end-${index + 1}`], undefined, `head-${index + 1}`));
-    await settle();
   }
   const page = await result;
   assert.equal(maximum, 4);
@@ -193,14 +199,13 @@ test("commit and comment pagination share the same four-request limit", async ()
     return read.promise;
   };
   const result = fetchPullRequestListPage("/repo", undefined, undefined, runner);
-  await settle();
+  await waitFor(() => pending.length === 4);
   assert.equal(pending.length, 4);
   assert.equal(operations.filter((operation) => operation === "graph-pr-review-thread-count-batch").length, 1);
   const reviewThreads = JSON.parse(reviewPage([7])).data.repository.pullRequest.reviewThreads;
   for (let index = 0; index < 4; index++) {
     pending[index].resolve(operations[index] === "graph-pr-commit-page" ? commitPage(["end"], undefined, heads[index])
       : JSON.stringify({ data: { repository: { pr0: { reviewThreads }, pr1: { reviewThreads }, pr2: { reviewThreads } } } }));
-    await settle();
   }
   const page = await result;
   assert.deepEqual(page.pullRequests.map((pr) => pr.commentCount), [7, 7, 7]);
@@ -230,7 +235,7 @@ test("cancellation stops running pages and does not start queued pagination", as
   };
   const result = fetchPullRequestListPage("/repo", undefined, controller.signal, runner);
   const rejected = assert.rejects(result, { name: "AbortError" });
-  await settle();
+  await waitFor(() => calls === 5);
   controller.abort();
   await rejected;
   assert.equal(calls, 5);
@@ -252,7 +257,7 @@ test("first failed supplemental page cancels peers and never returns a partial s
   };
   const result = fetchPullRequestListPage("/repo", undefined, undefined, runner);
   const rejected = assert.rejects(result, (error) => error === expected);
-  await settle();
+  await waitFor(() => calls === 5);
   failure.reject(expected);
   await rejected;
   assert.equal(calls, 5);
@@ -265,7 +270,7 @@ test("a late first page after cancellation cannot trigger supplemental reads", a
   let calls = 0;
   const result = fetchPullRequestListPage("/repo", undefined, controller.signal, async () => { calls++; return initial.promise; });
   const rejected = assert.rejects(result, { name: "AbortError" });
-  await settle();
+  await waitFor(() => calls === 1);
   controller.abort();
   initial.resolve(firstPage([pagedPullRequest(1)]));
   await rejected;
@@ -308,16 +313,28 @@ test("repeated review cursors fail instead of silently returning a partial count
   assert.equal(pages, 1);
 });
 
-test("a stalled GitHub request times out, aborts the child, and permits a fresh retry", async () => {
+test("a stalled GitHub request times out, aborts the child, and permits a fresh retry", { timeout: 5_000 }, async t => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
   let childSignal: AbortSignal | undefined;
-  const late = deferred<string>();
+  const late = deferred<string>(), started = deferred<void>();
+  t.after(() => late.resolve(firstPage([pagedPullRequest(1)])));
   const runner: GhExecute = async (_args, _cwd, options) => {
     childSignal = options.signal;
+    started.resolve();
     return late.promise;
   };
-  await assert.rejects(fetchPullRequestListPage("/repo", undefined, undefined, runner, { requestTimeoutMs: 10 }), /timed out/);
+  const pending = fetchPullRequestListPage("/repo", undefined, undefined, runner, { requestTimeoutMs: 10 });
+  const observed = assert.rejects(pending, /timed out/);
+  // 문맥 파일 조회 시간과 무관하게 실제 child가 시작한 뒤 요청의 제한 시간을 진행한다.
+  await started.promise;
+  assert.equal(childSignal?.aborted, false);
+  t.mock.timers.tick(9);
+  assert.equal(childSignal?.aborted, false);
+  t.mock.timers.tick(1);
+  await observed;
   assert.equal(childSignal?.aborted, true);
   late.resolve(firstPage([pagedPullRequest(1)]));
+  t.mock.timers.reset();
   const retried = await fetchPullRequestListPage("/repo", undefined, undefined, async () => firstPage([]));
   assert.deepEqual(retried.pullRequests, []);
 });

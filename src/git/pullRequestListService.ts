@@ -1,6 +1,7 @@
 // Graph용 PR 목록을 가벼운 요약 조회와 제한된 정보/pagination 조회로 읽는 모듈.
 // - 제목·상태·브랜치를 먼저 알리고, 최종 반환 전에는 모든 commit OID와 댓글 수를 완성한다.
 import { readGitHub } from "./githubReadCache";
+import { createGitHubReadSession } from "./githubReadSession";
 import { completePullRequestCommits } from "./pullRequestCommitPages";
 import { PriorityReadQueue } from "../utils/priorityReadQueue";
 import type { GhExecute, GhRunnerOptions } from "./ghRunner";
@@ -107,6 +108,7 @@ export async function fetchPullRequestListPage(
   options: PullRequestListOptions = {}
 ): Promise<PullRequestListPage> {
   throwIfAborted(signal);
+  const read = createGitHubReadSession(repoRoot, runner);
   const timeoutMs = options.requestTimeoutMs ?? QUERY_TIMEOUT_MS;
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 2_147_483_647) {
     throw new RangeError("Pull request query timeout must be a positive timer duration.");
@@ -130,7 +132,7 @@ export async function fetchPullRequestListPage(
     throwIfAborted(options.signal);
     return requestQueue.run(async () => {
       requests++;
-      try { return await executeQuery(args, cwd, options, runner, timeoutMs); }
+      try { return await executeQuery(args, cwd, options, read, timeoutMs); }
       catch (error) {
         // 슬롯 반환 전에 대기 요청을 취소해 실패 뒤 새 CLI가 시작되는 틈을 막는다.
         if (!(error instanceof Error && error.name === "AbortError")) requestFailure ??= { error };

@@ -3,10 +3,17 @@ import { open, stat } from "node:fs/promises";
 import path from "node:path";
 
 const probes = new Map<string, Promise<string | undefined>>();
+const environmentSnapshots = new WeakSet<NodeJS.ProcessEnv>();
 
-/** 요청 당시 환경을 복사해 대기 중 인증·저장소 변경이 실제 실행에 섞이지 않게 한다. */
+/**
+ * 부분 override는 현재 환경과 합치고, 이미 고정한 snapshot은 없는 변수까지 그대로 복사한다.
+ * @param env 호출자가 제공한 부분 환경 또는 이 함수가 앞선 페이지에서 만든 전체 snapshot
+ * @returns 독립적인 전체 환경. 계층을 통과해도 나중에 추가된 인증·저장소 변수가 다시 들어오지 않는다.
+ */
 export function snapshotGitHubEnvironment(env?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  return { ...process.env, ...env };
+  const snapshot = env && environmentSnapshots.has(env) ? { ...env } : { ...process.env, ...env };
+  environmentSnapshots.add(snapshot);
+  return snapshot;
 }
 
 /**
@@ -18,6 +25,16 @@ export function snapshotGitHubEnvironment(env?: NodeJS.ProcessEnv): NodeJS.Proce
  */
 export async function gitHubReadContext(root: string, env: NodeJS.ProcessEnv,
   args: readonly string[], extraFiles: readonly string[] = []): Promise<string> {
+  return await captureGitHubReadContext(root, env, args, extraFiles) ?? `unavailable:${Math.random()}`;
+}
+
+/**
+ * 실행 전후에 비교할 수 있는 인증·저장소 문맥을 관찰한다. 비밀 파일의 내용은 읽지 않는다.
+ * @param root 실행 루트, env 요청 당시 환경, args 저장소 치환 여부, extraFiles 추가 Git 설정 원본
+ * @returns 관찰 성공 시 불투명 키, 실패 시 undefined. 관찰 실패를 완료 캐시로 재사용하지 않는다.
+ */
+export async function captureGitHubReadContext(root: string, env: NodeJS.ProcessEnv,
+  args: readonly string[], extraFiles: readonly string[] = []): Promise<string | undefined> {
   const variables = Object.keys(env).filter(key => /^(GH_|GITHUB_|GIT_)/.test(key) ||
     ["PATH", "SHELL", "HOME", "USERPROFILE", "APPDATA", "AppData", "XDG_CONFIG_HOME", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"].includes(key))
     .sort().map(key => [key, env[key]]);
@@ -31,8 +48,7 @@ export async function gitHubReadContext(root: string, env: NodeJS.ProcessEnv,
     void probe.finally(() => { if (probes.get(probeKey) === owned) probes.delete(probeKey); });
   }
   const metadata = await probe;
-  // 관찰 실패는 소비자마다 다른 key를 주어 완료 캐시와 진행 요청 공유를 생략한다.
-  return createHash("sha256").update(JSON.stringify([probeKey, metadata ?? Math.random()])).digest("hex");
+  return metadata === undefined ? undefined : createHash("sha256").update(JSON.stringify([probeKey, metadata])).digest("hex");
 }
 
 /** 인증 파일·Git 경로를 비동기로 검사하며 불확실한 관찰은 공유 불가로 돌린다. */

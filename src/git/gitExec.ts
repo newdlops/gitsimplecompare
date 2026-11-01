@@ -8,6 +8,8 @@ export { GitError } from "./gitError";
 export interface RunGitOptions {
   executable?: string;
   env?: Record<string, string>;
+  /** false면 이미 고정한 전체 env만 사용해 실행 직전 추가된 저장소·인증 변수를 상속하지 않는다. */
+  inheritEnv?: boolean;
   /** 검증된 별도 Git 경계를 사용할 때만 상속 환경에서 제거할 변수 이름. */
   clearEnv?: readonly string[];
   retryOnLock?: boolean;
@@ -186,7 +188,7 @@ async function withGitRetry<T>(args: string[], options: RunGitOptions, run: () =
 /** 옵션 키가 없는 기존 env shortcut도 그대로 지원한다. */
 function normalizeOptions(options?: Record<string, string> | RunGitOptions): RunGitOptions {
   if (!options) return {};
-  return ["env", "clearEnv", "executable", "retryOnLock", "beforeRetry", "signal", "maxBuffer", "readTimeoutMs", "allowPrivateIndexWrites", "privateIndexOnly"].some(key => key in options)
+  return ["env", "inheritEnv", "clearEnv", "executable", "retryOnLock", "beforeRetry", "signal", "maxBuffer", "readTimeoutMs", "allowPrivateIndexWrites", "privateIndexOnly"].some(key => key in options)
     ? options as RunGitOptions : { env: options as Record<string, string> };
 }
 

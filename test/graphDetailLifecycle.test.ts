@@ -66,11 +66,14 @@ test("closing a PR commit while its objects are preparing cancels the same consu
 
 test("PR detail cancellation reaches its CLI reader and keeps failure cancellation local", async () => {
   const controller = new AbortController(); let signal!: AbortSignal;
+  let started!: () => void;
+  const ready = new Promise<void>(resolve => { started = resolve; });
   const runner: GhExecute = async (_args, _root, options) => {
     signal = options.signal!;
+    started();
     return new Promise((_, reject) => signal.addEventListener("abort", () => reject(new DOMException("cancelled", "AbortError")), { once: true }));
   };
   const pending = fetchPullRequestDetail("/fixture", "owner/repo", 1, controller.signal, runner);
-  const rejected = assert.rejects(pending, { name: "AbortError" }); controller.abort(); await rejected;
+  const rejected = assert.rejects(pending, { name: "AbortError" }); await ready; controller.abort(); await rejected;
   assert.equal(signal.aborted, true);
 });

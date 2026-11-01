@@ -1,7 +1,7 @@
 // GitHub Pull Request POC 데이터를 읽는 서비스.
 // - git graph UI 가 gh CLI/remote URL/스테이징 diff 해석을 직접 알지 않도록 분리한다.
 import { CommitFileChange, LocalBranchStatus } from "../graph/graphTypes";
-import { parseNameStatusZ, parseNumstat } from "./diffParse";
+import { parseRawNumstatZ } from "./diffParse";
 import { readGitHubInteractive } from "./githubReadCache";
 import { readGitHubRepositoryName } from "./githubRepositoryName";
 import type { GhExecute } from "./ghRunner";
@@ -26,7 +26,7 @@ import {
 import type { PullRequestPreviewCommit } from "./pullRequestPreviewCommits";
 import { buildPullRequestConversation } from "./pullRequestPreviewConversation";
 import type { PullRequestConversationItem } from "./pullRequestPreviewConversation";
-import { previewTargetBranches } from "./pullRequestPreviewBranches";
+import { previewBranchChoices, readPreviewBranchNames } from "./pullRequestPreviewBranches";
 import { previewBody } from "./pullRequestPreviewBody";
 import { resolvePreviewHeadRef, resolvePreviewTargetRef } from "./pullRequestPreviewTarget";
 import { previewTitle } from "./pullRequestPreviewTitle";
@@ -273,22 +273,15 @@ export class PullRequestService {
   }
 
   /** staged diff 의 파일 목록과 증감 라인을 읽는다. */
-  private async stagedFiles(): Promise<CommitFileChange[]> {
-    const [nameStatus, numstat] = await Promise.all([
-      runGit(["diff", "--cached", "--name-status", "-z"], this.repoRoot),
-      runGit(["diff", "--cached", "--numstat", "-z"], this.repoRoot),
-    ]);
-    const stats = parseNumstat(numstat);
-    return parseNameStatusZ(nameStatus).map((file) => {
-      const stat = stats.get(file.path);
-      return {
+  private async stagedFiles(signal?: AbortSignal): Promise<CommitFileChange[]> {
+    const output = await runGit(["diff", "--cached", "--raw", "--numstat", "-z"], this.repoRoot, { signal });
+    return parseRawNumstatZ(output).map(file => ({
         status: file.status,
         path: file.path,
         oldPath: file.oldPath,
-        additions: stat?.additions ?? 0,
-        deletions: stat?.deletions ?? 0,
-      };
-    });
+        additions: file.additions ?? 0,
+        deletions: file.deletions ?? 0,
+    }));
   }
 
   /**
@@ -301,17 +294,17 @@ export class PullRequestService {
     signal?.throwIfAborted();
     const selectedSource = source || pr?.headRefName || currentBranch;
     const targetBranch = base || pr?.baseRefName || "";
-    const [targetRef, sourceRef, targetBranches, sourceBranches, headRef, stagedFiles, sourceIsLocal] = await Promise.all([
+    const [targetRef, sourceRef, branches, headRef, stagedFiles, sourceIsLocal] = await Promise.all([
       targetBranch ? resolvePreviewTargetRef(this.repoRoot, targetBranch) : Promise.resolve(""),
       resolvePreviewTargetRef(this.repoRoot, selectedSource),
-      previewTargetBranches(this.repoRoot, targetBranch, selectedSource),
-      previewTargetBranches(this.repoRoot, selectedSource, targetBranch),
+      readPreviewBranchNames(this.repoRoot, signal),
       effectivePr ? resolvePreviewHeadRef(this.repoRoot, effectivePr.headRefName, effectivePr.headHash) : Promise.resolve("HEAD"),
-      this.stagedFiles(), this.localBranchExists(selectedSource),
+      this.stagedFiles(signal), this.localBranchExists(selectedSource),
     ]);
     signal?.throwIfAborted();
     return { currentBranch, selectedSource, targetBranch, targetRef, sourceRef,
-      targetBranches, sourceBranches, headRef, stagedFiles, sourceIsLocal };
+      targetBranches: previewBranchChoices(branches, targetBranch, selectedSource),
+      sourceBranches: previewBranchChoices(branches, selectedSource, targetBranch), headRef, stagedFiles, sourceIsLocal };
   }
 
   /** 원격 bootstrap을 한 번 읽은 뒤 파일·댓글을 가져오며 로컬 Git 준비와 독립적으로 실행한다. */

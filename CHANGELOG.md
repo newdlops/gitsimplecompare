@@ -1,5 +1,37 @@
 # Changelog
 
+## [Unreleased]
+
+## [0.1.72184] - 2026-11-01
+
+### Performance
+
+- Batch commit-associated pull request metadata in groups of 20 while keeping
+  complete commit and review pagination and a four-request concurrency limit.
+- Read remote branch setup with three Git calls and avoid calculating divergence
+  when only upstream availability and branch choices are needed.
+- Share one branch catalog across preview selectors and combine staged file
+  status and statistics in a single Git read.
+
+### Fixes
+
+- Discard GitHub responses if repository or stored authentication settings change
+  during execution, and keep one environment across PR list, detail and search pages.
+- Refresh every waiting branch-list consumer after a mutation invalidates its
+  snapshot, sharing the replacement read.
+- Preserve gone upstreams for removal, handle ambiguous remote names and symbolic
+  aliases, and report repository/configuration errors instead of empty states.
+- Reject partial search responses and repeated cursors. Keep text search usable
+  for missing commit SHAs without hiding authentication, rate-limit or server errors.
+- Follow every page of commit-associated PRs and preserve text matches when
+  GitHub reports an absent requested PR number alongside valid results.
+- Keep absent environment variables absent through GitHub and Git config reads,
+  and include external Git configuration files in repository snapshot checks.
+- Use exact upstream and local branch refs for comparisons even when branch and
+  tag names overlap.
+- Stop pulls when the prepared checkout or upstream changes, preserving saved
+  local work in its stash if the target changes before an automatic retry.
+
 ## [0.1.72183] - 2026-10-30
 
 ### Fixes

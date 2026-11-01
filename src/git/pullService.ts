@@ -4,12 +4,15 @@
 import { detectOperation, detectOperationInGitDir } from "./conflictService";
 import { GitError, runGit } from "./gitExec";
 import { PullRollbackStore, type PullRollbackSnapshot } from "./pullRollbackStore";
-import { readGitCheckoutIdentity } from "./repositoryIdentity";
+import { readGitCheckoutIdentity, type GitCheckoutIdentity } from "./repositoryIdentity";
 import { readGitConfigSnapshot } from "./gitConfigSnapshot";
 import { hasWorkingTreeChanges } from "./workingTreeChanges";
+import { logWarn } from "../ui/outputLog";
 export type { PullRollbackSnapshot } from "./pullRollbackStore";
 
 type LocalChangeBlocker = "none" | "tracked" | "untracked" | "mixed";
+type PullTarget = { remote: string; mergeRef: string };
+type PullPreparation = { identity: GitCheckoutIdentity; target: PullTarget };
 
 export type PullConflictStage = "pull" | "restoreLocalChanges";
 
@@ -46,11 +49,14 @@ export class PullService {
    * @returns 완료 또는 충돌 상태. 충돌 상태에는 rollback 에 필요한 snapshot 이 포함될 수 있다.
    */
   async pullCurrent(): Promise<PullCurrentResult> {
-    const { head, branch, gitDir } = await readGitCheckoutIdentity(this.repoRoot);
+    const identity = await readGitCheckoutIdentity(this.repoRoot);
+    const { head, branch, gitDir } = identity;
     const operation = detectOperationInGitDir(gitDir);
     if (operation !== "none") throw new Error(`Cannot pull while ${operation} is in progress.`);
     const target = await this.readPullTarget(branch);
+    const preparation = { identity, target };
     const hadLocalChanges = await this.hasLocalChanges();
+    await this.assertPreparation(preparation);
 
     try {
       await this.runPull();
@@ -67,6 +73,7 @@ export class PullService {
       if (!hadLocalChanges || blocker === "none") {
         throw err;
       }
+      await this.assertPreparation(preparation);
       const snapshot = await this.createRollbackSnapshot(
         head,
         branch,
@@ -75,7 +82,7 @@ export class PullService {
       if (!snapshot) {
         throw err;
       }
-      return this.pullAfterSnapshot(snapshot, hadLocalChanges);
+      return this.pullAfterSnapshot(snapshot, hadLocalChanges, preparation);
     }
 
     return { status: "completed", hadLocalChanges };
@@ -86,11 +93,21 @@ export class PullService {
    * 완료되면 snapshot 을 작업트리에 적용한다.
    * @param snapshot pull 직전 로컬 변경을 담은 stash
    * @param hadLocalChanges pull 시작 전 로컬 변경 존재 여부
+   * @param preparation 최초 준비한 checkout과 upstream. stash 이후에도 같은 대상을 검증한다.
    */
   private async pullAfterSnapshot(
     snapshot: PullRollbackSnapshot,
-    hadLocalChanges: boolean
+    hadLocalChanges: boolean,
+    preparation: PullPreparation
   ): Promise<PullCurrentResult> {
+    // 준비 오류를 pull 실패 복구로 보내면 다른 checkout에 원본 stash를 적용할 수 있다.
+    // 대상이 바뀌면 stash OID를 안내하고 자동 reset/apply 없이 중단한다.
+    try {
+      await this.assertPreparation(preparation);
+    } catch (error) {
+      logWarn("pull retry stopped; saved local changes retained", { repoRoot: this.repoRoot, stash: snapshot.hash });
+      throw new Error(`${errorText(error)} Saved local changes remain in stash ${snapshot.hash}.`);
+    }
     try {
       await this.runPull();
     } catch (err) {
@@ -227,7 +244,7 @@ export class PullService {
    * @param branch 현재 브랜치 이름
    * @returns 같은 조회에서 확인한 remote와 merge ref. 미설정·detached HEAD는 pull 전에 거부한다.
    */
-  private async readPullTarget(branch: string): Promise<{ remote: string; mergeRef: string }> {
+  private async readPullTarget(branch: string): Promise<PullTarget> {
     if (!branch || branch === "DETACHED") {
       throw new Error("Cannot pull while HEAD is detached.");
     }
@@ -238,6 +255,27 @@ export class PullService {
       throw new Error(`Branch '${branch}' has no upstream configured.`);
     }
     return { remote, mergeRef };
+  }
+
+  /**
+   * 로컬 상태 조회·stash 생성 사이에 checkout이나 upstream이 바뀌면 변경 명령 전에 중단한다.
+   * @param preparation 최초 조회한 worktree·브랜치·HEAD 및 upstream 설정
+   * @returns 일치하면 완료. 조회 실패나 진행 중 작업도 안전하게 준비 변경 오류로 전파한다.
+   */
+  private async assertPreparation(preparation: PullPreparation): Promise<void> {
+    try {
+      const target = await this.readPullTarget(preparation.identity.branch);
+      const current = await readGitCheckoutIdentity(this.repoRoot);
+      const expected = preparation.identity;
+      if (current.gitDir !== expected.gitDir || current.branchRef !== expected.branchRef ||
+          current.head !== expected.head || target.remote !== preparation.target.remote ||
+          target.mergeRef !== preparation.target.mergeRef || detectOperationInGitDir(current.gitDir) !== "none") {
+        throw new Error("The checkout, upstream or operation changed.");
+      }
+    } catch (error) {
+      logWarn("pull preparation changed; mutation skipped", { repoRoot: this.repoRoot, reason: errorText(error) });
+      throw new Error(`Pull preparation changed. Refresh and try again. ${errorText(error)}`);
+    }
   }
 
   /**

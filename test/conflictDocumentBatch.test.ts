@@ -6,6 +6,7 @@ import test, { type TestContext } from "node:test";
 import { ConflictService, type ConflictDocument } from "../src/git/conflictService";
 import { ConflictContentService } from "../src/git/conflictContentService";
 import { readConflictWorkingLeaf } from "../src/git/conflictWorktreeCas";
+import { gitCommandIndex } from "../src/git/gitCommandPolicy";
 import { git, safetyFixture } from "./helpers/gitSafetyFixture";
 
 /** 특수 경로·강제 binary 속성을 포함한 실제 rebase 충돌을 만든다. */
@@ -47,9 +48,9 @@ test("fresh document batches match individual reads with literal paths and one s
   });
   const batch = await service.getConflictDocuments([...paths, paths[0]], true);
   assert.equal(calls.length, 3);
-  assert.equal(calls.filter(args => args[0] === "ls-files").length, 1);
-  assert.equal(calls.filter(args => args[0] === "check-attr").length, 1);
-  assert.equal(calls.filter(args => args[0] === "rev-parse").length, 1);
+  assert.equal(calls.filter(args => args[gitCommandIndex(args)] === "ls-files").length, 1);
+  assert.equal(calls.filter(args => args[gitCommandIndex(args)] === "check-attr").length, 1);
+  assert.equal(calls.filter(args => args[gitCommandIndex(args)] === "rev-parse").length, 1);
   assert.equal(batch.size, paths.length);
   for (const rel of paths) {
     assert.deepEqual(value(batch, rel), await service.getConflictDocument(rel, true, { deferMetadata: true }));

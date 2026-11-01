@@ -7,7 +7,7 @@ import { gitHubReadContext, gitRepositoryContextFiles } from "./githubReadContex
 import { SharedGitRead } from "./sharedGitRead";
 import { logInfo } from "../ui/outputLog";
 
-interface RemoteContext { key: string; }
+interface RemoteContext { key: string; snapshot?: string; }
 interface Probe { key: string; files: readonly string[]; read: SharedGitRead<RemoteContext>; }
 const cache = new Map<string, Probe>();
 const active = new Set<SharedGitRead<RemoteContext>>();
@@ -19,6 +19,20 @@ let lifetime = 0;
  * @returns remote 값과 설정 파일 버전의 불투명 키. 관찰 불가/실행 실패는 캐시를 생략한다.
  */
 export async function readGitHubRemoteContext(root: string, env: NodeJS.ProcessEnv, signal?: AbortSignal): Promise<string> {
+  return (await readRemoteContext(root, env, signal)).key;
+}
+
+/**
+ * Git이 실제 읽은 include 원본까지 포함한 요청 전후 비교 키를 반환한다.
+ * @param root 저장소 루트, env 요청 시 고정한 환경, signal 현재 소비자의 취소 신호
+ * @returns 관찰 가능한 설정의 결정적 키. 첫 probe가 캐시 불가여도 동일 상태의 재검증은 거짓 변경으로 판정하지 않는다.
+ */
+export async function captureGitHubRemoteContext(root: string, env: NodeJS.ProcessEnv, signal?: AbortSignal): Promise<string | undefined> {
+  return (await readRemoteContext(root, env, signal)).snapshot;
+}
+
+/** 이름 캐시와 요청 수명 검증이 동일한 설정 원본 발견·진행 probe를 공유하는 내부 경계다. */
+async function readRemoteContext(root: string, env: NodeJS.ProcessEnv, signal?: AbortSignal): Promise<RemoteContext> {
   signal?.throwIfAborted();
   const epoch = lifetime;
   for (;;) {
@@ -32,11 +46,12 @@ export async function readGitHubRemoteContext(root: string, env: NodeJS.ProcessE
     let entry = previous;
     if (!entry || entry.key !== context) {
       const owned: Probe = { key: context, files, read: undefined! };
-      owned.read = new SharedGitRead(async ownedSignal => {
+      owned.read = new SharedGitRead<RemoteContext>(async ownedSignal => {
         const started = Date.now();
         const gitEnv = Object.fromEntries(Object.entries(env).filter((item): item is [string, string] => typeof item[1] === "string"));
         try {
-          const output = await runGit(["config", "--null", "--show-origin", "--list"], root, { env: gitEnv, signal: ownedSignal });
+          const output = await runGit(["config", "--null", "--show-origin", "--list"], root,
+            { env: gitEnv, inheritEnv: false, signal: ownedSignal });
           ownedSignal.throwIfAborted();
           const parsed = configSources(output, root, env);
           const observedFiles = [...new Set([...await gitRepositoryContextFiles(root, env), ...parsed.files])].sort();
@@ -48,7 +63,9 @@ export async function readGitHubRemoteContext(root: string, env: NodeJS.ProcessE
             if (stable) { owned.files = observedFiles; owned.key = finalContext; }
             else cache.delete(root);
           }
-          return { key: createHash("sha256").update(JSON.stringify([finalContext, parsed.remote, stable ? "stable" : Math.random()])).digest("hex") };
+          const snapshot = parsed.cacheable
+            ? createHash("sha256").update(JSON.stringify([finalContext, parsed.remote])).digest("hex") : undefined;
+          return { key: createHash("sha256").update(JSON.stringify([snapshot, stable ? "stable" : Math.random()])).digest("hex"), snapshot };
         } catch (error) {
           if (cache.get(root) === owned) cache.delete(root);
           throw error;
@@ -60,7 +77,7 @@ export async function readGitHubRemoteContext(root: string, env: NodeJS.ProcessE
       cache.delete(root); cache.set(root, entry);
       logInfo("GitHub repository config cache hit", { repoRoot: root });
     }
-    return (await entry.read.read({ signal, maxCacheAgeMs: Number.POSITIVE_INFINITY })).key;
+    return entry.read.read({ signal, maxCacheAgeMs: Number.POSITIVE_INFINITY });
   }
 }
 

@@ -87,7 +87,8 @@ test("pull connects once on its normal path and keeps uncommitted work", async t
   await addOrigin(root, directory);
   await writeFile(join(root, "tracked.txt"), "uncommitted content\n");
   const { result, calls } = await measured(t, "pull", () => new PullService(root).pullCurrent());
-  assert.equal(calls.length, 4);
+  // 준비한 upstream과 checkout을 다시 확인하는 로컬 조회 두 개를 포함한다.
+  assert.equal(calls.length, 6);
   assert.equal(calls.filter(args => args[0] === "pull" || args[0] === "ls-remote").length, 1);
   assert.deepEqual(result, { status: "completed", hadLocalChanges: true });
   assert.equal(await readFile(join(root, "tracked.txt"), "utf8"), "uncommitted content\n");

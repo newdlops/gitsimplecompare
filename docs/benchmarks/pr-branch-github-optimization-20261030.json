@@ -1,0 +1,414 @@
+{
+  "supersededBy": "pr-branch-github-stability-20261101.json",
+  "verifiedAtUtc": "2026-10-30T13:13:26.057Z",
+  "baselineCommit": "e82d1e1903400202dff272e96b557110f772ab54",
+  "objective": "Optimize PR and branch operations and improve GitHub communication stability.",
+  "scope": [
+    "PR list/detail/search request lifetimes and complete snapshots",
+    "branch-list invalidation and remote/upstream setup",
+    "GitHub read coalescing, bounded concurrency, authentication/repository boundaries and process cleanup"
+  ],
+  "sourceSha256": {
+    "src/git/gitBranchListCache.ts": "93d81e01cf1801016cac4cae78713d6cd0904ec725ce6165ad19fab315edc55f",
+    "src/git/githubReadCache.ts": "5d2a7f029821203736f3acd3dc596658b28a4aa0437ec114cb3648097ce09e1a",
+    "src/git/githubReadContext.ts": "21aed87b66348aa42e487b2d1acf3975500260c3f657bc5c58e628111da4e4c3",
+    "src/git/githubReadSession.ts": "5aa6be4e6562268dc78267ae0ef2ab0670a17d75229de141257012ea7c20b49c",
+    "src/git/pullRequestDetail.ts": "c6c592bd3efa83da1ffb8859cd0b007a4dbd746f1972a4c7d01bc46cb8c1f5ae",
+    "src/git/pullRequestListService.ts": "e863024a3cd4f79a539c69426cef68051e14d2ae92e75066f53d9eb03915f283",
+    "src/git/pullRequestSearchReads.ts": "bda4a36fe38f3b9d1f6625304b81b7d5db6198a9da2dc2c57f85d1eb30b72d3c",
+    "src/git/pullRequestSearchService.ts": "04238cfa681b9c9d7aae142f864bc13118265b62975e0043a734799d216dbc7e",
+    "src/git/remoteBranchService.ts": "f0cd1abf68183321a644eb7b30a7835189b6db1001c85e00e8fda501da8afa98",
+    "src/git/remoteBranchState.ts": "b09e923945a96dc517f33791812398dcea252ef1901a9c0159a837e60ccf1b8d",
+    "test/gitBranchListCache.test.ts": "c9eb8b02d438c1f9349720698cfcb2566b107028b136e3c34b49abe5aa3198fc",
+    "test/githubReadCache.test.ts": "06c404683d5d1d8a59a439368b9da9d5266e56b090afa12eee32d969dd5a2db4",
+    "test/githubReadContextRace.test.ts": "43c81440746ae62ded925e10647250971aa9a79f5afa89322817c6fb6db58541",
+    "test/githubReadSession.test.ts": "c07d69b886804be7acbe8c26bcc888607fdc7e7010f6aa2438c91725643f272b",
+    "test/githubReadStability.test.ts": "9e05d640f2eea7829804d035899d89d9cb28e93ed40c4e7789838bc7888cad1f",
+    "test/prListBatchLoading.test.ts": "655762d92a33ae5bdc6781f55df168dc491fb652a866e36abc7f4e59446ff85c",
+    "test/prSnapshotReadSafety.test.ts": "59dc2dd6b5385bffcca093398e67076bc1ede9bbff51d864a0ed84e22bcfab52",
+    "test/pullRequestGraphJump.test.ts": "1b615bd39bd6aa61f6d3cef975715a1baceb3df41e4d1cd2bb198e83f013b1a0",
+    "test/pullRequestListService.test.ts": "9446ba4f97404dddbe21f9e4774c9c80b7097940bc8d6549f9b374e8f4593214",
+    "test/pullRequestSearchEfficiency.test.ts": "1868f8b097590ea2f3581a398267a0ab2a9e16a2a188c599c5abe0be1184ef12",
+    "test/remoteBranchState.test.ts": "f59be46366a235665981d25026d445c9395dd3f36f6db811e65dfdf19fb84aee"
+  },
+  "checks": {
+    "broadRegressionTestsPassed": 298,
+    "finalBoundaryTestsPassed": 54,
+    "suitesOverlap": true,
+    "finalBoundaryNote": "Rechecks the final missing-SHA error handler and adds metadata identity, complete tail, 100-PR concurrency and cancellation cases after the broad run.",
+    "realProcessLifecycleTestsPassed": 7,
+    "typecheckExitCode": 0,
+    "productionBuildExitCode": 0,
+    "gitDiffCheckExitCode": 0,
+    "lintExitCode": 127,
+    "lintReason": "ESLint is not installed."
+  },
+  "baselineFailuresReproduced": [
+    "three stale branch-generation cases",
+    "in-flight authentication and repository responses",
+    "five remote-state Git calls, lost gone upstream, ambiguous names and swallowed repository errors",
+    "45 metadata calls, accepted partial GraphQL data, repeated cursors and swallowed authentication failure"
+  ],
+  "pairedComparison": {
+    "measuredAtUtc": "2026-10-30T13:08:11.016Z",
+    "baselineCommit": "e82d1e1903400202dff272e96b557110f772ab54",
+    "fixture": {
+      "remoteBranches": 2118,
+      "historyCommits": 400,
+      "upstreamBehindBy": 200,
+      "relatedPullRequests": 45,
+      "simulatedApiRoundTripMs": 10
+    },
+    "method": "One warmup and seven paired rounds in alternating order. Real Git reads; PR responses use deterministic fixtures with 10ms simulated latency. No live network timing claim.",
+    "branchState": {
+      "summary": {
+        "baseline": {
+          "elapsedMs": 672.2389579999981,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        },
+        "current": {
+          "elapsedMs": 676.1879160000026,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        }
+      },
+      "runs": [
+        {
+          "round": 0,
+          "variant": "current",
+          "elapsedMs": 641.2829160000001,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        },
+        {
+          "round": 0,
+          "variant": "baseline",
+          "elapsedMs": 650.8760419999999,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        },
+        {
+          "round": 1,
+          "variant": "baseline",
+          "elapsedMs": 776.7850419999995,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        },
+        {
+          "round": 1,
+          "variant": "current",
+          "elapsedMs": 592.651917000001,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        },
+        {
+          "round": 2,
+          "variant": "current",
+          "elapsedMs": 702.9357909999999,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        },
+        {
+          "round": 2,
+          "variant": "baseline",
+          "elapsedMs": 856.4609999999993,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        },
+        {
+          "round": 3,
+          "variant": "baseline",
+          "elapsedMs": 715.4418749999986,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        },
+        {
+          "round": 3,
+          "variant": "current",
+          "elapsedMs": 700.3299580000003,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        },
+        {
+          "round": 4,
+          "variant": "current",
+          "elapsedMs": 605.3768330000003,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        },
+        {
+          "round": 4,
+          "variant": "baseline",
+          "elapsedMs": 670.2514169999995,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        },
+        {
+          "round": 5,
+          "variant": "baseline",
+          "elapsedMs": 647.6329589999987,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        },
+        {
+          "round": 5,
+          "variant": "current",
+          "elapsedMs": 703.404958000001,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        },
+        {
+          "round": 6,
+          "variant": "current",
+          "elapsedMs": 676.1879160000026,
+          "gitCalls": 3,
+          "stdoutBytes": 68843,
+          "divergenceWalks": 0
+        },
+        {
+          "round": 6,
+          "variant": "baseline",
+          "elapsedMs": 672.2389579999981,
+          "gitCalls": 5,
+          "stdoutBytes": 37044,
+          "divergenceWalks": 1
+        }
+      ]
+    },
+    "search": {
+      "summary": {
+        "baseline": {
+          "elapsedMs": 215.75195800000074,
+          "requests": 48,
+          "metadataRequests": 45
+        },
+        "current": {
+          "elapsedMs": 96.48104199999943,
+          "requests": 6,
+          "metadataRequests": 3
+        }
+      },
+      "runs": [
+        {
+          "round": 0,
+          "variant": "current",
+          "elapsedMs": 96.48104199999943,
+          "requests": 6,
+          "metadataRequests": 3
+        },
+        {
+          "round": 0,
+          "variant": "baseline",
+          "elapsedMs": 215.75195800000074,
+          "requests": 48,
+          "metadataRequests": 45
+        },
+        {
+          "round": 1,
+          "variant": "baseline",
+          "elapsedMs": 209.46812499999942,
+          "requests": 48,
+          "metadataRequests": 45
+        },
+        {
+          "round": 1,
+          "variant": "current",
+          "elapsedMs": 84.48170799999934,
+          "requests": 6,
+          "metadataRequests": 3
+        },
+        {
+          "round": 2,
+          "variant": "current",
+          "elapsedMs": 115.24266700000044,
+          "requests": 6,
+          "metadataRequests": 3
+        },
+        {
+          "round": 2,
+          "variant": "baseline",
+          "elapsedMs": 228.61120899999878,
+          "requests": 48,
+          "metadataRequests": 45
+        },
+        {
+          "round": 3,
+          "variant": "baseline",
+          "elapsedMs": 227.0817079999997,
+          "requests": 48,
+          "metadataRequests": 45
+        },
+        {
+          "round": 3,
+          "variant": "current",
+          "elapsedMs": 84.53850000000057,
+          "requests": 6,
+          "metadataRequests": 3
+        },
+        {
+          "round": 4,
+          "variant": "current",
+          "elapsedMs": 76.58845800000017,
+          "requests": 6,
+          "metadataRequests": 3
+        },
+        {
+          "round": 4,
+          "variant": "baseline",
+          "elapsedMs": 215.95050000000083,
+          "requests": 48,
+          "metadataRequests": 45
+        },
+        {
+          "round": 5,
+          "variant": "baseline",
+          "elapsedMs": 198.75550000000112,
+          "requests": 48,
+          "metadataRequests": 45
+        },
+        {
+          "round": 5,
+          "variant": "current",
+          "elapsedMs": 111.13679100000081,
+          "requests": 6,
+          "metadataRequests": 3
+        },
+        {
+          "round": 6,
+          "variant": "current",
+          "elapsedMs": 99.00225000000137,
+          "requests": 6,
+          "metadataRequests": 3
+        },
+        {
+          "round": 6,
+          "variant": "baseline",
+          "elapsedMs": 197.35175000000163,
+          "requests": 48,
+          "metadataRequests": 45
+        }
+      ]
+    },
+    "allResultsEquivalent": true,
+    "protectedHeadIndexConfigAndWorkingFilesUnchanged": true
+  },
+  "liveGitHub": {
+    "verifiedAtUtc": "2026-10-30T12:57:23.454Z",
+    "readOnly": true,
+    "privateRepositoryHash": "c97d5806fced4f67e7004f7fca6b3518e73276e060c1f9d7d4383da4dd244622",
+    "detail": {
+      "files": 105,
+      "fileComments": 4,
+      "stableHeadAndBase": true,
+      "snapshotHash": "7db928dc262be7e63d0d1bae19da7833770f858e4249630dba12838e2926e894",
+      "backendMs": 1737.0858329999996,
+      "progress": [
+        {
+          "files": 100,
+          "filesLoading": true,
+          "reviewThreadsLoading": true
+        },
+        {
+          "files": 105,
+          "filesLoading": false,
+          "reviewThreadsLoading": true
+        },
+        {
+          "files": 105,
+          "filesLoading": false,
+          "reviewThreadsLoading": true
+        },
+        {
+          "files": 105,
+          "filesLoading": false,
+          "reviewThreadsLoading": false
+        }
+      ],
+      "requests": 3
+    },
+    "associatedCommitSearch": {
+      "oraclePrCount": 1,
+      "allOraclePrsPresent": true,
+      "resultCount": 1,
+      "originalCommitsComplete": true,
+      "requests": 4,
+      "backendMs": 2511.8158750000002
+    },
+    "list": {
+      "pullRequests": 80,
+      "everyCommitFileAndCommentConnectionComplete": true,
+      "requests": 5,
+      "backendMs": 4118.0135
+    },
+    "operations": [
+      "pr-detail",
+      "pr-detail-files",
+      "pr-detail-threads",
+      "pr-search-repository",
+      "pr-search-associated",
+      "pr-search",
+      "pr-search-number",
+      "graph-pr-list-page",
+      "graph-pr-list-nodes",
+      "graph-pr-list-nodes",
+      "graph-pr-list-nodes",
+      "graph-pr-list-nodes"
+    ],
+    "privacy": "No repository names, PR titles, commit titles, authors, file paths or raw GitHub responses are stored."
+  },
+  "liveMissingShaSearch": {
+    "verifiedAtUtc": "2026-10-30T13:05:53.448Z",
+    "missingShaHttpStatusObserved": 422,
+    "missingShaMessageClass": "No commit found for SHA",
+    "searchCompleted": true,
+    "resultCount": 0,
+    "operations": [
+      "pr-search-repository",
+      "pr-search",
+      "pr-search-associated"
+    ],
+    "readOnly": true,
+    "privacy": "Repository identity and raw API responses are omitted."
+  },
+  "artifactSha256": {
+    "productionExtension": "04483153bae173d495746bfdd732b69983790bc299404263497f832759b65ca6",
+    "comparisonRunner": "667bcc9fbf2426f4e9b5e81d1635f5c9728d73b4643be706620ccf8515754dc5",
+    "liveReadBundle": "f9d5935edd830474e0a27b68252a75bb8a310ed59fdbfcc28691c16ee1ca1c47"
+  },
+  "logSha256": {
+    "broadRegressions": "18d31b156574c22a7c9eecc421064ecf1084a31ab9ef87b9aed40d02536b437d",
+    "finalBoundaries": "c575cfba9bcf71c37084d61e756f9a68656e550a9a415e0f325293142583a634",
+    "nativeProcessLifecycle": "62433d0255f5f8ff51c55b1147f663bc6e98cb9cbbbb49fafa832beaa949355e",
+    "typecheck": "edf728c6927e9150e727307e7b6281959a870d981546f9ba82f57f2960742f41",
+    "productionBuild": "75fa09efb928aee3903e32fe689198927fc9ab35ef68697bb99d79c00638d1e9",
+    "lint": "0d1ec75f1ea33ff330d528e3a64ec48118586888fc6526bcbffaf80b387f4720",
+    "liveGitHub": "d7bfbc51cb14e3b3e1dbf319e20d39bb1e81114e346d653437380528a0169f9b",
+    "liveMissingSha": "8ec1dfdcb70aa589880c860f89ecb825bf4d016807f5a46623d009f16c56db60",
+    "pairedComparison": "dca3a50a1d03f03cf11ca162b16a3bba2d038a41dc44a431fe89afbd87fed4ac",
+    "branchAndReadBefore": "5b2bd57c14f2b38c0cf277c93ec0613f1c2016338cbdf1c148e97450933fac27",
+    "branchStateBefore": "99f66f2214eb937208c958842f609b9900f9291ad59b59cca967fb0e51e41936",
+    "searchBefore": "96b8eb912241ed91c46837fa4f97091961438658a77562082678fc586b0446ab"
+  },
+  "limitations": [
+    "Branch elapsed time is neutral in the final paired run; the verified gains are two fewer Git calls and no divergence traversal.",
+    "Canonical full refs and symbolic-ref metadata increase local Git response bytes from 37044 to 68843 in the 2118-remote fixture.",
+    "Search latency comparisons use deterministic responses with 10ms simulated latency; live network speedup is not claimed.",
+    "ESLint is not installed. Initial process-lifecycle failures in the restricted sandbox passed all seven cases outside it.",
+    "Live repository identifiers and contents are redacted; raw responses and logs are not committed."
+  ]
+}

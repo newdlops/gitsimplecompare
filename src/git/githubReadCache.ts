@@ -1,7 +1,8 @@
 // 조회 전용 GitHub 실행의 시간 상한·진행 요청 공유·메모리 캐시·실제 동시 실행 수를 관리한다.
 import { runGh } from "./ghCli";
 import type { GhExecute, GhRunnerOptions } from "./ghRunner";
-import { gitHubReadContext, snapshotGitHubEnvironment } from "./githubReadContext";
+import { snapshotGitHubEnvironment } from "./githubReadContext";
+import { assertGitHubReadContext, captureGitHubRequestContext } from "./githubReadSession";
 import { logInfo } from "../ui/outputLog";
 
 interface Entry { value: string; at: number; expires: number; bytes: number; }
@@ -33,10 +34,10 @@ export class GitHubReadCache {
   async read(args: readonly string[], root: string, options: GitHubReadOptions): Promise<string> {
     if (this.disposed || options.signal?.aborted) return Promise.reject(cancelled());
     const env = snapshotGitHubEnvironment(options.env);
-    const context = await gitHubReadContext(root, env, args);
+    const context = await captureGitHubRequestContext(root, env, args, options.signal);
     if (this.disposed || options.signal?.aborted) throw cancelled();
-    const key = JSON.stringify([root, context, options.version || "", args]);
-    const ttl = options.ttlMs ?? 0;
+    const key = JSON.stringify([root, context ?? Math.random(), options.version || "", args]);
+    const ttl = context === undefined ? 0 : options.ttlMs ?? 0;
     this.sweep();
     const cached = this.cache.get(key);
     if (cached && ttl > 0 && Date.now() - cached.at < ttl) {
@@ -50,7 +51,7 @@ export class GitHubReadCache {
       const controller = new AbortController();
       entry = { controller, users: 0, promise: Promise.resolve("") };
       const owned = entry;
-      entry.promise = this.run(args, root, { ...options, env, signal: controller.signal }).then(value => {
+      entry.promise = this.run(args, root, { ...options, env, signal: controller.signal }, context).then(value => {
         if (!this.disposed && !controller.signal.aborted && this.pending.get(key) === owned && ttl > 0) {
           const bytes = Buffer.byteLength(value);
           if (bytes <= 4 * 1024 * 1024) {
@@ -110,7 +111,7 @@ export class GitHubReadCache {
    * @param options 실행 환경과 부모 취소 신호. 실행기는 종료를 확인한 뒤 settle해야 한다.
    * @returns 성공 출력 또는 큐 대기를 포함한 제한 시간/취소 오류
    */
-  private async run(args: readonly string[], root: string, options: GhRunnerOptions): Promise<string> {
+  private async run(args: readonly string[], root: string, options: GhRunnerOptions, context: string | undefined): Promise<string> {
     const controller = new AbortController();
     const started = Date.now();
     let acquired = false;
@@ -124,9 +125,17 @@ export class GitHubReadCache {
       rejectInterrupted(new Error("GitHub query timed out. Refresh to try again.")); controller.abort();
     }, this.timeoutMs);
     const execution = Promise.resolve().then(async () => {
+      if (this.active >= 4) logInfo("GitHub read queued", { repoRoot: root, operation: options.operation,
+        active: this.active, queued: this.queue.length + 1 });
       await this.acquire(controller.signal); acquired = true;
       controller.signal.throwIfAborted();
-      return this.execute(args, root, { ...options, managedRead: true, signal: controller.signal });
+      await assertGitHubReadContext(root, options.env!, args, context, options.operation, "beforeExecution", controller.signal);
+      controller.signal.throwIfAborted();
+      const value = await this.execute(args, root, { ...options, managedRead: true, signal: controller.signal });
+      controller.signal.throwIfAborted();
+      await assertGitHubReadContext(root, options.env!, args, context, options.operation, "afterExecution", controller.signal);
+      controller.signal.throwIfAborted();
+      return value;
     }).finally(() => {
       this.executions.delete(controller);
       if (acquired) { this.active--; this.queue.shift()?.(); }

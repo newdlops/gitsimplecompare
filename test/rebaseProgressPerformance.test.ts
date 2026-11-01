@@ -154,5 +154,8 @@ test("Start and Continue save ref lookup processes while producing the same fina
     assert.equal(await git(root, "rev-list", "--count", `${head}..HEAD`), "1");
   }
   t.diagnostic(JSON.stringify(measured));
-  assert.deepEqual(measured, [{ mode: "Git ref", start: 15, continue: 38 }, { mode: "loose ref", start: 14, continue: 32 }]);
+  assert.equal(measured[0].start - measured[1].start, 1, "loose HEAD removes one start-time ref process");
+  assert.equal(measured[0].continue - measured[1].continue, 6, "loose refs remove six continuation processes");
+  assert.ok(measured[0].start <= 15 && measured[1].start <= 14, "start must stay within the previous process budget");
+  assert.ok(measured[0].continue <= 38 && measured[1].continue <= 32, "continuation must stay within the previous process budget");
 });

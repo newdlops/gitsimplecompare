@@ -1,7 +1,7 @@
 // PR preview 의 Commits 탭과 로컬 PR 모의를 위한 commit/file diff 모델.
 // - 기존 PR 은 GitHub commit API 를 사용하고, 로컬 preview 는 staged diff 만 synthetic commit 으로 만든다.
 import { CommitFileChange } from "../graph/graphTypes";
-import { parseNameStatusZ, parseNumstat } from "./diffParse";
+import { parseNameStatusZ, parseNumstat, parseRawNumstatZ } from "./diffParse";
 import { runGh } from "./ghCli";
 import { runGit } from "./gitExec";
 import { splitRepositoryName } from "./githubRepository";
@@ -309,13 +309,9 @@ export async function buildIndexedPullRequestPreviewFiles(
   if (!mergeBase) {
     return undefined;
   }
-  const [nameStatus, numstat, patch] = await Promise.all([
+  const [metadata, patch] = await Promise.all([
     runGit(
-      ["diff", "--cached", "--name-status", "-z", "-M", mergeBase, "--"],
-      repoRoot
-    ),
-    runGit(
-      ["diff", "--cached", "--numstat", "-z", "-M", mergeBase, "--"],
+      ["diff", "--cached", "--raw", "--numstat", "-z", "-M", mergeBase, "--"],
       repoRoot
     ),
     runGit([
@@ -328,7 +324,9 @@ export async function buildIndexedPullRequestPreviewFiles(
       "--",
     ], repoRoot),
   ]);
-  return filesFromDiff(nameStatus, numstat, patch);
+  const patches = patchByPath(patch);
+  return parseRawNumstatZ(metadata).map(file => ({ status: file.status, path: file.path, oldPath: file.oldPath,
+    additions: file.additions ?? 0, deletions: file.deletions ?? 0, patch: patches.get(file.path), comments: [] }));
 }
 
 /** name-status/numstat/patch 출력을 preview file 배열로 합친다. */

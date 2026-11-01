@@ -190,20 +190,22 @@ export class ComparisonService {
     if (!state.upstream) {
       throw new Error("The current branch has no upstream.");
     }
+    const upstreamRef = state.upstreamRef ?? state.upstream;
+    const branchRef = `refs/heads/${state.branch}`;
     const [changes, effectiveBase] = await Promise.all([
-      this.git.listChanges(state.upstream, state.branch, diffBase),
+      this.git.listChanges(upstreamRef, branchRef, diffBase),
       resolveEffectiveBaseRef(
         this.repoRoot,
-        state.upstream,
-        state.branch,
+        upstreamRef,
+        branchRef,
         diffBase
       ),
     ]);
     return this.createSnapshot({
       kind: "localRemote",
       baseRef: effectiveBase.ref,
-      sourceBaseRef: state.upstream,
-      targetRef: state.branch,
+      sourceBaseRef: upstreamRef,
+      targetRef: branchRef,
       baseLabel: state.upstream,
       targetLabel: state.branch,
       diffBase,

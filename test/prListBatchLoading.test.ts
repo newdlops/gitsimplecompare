@@ -35,8 +35,14 @@ function nodePage(args: readonly string[], nodes: IdentifiedNode[]): string {
   return JSON.stringify({ data: { nodes: requested.reverse().map(id => byId.get(id)) } });
 }
 
-/** 큐와 취소의 microtask가 진행될 때까지 기다리며 벽시계 시간 가정은 하지 않는다. */
-function settle(): Promise<void> { return new Promise(resolve => setImmediate(resolve)); }
+/** 문맥 파일 검증 뒤 실제 metadata/페이지 실행을 관찰해 고정 event-loop 횟수에 기대지 않는다. */
+async function waitFor(condition: () => boolean): Promise<void> {
+  const until = Date.now() + 2_000;
+  while (!condition()) {
+    assert.ok(Date.now() < until, "expected PR request did not start");
+    await new Promise(resolve => setTimeout(resolve, 2));
+  }
+}
 
 /** 실제 첫 root 응답처럼 중첩 commit/review 정보를 제거해 얕은 표시의 완료 플래그를 검증한다. */
 function summaryPage(nodes: IdentifiedNode[]): string {
@@ -87,7 +93,7 @@ test("PR metadata groups overlap without exceeding the four-request limit", asyn
     return new Promise(resolve => waiting.push(() => { active--; resolve(nodePage(args, nodes)); }));
   };
   const result = fetchPullRequestListPage("/repo", undefined, undefined, runner);
-  await settle();
+  await waitFor(() => waiting.length === 4);
   const started = waiting.length;
   for (const complete of waiting) complete();
   const completed = await result;
@@ -117,7 +123,7 @@ test("cancelling metadata loading stops every running group before supplemental 
     }, { once: true }));
   });
   const observed = result.then(() => ({ success: true, error: undefined }), error => ({ success: false, error }));
-  await settle();
+  await waitFor(() => reads === 5);
   controller.abort();
   const completed = await observed;
   assert.equal(completed.success, false);
@@ -168,9 +174,10 @@ test("a missing root node identity fails before starting metadata reads", async 
 test("the first metadata network failure cancels peers and retains the original error", async () => {
   const nodes = records();
   let fail: (() => void) | undefined;
-  let cancelled = 0, published = 0;
+  let cancelled = 0, published = 0, metadata = 0;
   const result = fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
     if (options.operation === "graph-pr-list-page") return page(nodes);
+    metadata++;
     if (args.includes("ids[]=PR-1")) return new Promise((_resolve, reject) => {
       fail = () => reject(new Error("metadata request failed"));
     });
@@ -179,7 +186,7 @@ test("the first metadata network failure cancels peers and retains the original 
     }, { once: true }));
   }, { onProgress: () => { published++; } });
   const observed = result.then(() => undefined, error => error);
-  await settle();
+  await waitFor(() => metadata === 4);
   fail!();
   const error = await observed;
   assert.equal(error.message, "metadata request failed");
@@ -210,7 +217,7 @@ test("all eighty basic PR rows become available before any slow metadata batch f
     }
     return new Promise(resolve => waiting.push(() => resolve(nodePage(args, nodes))));
   }, { onProgress: snapshot => snapshots.push(snapshot) });
-  await settle();
+  await waitFor(() => waiting.length === 4);
   assert.equal(waiting.length, 4); assert.equal(snapshots.length, 1);
   assert.deepEqual(snapshots[0].pullRequests.map((pr: any) => pr.number), nodes.map(pr => pr.number));
   assert.ok(snapshots[0].pullRequests.every((pr: any) => pr.title && pr.commitHashesComplete === false && pr.commentCountComplete === false));
@@ -239,8 +246,8 @@ test("completed metadata batches start commit pagination while slower metadata b
     } finally { active--; }
   });
   void result.catch(() => undefined);
-  await settle(); assert.equal(metadata.length, 4);
-  metadata[0](); await settle();
+  await waitFor(() => metadata.length === 4); assert.equal(metadata.length, 4);
+  metadata[0](); await waitFor(() => commitTailStarted);
   assert.equal(commitTailStarted, true, "pagination should overlap the other three metadata requests");
   for (const complete of metadata.slice(1)) complete();
   const page = await result;

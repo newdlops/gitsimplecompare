@@ -59,7 +59,8 @@ test("a blocked dirty pull and rollback share fresh metadata without losing edit
   assert.ok(await service.rollbackLatestPull(result.snapshot.id));
   const rollback = calls.length;
   t.diagnostic(JSON.stringify({ pull, rollback }));
-  assert.ok(pull <= 20, `Dirty pull exceeded its Git process budget: ${pull}`);
+  // 최초 pull·stash·재시도 직전 각각 config와 checkout을 새로 검증하는 여섯 조회를 포함한다.
+  assert.ok(pull <= 26, `Dirty pull exceeded its Git process budget: ${pull}`);
   assert.ok(rollback <= 20, `Pull rollback exceeded its Git process budget: ${rollback}`);
   assert.equal(await git(root, "rev-parse", "HEAD"), head);
   assert.equal(await readFile(join(root, "tracked.txt"), "utf8"), "local content\n");

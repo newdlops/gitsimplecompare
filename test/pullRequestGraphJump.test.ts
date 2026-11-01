@@ -34,6 +34,8 @@ if(args[0]==='repo' && args[1]==='view'){process.stdout.write(JSON.stringify({na
 if(args.some(arg=>arg.startsWith('searchQuery='))){
   const node=JSON.parse(fs.readFileSync(path.join(dir,'refs.json'))).data.repository.pullRequest;
   node.commits={nodes:[{commit:{oid:node.headRefOid}}],pageInfo:{hasNextPage:false}};
+  node.baseRefOid=node.headRefOid;node.files={totalCount:0};node.comments={totalCount:0};
+  node.reviewThreads={nodes:[],pageInfo:{hasNextPage:false}};
   process.stdout.write(JSON.stringify({data:{search:{nodes:[node],issueCount:1,pageInfo:{hasNextPage:false}}}}));process.exit(0);
 }
 if (!args.includes('number=42') || !args.some(arg=>arg.startsWith('query=') && arg.includes('headRefOid') && !arg.includes('commits('))) process.exit(2);

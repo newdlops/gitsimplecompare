@@ -16,6 +16,15 @@ function deferred<T>() {
 /** 타이머 길이 대신 microtask와 실행 큐가 진행할 기회만 제공한다. */
 function settle(): Promise<void> { return new Promise(resolve => setImmediate(resolve)); }
 
+/** 비동기 문맥 검증까지 끝난 실제 실행 수를 관찰해 event-loop 한 번의 속도에 기대지 않는다. */
+async function waitFor(condition: () => boolean): Promise<void> {
+  const until = Date.now() + 2_000;
+  while (!condition()) {
+    assert.ok(Date.now() < until, "expected execution did not start");
+    await new Promise(resolve => setTimeout(resolve, 2));
+  }
+}
+
 test("a fresh read bypasses and removes a previously completed cache entry", async () => {
   let calls = 0;
   const cache = new GitHubReadCache(async () => String(++calls));
@@ -90,12 +99,12 @@ test("cancelled executions retain their slots until the actual runner has closed
   requests.push(cache.read(["new", "one"], "/repo", { operation: "test" }), cache.read(["new", "two"], "/repo", { operation: "test" }));
   const observed = Promise.allSettled(requests);
   try {
-    await settle(); assert.equal(responses.length, 4);
+    await waitFor(() => responses.length === 4); assert.equal(responses.length, 4);
     for (const controller of controllers) controller.abort();
     await settle();
     assert.equal(responses.length, 4, "no replacement process may start before old executions close");
     for (const response of responses) response.resolve("closed");
-    await settle(); assert.equal(responses.length, 6);
+    await waitFor(() => responses.length === 6); assert.equal(responses.length, 6);
   } finally {
     for (let turn = 0; turn < 6; turn++) { for (const response of responses) response.resolve("closed"); await settle(); }
     await observed;

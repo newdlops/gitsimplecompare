@@ -60,7 +60,8 @@ export async function executeGitProcess(executable: string, args: string[], cwd:
     let policy = gitCommandPolicy(args);
     if (requireReadOnly && !policy.readOnly) { reject(executionError("GIT_PIPE_WRITE", "Git read pipeline preparation produced a write command.")); return; }
     if (options.signal?.aborted) { reject(executionError("ABORT_ERR", "Git command cancelled.")); return; }
-    const env = policy.readOnly || options.env || options.clearEnv?.length ? { ...process.env, ...options.env } : undefined;
+    const env = options.inheritEnv === false ? { ...options.env }
+      : policy.readOnly || options.env || options.clearEnv?.length ? { ...process.env, ...options.env } : undefined;
     if (env) for (const name of options.clearEnv ?? []) delete env[name];
     if (options.privateIndexOnly) {
       // 전용 cache 갱신이 자기 자신의 상태 조회를 무효화하거나 저장소 쓰기 알림을 발생시키면 안 된다.

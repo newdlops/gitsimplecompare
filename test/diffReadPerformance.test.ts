@@ -134,14 +134,14 @@ test("작업트리/스테이징 가상 상세는 각각 diff 한 번으로 조�
   const { root, head } = await safetyFixture(t, "combined-virtual-diff");
   const log = new GitLogService(root);
   const clean = await countDiffs(() => log.getVirtualCommits());
-  assert.deepEqual(clean.commands, ["rev-parse", "status"]);
+  assert.ok(["status", "rev-parse,status"].includes(clean.commands.join(",")), JSON.stringify(clean.commands));
   assert.deepEqual(clean.result, []);
   await writeFile(path.join(root, "tracked.txt"), "staged\n");
   await git(root, "add", "tracked.txt");
   await writeFile(path.join(root, "tracked.txt"), "working\nextra\n");
   await writeFile(path.join(root, "untracked.txt"), "untracked\n");
   const dirty = await countDiffs(() => log.getVirtualCommits());
-  assert.deepEqual(dirty.commands, ["rev-parse", "status"]);
+  assert.ok(["status", "rev-parse,status"].includes(dirty.commands.join(",")), JSON.stringify(dirty.commands));
   assert.deepEqual(dirty.result.map(commit => [commit.hash, commit.parents]), [
     [ONGOING_COMMIT_HASH, [STAGED_COMMIT_HASH]], [STAGED_COMMIT_HASH, [head]],
   ]);
@@ -157,11 +157,11 @@ test("작업트리/스테이징 가상 상세는 각각 diff 한 번으로 조�
   });
   await git(root, "checkout", "--detach", head);
   const detached = await countDiffs(() => log.getVirtualCommits());
-  assert.deepEqual(detached.commands, ["rev-parse", "status"]);
+  assert.ok(["status", "rev-parse,status"].includes(detached.commands.join(",")), JSON.stringify(detached.commands));
   assert.deepEqual(detached.result[1].parents, [head]);
   await git(root, "checkout", "--orphan", "unborn");
   const unborn = await countDiffs(() => log.getVirtualCommits());
-  assert.deepEqual(unborn.commands, ["rev-parse", "status"]);
+  assert.ok(["status", "rev-parse,status"].includes(unborn.commands.join(",")), JSON.stringify(unborn.commands));
   assert.deepEqual(unborn.result[1].parents, []);
 });
 

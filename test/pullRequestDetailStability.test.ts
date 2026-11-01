@@ -25,13 +25,16 @@ function runner(rootValue: string, files?: string, threads?: string): GhExecute 
 
 test("detail retains every file and review comment while paginating both tails concurrently", async () => {
   let active = 0, maximum = 0;
+  let bothStarted!: () => void;
+  const together = new Promise<void>(resolve => { bothStarted = resolve; });
   const calls: string[] = [];
   const result = await fetchPullRequestDetail("/repo", "owner/repo", 7, undefined, async (_args, _cwd, options) => {
     calls.push(options.operation!);
     if (options.operation === "pr-detail") return root({ files: page([file("a")], "f1", 2),
       reviewThreads: page([{ path: "a", comments: { totalCount: 2 } }], "t1") });
     active++; maximum = Math.max(maximum, active);
-    await new Promise(resolve => setImmediate(resolve)); active--;
+    if (active === 2) bothStarted();
+    await together; active--;
     return options.operation === "pr-detail-files" ? response({ files: page([file("b")]) }) :
       response({ reviewThreads: page([{ path: "a", comments: { totalCount: 4 } }, { path: "b", comments: { totalCount: 1 } }]) });
   });
@@ -77,12 +80,17 @@ test("file counts and GraphQL partial errors cannot mark incomplete results as c
 
 test("one failing tail cancels its peer and preserves the original failure", async () => {
   let peerCancelled = false;
+  let peerStarted!: () => void;
+  const ready = new Promise<void>(resolve => { peerStarted = resolve; });
   await assert.rejects(fetchPullRequestDetail("/repo", "owner/repo", 7, undefined, async (_args, _cwd, options) => {
     if (options.operation === "pr-detail") return root({ files: page([file("a")], "f1", 2), reviewThreads: page([], "t1") });
-    if (options.operation === "pr-detail-files") throw new Error("file page failed");
-    return new Promise((_resolve, reject) => options.signal!.addEventListener("abort", () => {
-      peerCancelled = true; reject(new DOMException("cancelled", "AbortError"));
-    }, { once: true }));
+    if (options.operation === "pr-detail-files") { await ready; throw new Error("file page failed"); }
+    return new Promise((_resolve, reject) => {
+      options.signal!.addEventListener("abort", () => {
+        peerCancelled = true; reject(new DOMException("cancelled", "AbortError"));
+      }, { once: true });
+      peerStarted();
+    });
   }), /file page failed/);
   assert.equal(peerCancelled, true);
 });

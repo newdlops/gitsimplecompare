@@ -142,10 +142,11 @@ test("completed PR comments publish before another PR in the same batch finishes
 /** 큰 PR 네 개가 있어도 다섯 번째 PR의 첫 후속 페이지가 두 번째 페이지보다 먼저 시작된다. */
 test("PR pagination shares four request slots fairly between pages", async () => {
   const requested: string[] = [];
+  const waiting: Array<() => void> = [];
   const prs = Array.from({ length: 6 }, (_, index) => ({ ...node(index + 1), reviewThreads: { nodes: [], pageInfo: { hasNextPage: false } },
     commits: { nodes: [{ commit: { oid: `first-${index + 1}` } }], pageInfo: { hasNextPage: true, endCursor: "page1" } } }));
   let active = 0, maximum = 0;
-  await fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
+  const loading = fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
     if (options.operation === "graph-pr-list-page") return JSON.stringify({ data: { repository: {
       nameWithOwner: "owner/repo", pullRequests: { nodes: prs },
     } } });
@@ -153,11 +154,24 @@ test("PR pagination shares four request slots fairly between pages", async () =>
     const number = Number(args.find(arg => arg.startsWith("number="))!.split("=")[1]);
     const cursor = args.find(arg => arg.startsWith("cursor="))!.split("=")[1];
     requested.push(`${number}:${cursor}`);
-    await new Promise(resolve => setImmediate(resolve)); active--;
+    await new Promise<void>(resolve => waiting.push(resolve)); active--;
     return JSON.stringify({ data: { repository: { pullRequest: { headRefOid: `head-${number}`, commits: {
       nodes: [{ commit: { oid: `${number}-${cursor}` } }], pageInfo: { hasNextPage: cursor === "page1", endCursor: "page2" },
     } } } } });
   });
+  /** 실제 페이지 실행을 관찰하고 한 슬롯씩 반환해 API/파일 검사 속도와 무관하게 공정성을 검증한다. */
+  const waitFor = async (count: number) => {
+    const until = Date.now() + 2_000;
+    while (waiting.length < count) {
+      assert.ok(Date.now() < until, "expected pagination slot did not start");
+      await new Promise(resolve => setTimeout(resolve, 2));
+    }
+  };
+  await waitFor(4); waiting[0]();
+  await waitFor(5); waiting[1]();
+  await waitFor(6);
   assert.equal(maximum, 4);
-  assert.deepEqual(requested.slice(0, 6), [1, 2, 3, 4, 5, 6].map(number => `${number}:page1`));
+  assert.deepEqual(requested.slice(0, 6).sort(), ["1:page1", "2:page1", "3:page1", "4:page1", "5:page1", "6:page1"]);
+  for (let index = 2; index < 12; index++) { await waitFor(index + 1); waiting[index](); }
+  await loading;
 });

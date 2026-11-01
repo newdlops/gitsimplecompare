@@ -3,13 +3,15 @@
 // - 결과는 PullRequestInfo 로 정규화해 기존 preview/open/action 흐름에 그대로 합칠 수 있게 한다.
 import { readGitHub } from "./githubReadCache";
 import { readGitHubRepositoryName } from "./githubRepositoryName";
+import { createGitHubReadSession } from "./githubReadSession";
+import { GhCliError } from "./ghCli";
+import { PriorityReadQueue } from "../utils/priorityReadQueue";
+import { logInfo } from "../ui/outputLog";
 import type { GhExecute } from "./ghRunner";
-import { completePullRequestCommits, mapPullRequestReads } from "./pullRequestCommitPages";
+import { completeSearchPullRequests, fetchSearchPullRequestsByNumber } from "./pullRequestSearchReads";
 import { splitRepositoryName } from "./githubRepository";
-import { fetchRemainingReviewThreadCommentCounts } from "./pullRequestCommentCounts";
 import {
   PULL_REQUEST_INFO_QUERY,
-  pullRequestInfoFromGraphQl,
 } from "./pullRequestInfo";
 import type { GhPullRequestNode, PullRequestInfo } from "./pullRequestInfo";
 
@@ -23,6 +25,7 @@ export interface PullRequestSearchResult {
 }
 
 interface GhSearchResponse {
+  errors?: unknown[];
   data?: {
     search?: {
       issueCount?: number;
@@ -31,14 +34,6 @@ interface GhSearchResponse {
         hasNextPage?: boolean;
         endCursor?: string;
       };
-    };
-  };
-}
-
-interface GhPullRequestNumberResponse {
-  data?: {
-    repository?: {
-      pullRequest?: GhPullRequestNode;
     };
   };
 }
@@ -64,15 +59,6 @@ ${PULL_REQUEST_INFO_QUERY}
   }
 }`;
 
-const PULL_REQUEST_NUMBER_QUERY = `
-query($owner: String!, $name: String!, $number: Int!) {
-  repository(owner: $owner, name: $name) {
-    pullRequest(number: $number) {
-${PULL_REQUEST_INFO_QUERY}
-    }
-  }
-}`;
-
 /**
  * GitHub PR 전체 검색을 수행한다.
  * @param repoRoot gh CLI 를 실행할 저장소 루트
@@ -90,10 +76,11 @@ export async function searchPullRequests(
   const cancel = () => controller.abort();
   signal?.throwIfAborted();
   signal?.addEventListener("abort", cancel, { once: true });
+  const read = createGitHubReadSession(repoRoot, execute), queue = new PriorityReadQueue(4);
   /** 검색과 모든 후속 페이지가 같은 취소 신호를 쓰도록 실행기를 결합한다. */
   const runner: GhExecute = (args, root, options) => {
     controller.signal.throwIfAborted();
-    return execute(args, root, { ...options, signal: controller.signal });
+    return queue.run(() => read(args, root, { ...options, signal: controller.signal }), controller.signal);
   };
   try {
     const trimmed = query.trim();
@@ -126,14 +113,16 @@ async function searchByText(
   let nextCursor = cursor;
   let hasMore = false;
   let totalCount = 0;
+  const cursors = new Set(cursor ? [cursor] : []);
   do {
     const page = await searchPage(repoRoot, owner, name, query, nextCursor, Math.min(PULL_REQUEST_SEARCH_PAGE_SIZE, max - pullRequests.length), runner);
     pullRequests.push(...page.pullRequests);
     totalCount = Math.max(totalCount, page.totalCount);
     nextCursor = page.nextCursor;
     hasMore = page.hasMore;
-    if (page.pullRequests.length === 0) {
-      break;
+    if (hasMore) {
+      if (!nextCursor || cursors.has(nextCursor) || !page.pullRequests.length) throw new Error("GitHub pull request search pagination cursor did not advance.");
+      cursors.add(nextCursor);
     }
   } while (hasMore && nextCursor && pullRequests.length < max);
   return { pullRequests, hasMore, nextCursor, totalCount };
@@ -160,14 +149,12 @@ async function searchPage(
     "-f",
     `query=${PULL_REQUEST_SEARCH_QUERY}`,
   ], repoRoot, { operation: "pr-search" });
-  const search = (JSON.parse(out) as GhSearchResponse).data?.search;
-  const nodes = search?.nodes || [];
-  const extraReviewCommentCounts = await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, nodes, undefined, runner);
-  const pullRequests = await mapPullRequestReads(nodes, async node => {
-    const pr = pullRequestInfoFromGraphQl(node, extraReviewCommentCounts.get(Number(node.number)) || 0);
-    await completePullRequestCommits(repoRoot, owner, name, node, pr, undefined, runner);
-    return pr;
-  });
+  const response = JSON.parse(out) as GhSearchResponse, search = response.data?.search;
+  if (response.errors?.length || !search || !Array.isArray(search.nodes)
+    || typeof search.pageInfo?.hasNextPage !== "boolean" || !Number.isSafeInteger(search.issueCount) || Number(search.issueCount) < 0) {
+    throw new Error("GitHub pull request search is incomplete. Refresh to try again.");
+  }
+  const pullRequests = await completeSearchPullRequests(repoRoot, owner, name, search.nodes, runner);
   return {
     pullRequests: pullRequests.filter(pr => pr.number > 0),
     hasMore: Boolean(search?.pageInfo?.hasNextPage),
@@ -188,7 +175,9 @@ async function searchByNumber(
   if (!match) {
     return undefined;
   }
-  return pullRequestByNumber(repoRoot, owner, name, Number(match[1]), runner);
+  const number = Number(match[1]);
+  if (!Number.isSafeInteger(number) || number <= 0 || number > 2_147_483_647) return undefined;
+  return (await fetchSearchPullRequestsByNumber(repoRoot, owner, name, [number], runner))[0];
 }
 
 /**
@@ -214,50 +203,28 @@ async function searchByCommitHash(
   }
   const route = `repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`
     + `/commits/${encodeURIComponent(hash)}/pulls?per_page=100`;
-  const out = await runner(["api", route], repoRoot, { operation: "pr-search-associated" }).catch(() => "");
-  const associated = out ? JSON.parse(out) as GhAssociatedPullRequest[] : [];
-  const numbers = Array.from(new Set(
-    associated.map((pr) => Number(pr.number)).filter((number) => Number.isInteger(number) && number > 0)
-  ));
-  const pullRequests = await mapPullRequestReads(numbers, number => pullRequestByNumber(repoRoot, owner, name, number, runner));
-  return pullRequests.filter((pr): pr is PullRequestInfo => Boolean(pr));
-}
-
-/**
- * GitHub PR 번호 한 건을 GraphQL 공통 selection으로 조회한다.
- * @param repoRoot gh CLI를 실행할 저장소 루트
- * @param owner GitHub 저장소 owner
- * @param name GitHub 저장소 이름
- * @param number 조회할 PR 번호
- * @returns 정규화한 PR 정보. 없거나 조회에 실패하면 undefined
- */
-async function pullRequestByNumber(
-  repoRoot: string,
-  owner: string,
-  name: string,
-  number: number,
-  runner: GhExecute
-): Promise<PullRequestInfo | undefined> {
-  const out = await runner([
-    "api",
-    "graphql",
-    "-F",
-    `owner=${owner}`,
-    "-F",
-    `name=${name}`,
-    "-F",
-    `number=${number}`,
-    "-f",
-    `query=${PULL_REQUEST_NUMBER_QUERY}`,
-  ], repoRoot, { operation: "pr-search-number" }).catch(() => "");
-  const pr = out ? (JSON.parse(out) as GhPullRequestNumberResponse).data?.repository?.pullRequest : undefined;
-  if (!pr) {
-    return undefined;
+  const numbers = new Set<number>();
+  for (let page = 1; ; page++) {
+    const out = await runner(["api", `${route}${page > 1 ? `&page=${page}` : ""}`], repoRoot, { operation: "pr-search-associated" }).catch(error => {
+      // 첫 페이지의 존재하지 않는 commit만 보완한다. 후속 실패를 완성된 빈 페이지로 숨기지 않는다.
+      if (page === 1 && error instanceof GhCliError && (/\bHTTP 404\b/i.test(error.stderr)
+        || /\bHTTP 422\b/i.test(error.stderr) && /no commit found for sha/i.test(error.stderr))) return "";
+      throw error;
+    });
+    const associated = out ? JSON.parse(out) as GhAssociatedPullRequest[] : [];
+    if (!Array.isArray(associated) || associated.length > 100
+      || associated.some(pr => !pr || !Number.isSafeInteger(pr.number) || Number(pr.number) <= 0)) {
+      throw new Error("GitHub pull request associations are incomplete. Refresh to try again.");
+    }
+    const before = numbers.size;
+    for (const pr of associated) numbers.add(pr.number!);
+    if (associated.length < 100) {
+      if (page > 1) logInfo("GitHub associated pull requests loaded", { repoRoot, pages: page, pullRequests: numbers.size });
+      break;
+    }
+    if (numbers.size === before) throw new Error("GitHub pull request association pagination did not advance.");
   }
-  const extraReviewCommentCounts = await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, [pr], undefined, runner);
-  const result = pullRequestInfoFromGraphQl(pr, extraReviewCommentCounts.get(Number(pr.number)) || 0);
-  await completePullRequestCommits(repoRoot, owner, name, pr, result, undefined, runner);
-  return result;
+  return fetchSearchPullRequestsByNumber(repoRoot, owner, name, [...numbers], runner);
 }
 
 /**

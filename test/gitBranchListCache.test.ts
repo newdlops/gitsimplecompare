@@ -82,3 +82,35 @@ test("repository generation invalidates snapshots held by another service instan
   await cache.read(false, runner);
   assert.equal(calls, 2);
 });
+
+for (const shared of [false, true]) {
+  test(`in-flight ${shared ? "repository" : "local"} invalidation refreshes every waiting branch consumer once`, async () => {
+    const root = `/branch-inflight-${shared}`;
+    const cache = new GitBranchListCache(60_000, Date.now, shared ? root : undefined);
+    let release!: (value: string) => void, calls = 0;
+    const runner = async () => ++calls === 1 ? new Promise<string>(resolve => { release = resolve; })
+      : [ref("*", "feature", "refs/heads/feature"), ref(" ", "origin/feature", "refs/remotes/origin/feature")].join("\n");
+    const first = cache.read(true, runner), second = cache.read(false, runner), third = cache.read(true, runner);
+    if (shared) invalidateGitBranchListCaches(root); else cache.invalidate();
+    release(ref("*", "old", "refs/heads/old"));
+    const values = await Promise.all([first, second, third]);
+    assert.deepEqual(values.map(value => value.branches[0].name), ["feature", "feature", "feature"]);
+    assert.deepEqual(values.map(value => value.branches.length), [2, 1, 2]);
+    assert.equal(calls, 2, "all waiters must share one replacement snapshot");
+    assert.equal((await cache.read(true, runner)).source, "hit");
+    assert.equal(calls, 2);
+  });
+}
+
+test("failure of an invalidated branch read cannot hide a succeeding current generation", async () => {
+  const cache = new GitBranchListCache(60_000);
+  let fail!: (error: Error) => void, calls = 0;
+  const runner = async () => ++calls === 1 ? new Promise<string>((_resolve, reject) => { fail = reject; })
+    : ref("*", "current", "refs/heads/current");
+  const pending = cache.read(false, runner);
+  cache.invalidate(); fail(new Error("old read failed"));
+  assert.equal((await pending).branches[0].name, "current");
+  assert.equal(calls, 2);
+  cache.invalidate();
+  await assert.rejects(cache.read(false, async () => { throw new Error("current read failed"); }), /current read failed/);
+});
