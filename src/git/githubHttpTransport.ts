@@ -109,8 +109,12 @@ export class GitHubHttpTransport {
       }
       if (status === 403 || status === 429) {
         const primary = headers["x-ratelimit-remaining"] === "0";
+        let secondary = status === 429;
+        if (status === 403 && !primary) {
+          try { secondary = /secondary rate limit|abuse detection/i.test(JSON.parse(body)?.message ?? ""); } catch { /* 원문은 로그에 전달하지 않는다. */ }
+        }
         const retry = headerTime(headers["retry-after"], Date.now())
-          ?? (primary ? Number(headers["x-ratelimit-reset"]) * 1000 : status === 429 ? Date.now() + 60_000 : undefined);
+          ?? (primary ? Number(headers["x-ratelimit-reset"]) * 1000 : secondary ? Date.now() + 60_000 : undefined);
         if (retry && Number.isFinite(retry)) {
           this.cache.cooldown(primary ? context : ORIGIN, retry);
           throw new GitHubApiError("rate-limit", options.operation, status, retry);

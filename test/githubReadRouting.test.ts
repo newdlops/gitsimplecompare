@@ -64,3 +64,16 @@ test("a new runtime rejects pages from an old setting generation", async () => {
   await assert.rejects(second.execute(read.args, "/repo", { operation: "fixture", request: read.request, readSession: session }), { name: "GitHubReadContextChangedError" });
   await first.dispose(); await second.dispose();
 });
+
+test("forced CLI pages execute the same acquired credential used for snapshot identity", async () => {
+  let saved = "account-a";
+  const provider = new GitHubCredentialProvider(async () => saved), tokens: Array<string | undefined> = [];
+  const runtime = new GitHubReadRuntime({ credentials: provider, policy: async () => ({ transport: "cli", systemProxy: "none" }),
+    cli: async (_args, _root, options) => { tokens.push(options.env?.GH_TOKEN); saved = "account-b"; return "{}"; } });
+  const read = graphqlRead("query{viewer{login}}"), first = state(); first.env = {};
+  for (let page = 0; page < 2; page++) await runtime.execute(read.args, "/repo", { operation: "fixture", request: read.request, readSession: first });
+  const next = state(); next.env = {};
+  await runtime.execute(read.args, "/repo", { operation: "fixture", request: read.request, readSession: next });
+  assert.deepEqual(tokens, ["account-a", "account-a", "account-b"]);
+  assert.notEqual(first.credentialKey, next.credentialKey); await runtime.dispose();
+});

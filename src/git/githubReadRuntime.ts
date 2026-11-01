@@ -75,7 +75,9 @@ export class GitHubReadRuntime {
       if (!options.request || !state.scope || !state.credential) throw new GitHubReadContextChangedError();
       const request = options.request.kind === "graphql" ? { ...options.request,
         variables: Object.fromEntries(Object.entries(options.request.variables).map(([key, value]) =>
-          [key, value === "{owner}" ? state.scope!.owner : value === "{repo}" ? state.scope!.repository : value])) } : options.request;
+          [key, value === "{owner}" ? state.scope!.owner : value === "{repo}" ? state.scope!.repository : value])) }
+        : { ...options.request, path: options.request.path.replaceAll("{owner}", encodeURIComponent(state.scope.owner))
+          .replaceAll("{repo}", encodeURIComponent(state.scope.repository)) };
       try {
         return await this.http.read(request, await state.credential, { ...options, deadline: options.deadline ?? Date.now() + 30_000,
           policyGeneration: this.generation });
@@ -85,7 +87,8 @@ export class GitHubReadRuntime {
       }
     }
     const started = Date.now();
-    try { return await this.cli(args, root, options); }
+    const cliOptions = state?.credential ? { ...options, env: (await state.credential).cliEnvironment(options.env ?? state.env) } : options;
+    try { return await this.cli(args, root, cliOptions); }
     finally { logInfo("GitHub CLI read closed", { operation: options.operation, transport: "cli", cliCount: 1, httpCount: 0, totalMs: Date.now() - started }); }
   };
 

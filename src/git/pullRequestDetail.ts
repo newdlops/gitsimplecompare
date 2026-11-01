@@ -10,6 +10,8 @@ import { splitRepositoryName } from "./githubRepository";
 import { reviewThreadCommentCount } from "./pullRequestCommentCounts";
 import { logInfo, logWarn } from "../ui/outputLog";
 import type { RawPullRequestFile } from "./githubPullRequestSnapshots";
+import { GitHubApiError, graphQLResult } from "./githubApiError";
+import { GhCliError } from "./ghCli";
 
 /** changed file의 변경량과 파일별 리뷰 댓글 수다. */
 export interface PullRequestChangedFileInfo extends CommitFileChange { commentCount: number; }
@@ -86,7 +88,7 @@ export async function fetchPullRequestDetail(
   onProgress?: (detail: PullRequestDetailInfo) => void
 ): Promise<PullRequestDetailInfo> {
   signal?.throwIfAborted();
-  const snapshotHint = gitHubFileSnapshotHint(runner, repository, number);
+  const snapshotHint = gitHubFileSnapshotHint(runner, cwd, repository, number);
   runner = createGitHubReadSession(cwd, runner);
   const controller = new AbortController();
   const abort = () => controller.abort();
@@ -94,9 +96,21 @@ export async function fetchPullRequestDetail(
   const [owner, name] = splitRepositoryName(repository);
   try {
     const query = snapshotHint ? SNAPSHOT_QUERY : onProgress ? FILES_QUERY : DETAIL_QUERY;
-    const out = await runner(graphQlArgs(owner, name, number, query), cwd,
-      { operation: "pr-detail", signal: controller.signal,
-        request: graphQLRequest(query, { owner, name, number }) });
+    let initialReviewError: string | undefined, recoveredFiles = false;
+    let out: string | undefined;
+    try {
+      out = await runner(graphQlArgs(owner, name, number, query), cwd,
+        { operation: "pr-detail", signal: controller.signal, request: graphQLRequest(query, { owner, name, number }) });
+      if (snapshotHint && onProgress) connection<ReviewThread>(parseDetail(out, number), "reviewThreads");
+    } catch (error) {
+      if (!snapshotHint || !onProgress || controller.signal.aborted || !isInitialReviewFailure(error, out)) throw error;
+      // 가변 review 첫 연결이 실패해도 같은 인증의 새 파일 앵커로 사용 가능한 파일을 검증한다.
+      // 인증/권한/rate/TLS 실패는 이 복구에 들어오지 않으며 CLI/계정 전환도 하지 않는다.
+      initialReviewError = error instanceof Error ? error.message : "GitHub returned incomplete review comments.";
+      out = await runner(graphQlArgs(owner, name, number, FILES_QUERY), cwd,
+        { operation: "pr-detail-files", signal: controller.signal, request: graphQLRequest(FILES_QUERY, { owner, name, number }) });
+      recoveredFiles = true;
+    }
     controller.signal.throwIfAborted();
     const pr = parseDetail(out, number);
     const identity = gitHubSnapshotIdentity(runner, repository), snapshots = gitHubReadSessionState(runner)?.snapshots;
@@ -104,18 +118,18 @@ export async function fetchPullRequestDetail(
     const cached = snapshotHint && identity ? snapshots?.getFiles(identity, number, pr.headRefOid, pr.baseRefOid, total) : undefined;
     let firstFiles: Connection<ChangedFile>;
     if (cached) firstFiles = { nodes: cached, totalCount: total, pageInfo: { hasNextPage: false } };
-    else if (snapshotHint) {
+    else if (snapshotHint && !recoveredFiles) {
       const next = parseDetail(await runner(graphQlArgs(owner, name, number, FILES_QUERY), cwd,
         { operation: "pr-detail-files", signal: controller.signal, request: graphQLRequest(FILES_QUERY, { owner, name, number }) }), number);
       assertAnchor(next, pr); firstFiles = connection<ChangedFile>(next, "files");
       if (count(firstFiles.totalCount, "file count") !== total) throw new Error("Pull request file count changed while loading details. Refresh to try again.");
     } else firstFiles = connection<ChangedFile>(pr, "files");
     if (identity) logInfo("pull request raw file snapshot", { operation: "pr-detail", hit: Boolean(cached) });
-    const firstThreads = snapshotHint || !onProgress ? connection<ReviewThread>(pr, "reviewThreads") : undefined;
+    const firstThreads = !initialReviewError && (snapshotHint || !onProgress) ? connection<ReviewThread>(pr, "reviewThreads") : undefined;
     const conversation = count(pr.comments?.totalCount, "conversation count");
     const files = [...firstFiles.nodes], threads = [...(firstThreads?.nodes || [])];
-    let filesLoading = firstFiles.pageInfo.hasNextPage, reviewThreadsLoading = !firstThreads;
-    let filesTruncated = false, reviewThreadsTruncated = false, reviewThreadsError: string | undefined;
+    let filesLoading = firstFiles.pageInfo.hasNextPage, reviewThreadsLoading = !firstThreads && !initialReviewError;
+    let filesTruncated = false, reviewThreadsTruncated = false, reviewThreadsError = initialReviewError;
     /** 완료된 파일은 댓글 대기와 독립적으로 게시한다. 모든 응답은 같은 head/base 앵커를 유지한다. */
     const progress = () => {
       controller.signal.throwIfAborted();
@@ -139,6 +153,7 @@ export async function fetchPullRequestDetail(
     };
     /** 댓글 첫 페이지도 같은 PR 앵커로 검증하며 부분 집계가 정확한 개수처럼 표시되지 않게 한다. */
     const readThreads = async () => {
+      if (initialReviewError) { progress(); return; }
       try {
         let initial = firstThreads;
         if (!initial) {
@@ -150,7 +165,8 @@ export async function fetchPullRequestDetail(
         }
         reviewThreadsTruncated = await appendPages(cwd, owner, name, pr, "reviewThreads", initial, threads, runner, controller.signal);
       } catch (error) {
-        if (!onProgress || controller.signal.aborted || error instanceof GitHubReadContextChangedError) throw error;
+        if (!onProgress || controller.signal.aborted || error instanceof GitHubReadContextChangedError
+          || error instanceof GitHubApiError && error.kind === "auth") throw error;
         threads.length = 0; reviewThreadsError = error instanceof Error ? error.message : String(error);
         logWarn("pull request file comments failed; changed files retained", { repoRoot: cwd, number, message: reviewThreadsError });
       }
@@ -162,8 +178,9 @@ export async function fetchPullRequestDetail(
     try { await Promise.all(tails); }
     catch (error) { await Promise.allSettled(tails); throw failure ?? error; }
     controller.signal.throwIfAborted();
-    if (!filesTruncated && !reviewThreadsTruncated && !reviewThreadsError) {
-      await completeGitHubReadSession(runner, controller.signal);
+    const complete = !filesTruncated && !reviewThreadsTruncated && !reviewThreadsError;
+    await completeGitHubReadSession(runner, controller.signal, complete);
+    if (complete) {
       if (identity) snapshots?.putFiles(identity, number, pr.headRefOid, pr.baseRefOid, files);
     }
     return { ...detailValue(number, conversation, total, files, threads, filesTruncated, reviewThreadsTruncated),
@@ -171,6 +188,26 @@ export async function fetchPullRequestDetail(
       ...(reviewThreadsError ? { reviewThreadsError } : {}) };
   } catch (error) { controller.abort(); throw error; }
   finally { signal?.removeEventListener("abort", abort); }
+}
+
+/** review 첫 연결에 한정된 실패만 복구한다. 인증·네트워크·root/JSON 오류를 별도 파일 조회로 재시도하지 않는다. */
+function isInitialReviewFailure(error: unknown, output?: string): boolean {
+  let partial: any;
+  if (error instanceof GitHubReadContextChangedError || error instanceof Error && error.name === "AbortError") return false;
+  if (error instanceof GitHubApiError) {
+    if (error.kind !== "graphql") return false;
+    partial = graphQLResult(error);
+  } else if (error instanceof GhCliError) {
+    try { partial = JSON.parse(error.stdout); } catch { return false; }
+  } else if (output) {
+    try { partial = JSON.parse(output); } catch { return false; }
+  }
+  if (Array.isArray(partial?.errors) && partial.errors.length) {
+    return partial.errors.every((item: any) => Array.isArray(item?.path) && item.path[0] === "repository"
+      && item.path[1] === "pullRequest" && item.path[2] === "reviewThreads");
+  }
+  return !(error instanceof GitHubApiError) && !(error instanceof GhCliError)
+    && error instanceof Error && /review/i.test(error.message);
 }
 
 /**

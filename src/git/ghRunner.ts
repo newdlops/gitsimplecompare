@@ -14,6 +14,8 @@ export interface GhRunnerOptions extends RunGhOptions {
   readSession?: GitHubReadSessionState;
   /** 세션 준비·인증·큐를 포함한 개별 요청의 절대 마감 시각. */
   deadline?: number;
+  /** 실제 read 실행 슬롯을 기다린 시간. 전송기에서 가상의 0으로 채우지 않는다. */
+  queueMs?: number;
 }
 
 /** 실제 gh 실행을 대체할 수 있는 작은 함수 타입. */

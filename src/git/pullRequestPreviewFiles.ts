@@ -6,6 +6,8 @@ import type { GhExecute } from "./ghRunner";
 import { FileChangeStatus } from "./gitTypes";
 import { splitRepositoryName } from "./githubRepository";
 import { inheritReplyCommentLocations } from "./pullRequestCommentLocations";
+import { createGitHubReadSession, completeGitHubReadSession, gitHubReadSessionState } from "./githubReadSession";
+import { restRead } from "./githubReadRequest";
 
 /** 댓글이나 patch 본문 없이 PR changed-files 목록에 필요한 파일 정보 */
 export interface PullRequestChangedFile extends CommitFileChange {}
@@ -93,12 +95,15 @@ export async function fetchPullRequestPreviewFiles(
   number: number,
   runner: GhExecute = readGitHubInteractive
 ): Promise<PullRequestPreviewFile[]> {
+  const owns = !gitHubReadSessionState(runner);
+  runner = createGitHubReadSession(cwd, runner);
   const [owner, name] = splitRepositoryName(repository);
   const [filePage, comments] = await Promise.all([
     readPullFiles(cwd, owner, name, number, runner),
     readReviewComments(cwd, owner, name, number, runner),
   ]);
   const commentsByPath = groupCommentsByPath(comments);
+  if (owns) await completeGitHubReadSession(runner);
   return filePage.items.map((file) => normalizeFile(file, commentsByPath));
 }
 
@@ -193,11 +198,12 @@ async function readPagedResult<T>(
 ): Promise<PagedResult<T>> {
   const all: T[] = [];
   for (let page = 1; page <= MAX_PAGES; page++) {
+    const path = `repos/${owner}/${name}/${route}?per_page=${PAGE_SIZE}&page=${page}`;
     const out = await runner([
       "api",
       ...headers.flatMap((header) => ["-H", header]),
-      `repos/${owner}/${name}/${route}?per_page=${PAGE_SIZE}&page=${page}`,
-    ], cwd, { operation: "pr-preview-files" });
+      path,
+    ], cwd, { operation: "pr-preview-files", request: restRead(`/${path}`, headers.find(header => /^Accept:/i.test(header))?.slice(7).trim()).request });
     const items = JSON.parse(out) as T[];
     all.push(...items);
     if (items.length < PAGE_SIZE) {

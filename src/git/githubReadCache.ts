@@ -133,11 +133,19 @@ export class GitHubReadCache {
     const execution = Promise.resolve().then(async () => {
       if (this.active >= 4) logInfo("GitHub read queued", { repoRoot: root, operation: options.operation,
         active: this.active, queued: this.queue.length + 1 });
+      const queuedAt = Date.now();
       await this.acquire(controller.signal); acquired = true;
+      const queueMs = Date.now() - queuedAt;
       controller.signal.throwIfAborted();
       await assertGitHubReadContext(root, options.env!, args, context, options.operation, "beforeExecution", controller.signal);
       controller.signal.throwIfAborted();
-      const value = await this.execute(args, root, { ...options, managedRead: true, signal: controller.signal });
+      let value: string;
+      try { value = await this.execute(args, root, { ...options, queueMs, managedRead: true, signal: controller.signal }); }
+      catch (error) {
+        controller.signal.throwIfAborted();
+        await assertGitHubReadContext(root, options.env!, args, context, options.operation, "afterExecutionError", controller.signal);
+        throw error;
+      }
       controller.signal.throwIfAborted();
       await assertGitHubReadContext(root, options.env!, args, context, options.operation, "afterExecution", controller.signal);
       controller.signal.throwIfAborted();

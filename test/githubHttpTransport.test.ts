@@ -122,6 +122,13 @@ test("rate limit cooldown rejects a later request without another network call",
   assert.equal(f.count().requests, 1);
 });
 
+test("secondary 403 without Retry-After still applies a host cooldown", async t => {
+  const f = await fixture(t, (_req, res) => { res.writeHead(403); res.end('{"message":"You have exceeded a secondary rate limit."}'); });
+  await assert.rejects(f.read("/secondary"), { kind: "rate-limit" });
+  await assert.rejects(f.read("/secondary"), { kind: "rate-limit" });
+  assert.equal(f.count().requests, 1);
+});
+
 test("missing-commit 422 is normalized without exposing a generic 422 response", async t => {
   const f = await fixture(t, (req, res) => {
     res.writeHead(422); res.end(JSON.stringify({ message: req.url === "/missing" ? "No commit found for SHA: fixture" : "private fixture validation details" }));

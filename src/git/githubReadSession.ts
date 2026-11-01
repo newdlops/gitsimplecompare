@@ -21,16 +21,18 @@ export interface GitHubReadSessionState {
   snapshots?: GitHubPullRequestSnapshots;
 }
 const sessions = new WeakMap<GhExecute, GitHubReadSessionState>();
-const snapshotHints = new WeakMap<GhExecute, GitHubPullRequestSnapshots>();
+const snapshotHints = new WeakMap<GhExecute, Map<string, { snapshots: GitHubPullRequestSnapshots; repository?: string }>>();
 
 /** body 접근 없이 다음 상세의 앵커 전용 query가 유용한지 판단한다. 인증 권한으로 사용하지 않는다. */
-export function gitHubFileSnapshotHint(execute: GhExecute, repository: string, number: number): boolean {
-  return snapshotHints.get(execute)?.hasFiles(repository, number) ?? false;
+export function gitHubFileSnapshotHint(execute: GhExecute, root: string, repository: string, number: number): boolean {
+  const hint = snapshotHints.get(execute)?.get(root);
+  const canonical = repository === "{owner}/{repo}" ? hint?.repository : repository;
+  return !!canonical && !!hint?.snapshots.hasFiles(canonical, number);
 }
 
 /** 같은 canonical 저장소의 완전한 commit 후보가 있으면 검색에서 stable connection을 생략할 수 있다. */
 export function gitHubCommitSnapshotHint(execute: GhExecute, repository: string): boolean {
-  return snapshotHints.get(execute)?.commits.has(repository) ?? false;
+  return [...(snapshotHints.get(execute)?.values() ?? [])].some(hint => hint.snapshots.commits.has(repository));
 }
 
 /** 큐 wrapper가 이미 고정된 세션 identity를 공유하게 하며 환경·인증을 다시 해석하지 않는다. */
@@ -47,12 +49,12 @@ export function gitHubSnapshotIdentity(execute: GhExecute, repository: string): 
 }
 
 /** 완전한 도메인 조회가 끝난 뒤에만 bootstrap scope를 다음 논리 조회에 게시한다. */
-export async function completeGitHubReadSession(execute: GhExecute, signal?: AbortSignal): Promise<void> {
+export async function completeGitHubReadSession(execute: GhExecute, signal?: AbortSignal, learnScope = true): Promise<void> {
   const state = sessions.get(execute);
-  if (!state?.candidate) return;
+  if (!state) return;
   await assertGitHubReadContext(state.root, state.env, ["repo"], state.context, "read-scope", "complete", signal);
   signal?.throwIfAborted();
-  gitHubRepositoryScopes.learn(state.root, state.context, state.candidate);
+  if (learnScope && state.candidate) gitHubRepositoryScopes.learn(state.root, state.context, state.candidate);
 }
 
 /** 캐시를 사용하는 서비스가 현재 인증의 성공한 응답 이후에만 불투명 identity를 읽게 한다. */
@@ -107,6 +109,11 @@ export async function captureGitHubRequestContext(root: string, env: NodeJS.Proc
  * @returns 첫 페이지의 문맥을 후속 페이지와 비교하는 실행기. 페이지마다 환경을 새로 읽지 않는다.
  */
 export function createGitHubReadSession(root: string, execute: GhExecute): GhExecute {
+  const existing = sessions.get(execute);
+  if (existing) {
+    if (existing.root !== root) throw new GitHubReadContextChangedError();
+    return execute;
+  }
   const env = snapshotGitHubEnvironment();
   let context: Promise<string | undefined> | undefined;
   const state: GitHubReadSessionState = { root, env };
@@ -118,11 +125,22 @@ export function createGitHubReadSession(root: string, execute: GhExecute): GhExe
     if (!state.transport) { state.context = expected; state.scope = gitHubRepositoryScopes.get(root, expected); }
     await assertGitHubReadContext(root, env, ["repo"], expected, options.operation, "beforePage", options.signal);
     options.signal?.throwIfAborted();
-    const value = await execute(args, cwd, { ...options, env, readSession: state, deadline });
+    let value: string;
+    try { value = await execute(args, cwd, { ...options, env, readSession: state, deadline }); }
+    catch (error) {
+      options.signal?.throwIfAborted();
+      await assertGitHubReadContext(root, env, ["repo"], expected, options.operation, "afterPageError", options.signal);
+      throw error;
+    }
     options.signal?.throwIfAborted();
     await assertGitHubReadContext(root, env, ["repo"], expected, options.operation, "afterPage", options.signal);
     options.signal?.throwIfAborted();
-    if (state.snapshots) snapshotHints.set(execute, state.snapshots);
+    if (state.snapshots) {
+      const hints = snapshotHints.get(execute) ?? new Map();
+      hints.delete(root); hints.set(root, { snapshots: state.snapshots, repository: state.scope?.name });
+      while (hints.size > 128) hints.delete(hints.keys().next().value!);
+      snapshotHints.set(execute, hints);
+    }
     try {
       const result = JSON.parse(value);
       if (!result.errors?.length) {

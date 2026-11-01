@@ -11,6 +11,7 @@ export interface GitHubCredentialLease {
   readonly key: string;
   readonly elapsedMs: number;
   authorization(): string;
+  cliEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv;
 }
 type TokenLookup = (root: string, env: NodeJS.ProcessEnv, signal: AbortSignal) => Promise<string>;
 
@@ -90,6 +91,7 @@ export class GitHubCredentialProvider {
   private lease(token: string, started: number): GitHubCredentialLease {
     if (!token || /[\r\n\x00]/.test(token)) throw new GitHubApiError("auth", "read-credential");
     const key = createHmac("sha256", this.secret).update("github.com\0").update(token).digest("hex");
-    return Object.freeze({ key, elapsedMs: Date.now() - started, authorization: () => `Bearer ${token}` });
+    return Object.freeze({ key, elapsedMs: Date.now() - started, authorization: () => `Bearer ${token}`,
+      cliEnvironment: (env: NodeJS.ProcessEnv) => snapshotGitHubEnvironment({ ...env, GH_TOKEN: token }) });
   }
 }

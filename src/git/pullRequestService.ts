@@ -4,6 +4,7 @@ import { CommitFileChange, LocalBranchStatus } from "../graph/graphTypes";
 import { parseRawNumstatZ } from "./diffParse";
 import { readGitHubInteractive } from "./githubReadCache";
 import { readGitHubRepositoryName } from "./githubRepositoryName";
+import { createGitHubReadSession, completeGitHubReadSession } from "./githubReadSession";
 import type { GhExecute } from "./ghRunner";
 import { fetchPullRequestRefs } from "./pullRequestRefLookup";
 import { fetchPreviewBootstrap, fetchPreviewCommitSummaries, fetchRemotePreviewCommit, previewReadRunner } from "./pullRequestPreviewRemote";
@@ -309,15 +310,26 @@ export class PullRequestService {
 
   /** 원격 bootstrap을 한 번 읽은 뒤 파일·댓글을 가져오며 로컬 Git 준비와 독립적으로 실행한다. */
   private async previewRemote(pr: PullRequestInfo | undefined, runner: GhExecute, signal?: AbortSignal) {
+    const controller = new AbortController(), abort = () => controller.abort();
+    signal?.addEventListener("abort", abort, { once: true }); if (signal?.aborted) abort();
+    const execute = runner;
+    runner = createGitHubReadSession(this.repoRoot, (args, root, options) => execute(args, root, { ...options, signal: controller.signal }));
+    try {
     const existingPreview = pr ? await fetchPreviewBootstrap(this.repoRoot, pr, runner) : undefined;
     const repository = existingPreview?.repository
       ?? await this.repositoryName(signal, "pr-preview-repository", runner).catch(() => { signal?.throwIfAborted(); return undefined; });
     signal?.throwIfAborted();
-    const [prPreviewFiles, prPreviewCommits] = await Promise.all([
+    const pending = [
       this.existingPullRequestPreviewFiles(repository, pr, runner),
       pr && existingPreview ? fetchPreviewCommitSummaries(this.repoRoot, pr, runner, existingPreview.firstPage) : Promise.resolve([]),
-    ]);
+    ] as const;
+    let values: [PullRequestPreviewFile[], PullRequestPreviewCommit[]];
+    try { values = await Promise.all(pending); }
+    catch (error) { controller.abort(); await Promise.allSettled(pending); throw error; }
+    const [prPreviewFiles, prPreviewCommits] = values;
+    await completeGitHubReadSession(runner, controller.signal);
     return { repository, existingPreview, prPreviewFiles, prPreviewCommits };
+    } finally { signal?.removeEventListener("abort", abort); }
   }
 
   /**

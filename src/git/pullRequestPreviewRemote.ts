@@ -4,7 +4,7 @@ import { readGitHub } from "./githubReadCache";
 import type { PullRequestInfo } from "./pullRequestInfo";
 import type { PullRequestPreviewCommit } from "./pullRequestPreviewCommits";
 import { normalizePreviewStatus } from "./pullRequestPreviewFiles";
-import { createGitHubReadSession, completeGitHubReadSession } from "./githubReadSession";
+import { createGitHubReadSession, completeGitHubReadSession, gitHubReadSessionState } from "./githubReadSession";
 import { graphQLRequest, restRead } from "./githubReadRequest";
 
 const generations = new Map<string, number>();
@@ -43,6 +43,7 @@ interface SummaryPage { headRefOid?: string; title?: string; body?: string;
   commits?: { nodes?: Array<{ commit?: CommitNode }>; pageInfo?: { hasNextPage?: boolean; endCursor?: string } }; }
 /** 미리보기 첫 요청으로 함께 얻는 저장소·본문·첫 커밋 페이지다. */
 export interface PreviewBootstrap { repository: string; title: string; body: string; firstPage: SummaryPage; }
+const bootstrapSessions = new WeakMap<SummaryPage, { root: string; session: GhExecute; owns: boolean }>();
 const BOOTSTRAP_QUERY = QUERY.replace("{ pullRequest(number: $number) {", "{ nameWithOwner url pullRequest(number: $number) { title body");
 
 /**
@@ -51,6 +52,7 @@ const BOOTSTRAP_QUERY = QUERY.replace("{ pullRequest(number: $number) {", "{ nam
  * @returns 첫 head가 검증된 원격 데이터. 커밋 후속 페이지와 파일은 이후 병렬로 읽는다.
  */
 export async function fetchPreviewBootstrap(root: string, pr: PullRequestInfo, runner: GhExecute): Promise<PreviewBootstrap> {
+  const owns = !gitHubReadSessionState(runner);
   runner = createGitHubReadSession(root, runner);
   const out = await runner(["api", "graphql", "-F", "owner={owner}", "-F", "name={repo}",
     "-F", `number=${pr.number}`, "-f", `query=${BOOTSTRAP_QUERY}`], root, { operation: "pr-preview-bootstrap",
@@ -61,7 +63,7 @@ export async function fetchPreviewBootstrap(root: string, pr: PullRequestInfo, r
   if (!repository?.nameWithOwner || !repository.pullRequest) throw new Error("GitHub pull request preview is not available.");
   const value = repository.pullRequest;
   if (!pr.headHash || value.headRefOid !== pr.headHash) throw new Error("The pull request head changed. Refresh pull requests before opening its preview.");
-  await completeGitHubReadSession(runner);
+  bootstrapSessions.set(value, { root, session: runner, owns });
   return { repository: repository.nameWithOwner, title: value.title || pr.title, body: value.body ?? "", firstPage: value };
 }
 
@@ -73,7 +75,10 @@ export async function fetchPreviewBootstrap(root: string, pr: PullRequestInfo, r
  * @returns 원래 순서의 커밋 요약. 파일은 사용자가 선택할 때 별도로 읽는다.
  */
 export async function fetchPreviewCommitSummaries(root: string, pr: PullRequestInfo, runner: GhExecute, initial?: SummaryPage): Promise<PullRequestPreviewCommit[]> {
-  runner = createGitHubReadSession(root, runner);
+  const bootstrap = initial ? bootstrapSessions.get(initial) : undefined;
+  if (initial && (!bootstrap || bootstrap.root !== root)) throw new Error("GitHub preview continuation context is not available. Refresh to try again.");
+  const owns = bootstrap?.owns ?? !gitHubReadSessionState(runner);
+  runner = bootstrap?.session ?? createGitHubReadSession(root, runner);
   let cursor: string | undefined;
   const seen = new Set<string>();
   const commits = new Map<string, PullRequestPreviewCommit>();
@@ -101,7 +106,7 @@ export async function fetchPreviewCommitSummaries(root: string, pr: PullRequestI
     if (!cursor || seen.has(cursor)) throw new Error("GitHub commit pagination did not advance.");
     seen.add(cursor);
   } while (cursor);
-  await completeGitHubReadSession(runner);
+  if (owns) await completeGitHubReadSession(runner);
   return [...commits.values()];
 }
 
