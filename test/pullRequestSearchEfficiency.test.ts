@@ -4,7 +4,7 @@ import { GhCliError } from "../src/git/ghCli";
 import type { GhExecute } from "../src/git/ghRunner";
 import { clearGitHubRepositoryNameCache } from "../src/git/githubRepositoryName";
 import { searchPullRequests } from "../src/git/pullRequestSearchService";
-import { fetchSearchPullRequestsByNumber } from "../src/git/pullRequestSearchReads";
+import { fetchSearchPullRequestsByNumber, completeSearchPullRequests, SearchPullRequestReadScope } from "../src/git/pullRequestSearchReads";
 import type { GhPullRequestNode } from "../src/git/pullRequestInfo";
 import { safetyFixture } from "./helpers/gitSafetyFixture";
 import { encodeRestPage, restPageMetadata } from "../src/git/githubRestPages";
@@ -24,6 +24,49 @@ test("SHA association search stops on a known-final full REST page", async t => 
     return JSON.stringify({ data: { repository: Object.fromEntries(numbers.map(number => [`p${number}`, node(number)])) } });
   });
   assert.equal(result.pullRequests.length, 100); assert.equal(associated, 1);
+});
+
+test("SHA associations reuse complete text PRs while hydrating only nonoverlapping numbers", async t => {
+  clearGitHubRepositoryNameCache(); t.after(clearGitHubRepositoryNameCache);
+  const f = await safetyFixture(t, "search-overlap"); const hydrated: number[] = [];
+  let finishText!: () => void;
+  const textRead = new Promise<void>(resolve => { finishText = resolve; });
+  const result = await searchPullRequests(f.root, "abcdef0", undefined, undefined, async (args, _root, options) => {
+    if (args[0] === "repo") return JSON.stringify({ nameWithOwner: "fixture/repo" });
+    if (options.operation === "pr-search") { finishText(); return JSON.stringify(search([node(1)])); }
+    if (options.operation === "pr-search-associated") {
+      await textRead; await new Promise(resolve => setTimeout(resolve, 30));
+      return JSON.stringify([{ number: 1 }, { number: 2 }]);
+    }
+    const query = args.find(arg => arg.startsWith("query=")) || "";
+    const numbers = [...query.matchAll(/p(\d+):\s*pullRequest/g)].map(match => Number(match[1]));
+    hydrated.push(...numbers);
+    return JSON.stringify({ data: { repository: Object.fromEntries(numbers.map(number => [`p${number}`, node(number)])) } });
+  });
+  assert.deepEqual(hydrated, [2]);
+  assert.deepEqual(result.pullRequests.map(pr => pr.number), [1, 2]);
+  assert.ok(result.pullRequests.every(pr => pr.commitHashesComplete && pr.commentCountComplete));
+  assert.equal(result.pullRequests[0].commitSummaries?.[0].title, "Change 1");
+});
+
+test("overlapping search waits for complete tails and a changed head gets its own result", async () => {
+  const scope = new SearchPullRequestReadScope(), first = node(1);
+  first.commits.pageInfo = { hasNextPage: true, endCursor: "tail" } as any;
+  let finish!: (value: string) => void;
+  const text = completeSearchPullRequests("/repo", "fixture", "repo", [first], async () => new Promise(resolve => { finish = resolve; }), false, scope);
+  let unexpected = 0;
+  const associated = fetchSearchPullRequestsByNumber("/repo", "fixture", "repo", [1], async () => { unexpected++; throw new Error("duplicate hydration"); }, false, scope);
+  const changed = node(1); changed.headRefOid = "new-head";
+  changed.commits.nodes[0].commit.oid = "new-head";
+  const fresh = await completeSearchPullRequests("/repo", "fixture", "repo", [changed], async () => { throw new Error("no tails"); }, false, scope);
+  assert.equal(fresh[0].headHash, "new-head");
+  assert.ok(finish);
+  finish(JSON.stringify({ data: { repository: { pullRequest: { headRefOid: "head-1", baseRefOid: "base", commits: {
+    nodes: [{ commit: { oid: "tail-commit", messageHeadline: "Tail title" } }], pageInfo: { hasNextPage: false },
+  } } } } }));
+  const [a, b] = await Promise.all([text, associated]);
+  assert.deepEqual(a[0].commitHashes, ["head-1", "tail-commit"]);
+  assert.deepEqual(b[0].commitHashes, a[0].commitHashes); assert.equal(unexpected, 0);
 });
 
 /** 첫 검색·단건·묶음 조회가 공통으로 반환할 완전한 PR metadata다. */
