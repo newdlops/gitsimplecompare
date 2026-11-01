@@ -35,6 +35,12 @@ export function gitHubCommitSnapshotHint(execute: GhExecute, repository: string)
   return [...(snapshotHints.get(execute)?.values() ?? [])].some(hint => hint.snapshots.commits.has(repository));
 }
 
+/** cold root는 OID 조회도 생략하고, 같은 root의 검증된 commit 후보가 있을 때만 얕은 앵커를 요청한다. */
+export function gitHubRootCommitSnapshotHint(execute: GhExecute, root: string): boolean {
+  const hint = snapshotHints.get(execute)?.get(root);
+  return !!hint?.repository && hint.snapshots.commits.has(hint.repository);
+}
+
 /** 큐 wrapper가 이미 고정된 세션 identity를 공유하게 하며 환경·인증을 다시 해석하지 않는다. */
 export function inheritGitHubReadSession(source: GhExecute, wrapper: GhExecute): void {
   const state = sessions.get(source); if (state) sessions.set(wrapper, state);

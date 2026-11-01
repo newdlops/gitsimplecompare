@@ -8,7 +8,7 @@ import { build } from "esbuild";
 
 const workspaceRoot = process.cwd();
 const outputDirectory = path.join(workspaceRoot, "out-test-extension");
-const smokeName = process.argv.includes("--graph") ? "graphInitialSmoke" : process.argv.includes("--push") ? "pushSmoke"
+const smokeName = process.argv.includes("--github-http") ? "githubHttpSmoke" : process.argv.includes("--graph") ? "graphInitialSmoke" : process.argv.includes("--push") ? "pushSmoke"
   : process.argv.includes("--onboarding") ? "repositoryOnboardingSmoke" : process.argv.includes("--blame") ? "blameGutterSmoke" : process.argv.includes("--stash") ? "stashContentsSmoke" : "extensionSmoke";
 const TIMEOUT_MS = 15 * 60 * 1000;
 const TERMINATION_GRACE_MS = 5 * 1000;

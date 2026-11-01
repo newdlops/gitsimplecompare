@@ -7,11 +7,11 @@ import { canReuseStableConnections, type StablePullRequestSnapshot } from "./git
 export const PULL_REQUEST_METADATA_BATCH_SIZE = 20;
 
 /** identity를 먼저 표시하는 root query는 warm/cold 모두 중첩 가변 연결을 펼치지 않는다. */
-export function buildPullRequestListIdentityQuery(summary: string): string {
+export function buildPullRequestListIdentityQuery(summary: string, anchors: boolean): string {
   return `query($owner: String!, $name: String!, $limit: Int!, $cursor: String) {
     repository(owner: $owner, name: $name) { nameWithOwner url defaultBranchRef { name }
       pullRequests(first: $limit, after: $cursor, states: [OPEN, CLOSED, MERGED], orderBy: {field: UPDATED_AT, direction: DESC}) {
-        nodes { id ${summary} headRefOid baseRefOid } pageInfo { hasNextPage endCursor }
+        nodes { id ${summary} ${anchors ? "headRefOid baseRefOid" : ""} } pageInfo { hasNextPage endCursor }
       }
     }
   }`;
@@ -36,11 +36,18 @@ export async function readPullRequestNodes(root: string, references: Array<GhPul
   for (let offset = 0; offset < references.length; offset += PULL_REQUEST_METADATA_BATCH_SIZE) {
     const batch = references.slice(offset, offset + PULL_REQUEST_METADATA_BATCH_SIZE) as GhPullRequestNode[];
     tasks.push((async () => {
-      const reuse = batch.every(node => canReuseStableConnections(node, known.get(node.number!)));
-      const current = await readNodeBatch(root, batch, controller.signal, runner, !reuse);
+      const reusable = batch.filter(node => canReuseStableConnections(node, known.get(node.number!)));
+      let current: GhPullRequestNode[];
+      if (reusable.length && reusable.length < batch.length) {
+        const ids = new Set(reusable.map(node => node.id));
+        const groups = await Promise.all([readNodeBatch(root, reusable, controller.signal, runner, false),
+          readNodeBatch(root, batch.filter(node => !ids.has(node.id)), controller.signal, runner, true)]);
+        const values = new Map(groups.flat().map(node => [node.id, node]));
+        current = batch.map(node => values.get(node.id)!);
+      } else current = await readNodeBatch(root, batch, controller.signal, runner, !reusable.length);
       for (let index = 0; index < batch.length; index++) {
         let node = current[index];
-        if (reuse) {
+        if (canReuseStableConnections(batch[index], known.get(batch[index].number!))) {
           if (!hasMutableNodeConnections(node)) throw incomplete();
           if (sameAnchor(node, batch[index])) node = withStableConnections(node, known.get(node.number!)!);
           else {

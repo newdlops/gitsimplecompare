@@ -3,6 +3,8 @@ export interface GitHubNetworkPolicy {
   transport: "auto" | "cli";
   systemProxy: "none" | "present" | "unknown";
   proxy?: string;
+  /** VS Code override/fallback는 제공한 Agent를 교체하므로 소유 pool의 수명을 증명할 수 없다. */
+  proxySupport?: string;
   proxyStrictSSL?: boolean;
   proxyAuthorization?: boolean;
   customCertificates?: boolean;
@@ -12,6 +14,7 @@ export interface GitHubNetworkPolicy {
 /** host·환경·VS Code 정책을 입력받아 인증 lookup/네트워크 이전에 지원 여부와 안전한 사유를 반환한다. */
 export function gitHubHttpCapability(host: string, env: NodeJS.ProcessEnv, policy: GitHubNetworkPolicy): { supported: boolean; reason: string } {
   if (policy.transport === "cli") return { supported: false, reason: "cli-setting" };
+  if (policy.proxySupport !== undefined && !["on", "off"].includes(policy.proxySupport)) return { supported: false, reason: "host-agent-policy" };
   if (host !== "github.com" || (env.GH_HOST && env.GH_HOST.toLowerCase() !== host)) return { supported: false, reason: "unsupported-host" };
   const unsupported = /^(?:https?_proxy|all_proxy|no_proxy|gh_http_unix_socket|node_extra_ca_certs|node_tls_reject_unauthorized|ssl_cert_file|ssl_cert_dir|curl_ca_bundle|requests_ca_bundle|git_ssl_cainfo|git_ssl_capath|git_ssl_no_verify)$/i;
   if (Object.entries(env).some(([key, value]) => unsupported.test(key) && value !== undefined && value !== "")) {

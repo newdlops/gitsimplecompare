@@ -1,7 +1,7 @@
 // Graph용 PR 목록을 가벼운 요약 조회와 제한된 정보/pagination 조회로 읽는 모듈.
 // - 제목·상태·브랜치를 먼저 알리고, 최종 반환 전에는 모든 commit OID와 댓글 수를 완성한다.
 import { readGitHub } from "./githubReadCache";
-import { createGitHubReadSession, completeGitHubReadSession, gitHubSnapshotIdentity, gitHubReadSessionState } from "./githubReadSession";
+import { createGitHubReadSession, completeGitHubReadSession, gitHubSnapshotIdentity, gitHubReadSessionState, gitHubRootCommitSnapshotHint } from "./githubReadSession";
 import { graphQLRequest } from "./githubReadRequest";
 import { completePullRequestCommits } from "./pullRequestCommitPages";
 import { PriorityReadQueue } from "../utils/priorityReadQueue";
@@ -30,8 +30,6 @@ export interface PullRequestListOptions {
   /** 같은 repository·base/head OID의 완성된 commit 목록과 파일 수만 재사용한다. */
   previous?: { repository: string; pullRequests: PullRequestInfo[] };
 }
-
-const PULL_REQUESTS_QUERY = buildPullRequestListIdentityQuery(PULL_REQUEST_SUMMARY_QUERY);
 
 /** Graph 목록과 stack이 같은 응답에서 재사용할 저장소 정보 및 완성된 PR 페이지다. */
 export interface PullRequestListPage {
@@ -105,13 +103,15 @@ export async function fetchPullRequestListPage(
     }, options.signal ?? controller.signal);
   };
   try {
+    const anchors = gitHubRootCommitSnapshotHint(runner, repoRoot) || !!options.previous?.pullRequests.some(pr => pr.commitHashesComplete && pr.fileCountComplete);
+    const query = buildPullRequestListIdentityQuery(PULL_REQUEST_SUMMARY_QUERY, anchors);
     const output = await measuredRunner([
       "api", "graphql", "-F", "owner={owner}", "-F", "name={repo}",
       "-F", `limit=${PULL_REQUEST_PAGE_SIZE}`,
       ...(cursor ? ["-f", `cursor=${cursor}`] : []),
-      "-f", `query=${PULL_REQUESTS_QUERY}`,
+      "-f", `query=${query}`,
     ], repoRoot, { signal: controller.signal, operation: "graph-pr-list-page",
-      request: graphQLRequest(PULL_REQUESTS_QUERY,
+      request: graphQLRequest(query,
         { owner: "{owner}", name: "{repo}", limit: PULL_REQUEST_PAGE_SIZE, ...(cursor ? { cursor } : {}) }) });
     ensureActive();
     const response = JSON.parse(output) as GhListResponse;

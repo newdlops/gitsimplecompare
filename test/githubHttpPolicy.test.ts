@@ -17,4 +17,7 @@ test("direct HTTP requires proven github.com network policy before credentials o
   assert.equal(gitHubHttpCapability("github.com", {}, { ...policy, systemProxy: "unknown" }).supported, false);
   assert.equal(gitHubHttpCapability("github.com", {}, { ...policy, proxy: "http://proxy" }).supported, false);
   assert.equal(gitHubHttpCapability("github.com", {}, { ...policy, proxyStrictSSL: false }).supported, false);
+  assert.equal(gitHubHttpCapability("github.com", {}, { ...policy, proxySupport: "override" }).supported, false);
+  assert.equal(gitHubHttpCapability("github.com", {}, { ...policy, proxySupport: "fallback" }).supported, false);
+  assert.equal(gitHubHttpCapability("github.com", {}, { ...policy, proxySupport: "on" }).supported, true);
 });

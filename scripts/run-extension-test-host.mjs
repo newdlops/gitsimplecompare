@@ -1,7 +1,8 @@
 // 별도 process group 안에서 VS Code Extension Development Host smoke를 실행하는 내부 진입점.
 // - 상위 runner가 timeout/interrupt 때 이 process group 전체를 종료하므로 여기서는 test-electron 결과만 전달한다.
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -14,6 +15,7 @@ const onboardingSmoke = process.env.GSC_EXTENSION_TEST_KIND === "repositoryOnboa
 const blameSmoke = process.env.GSC_EXTENSION_TEST_KIND === "blameGutterSmoke";
 const graphSmoke = process.env.GSC_EXTENSION_TEST_KIND === "graphInitialSmoke";
 const stashSmoke = process.env.GSC_EXTENSION_TEST_KIND === "stashContentsSmoke";
+const githubHttpSmoke = process.env.GSC_EXTENSION_TEST_KIND === "githubHttpSmoke";
 const extensionTestsPath = path.join(workspaceRoot, "out-test-extension", `${process.env.GSC_EXTENSION_TEST_KIND || "extensionSmoke"}.js`);
 
 /** 현재 platform에 이미 설치된 VS Code executable을 우선 찾아 불필요한 download를 막는다. */
@@ -47,8 +49,25 @@ async function createWorkspaceFixture() {
   await writeFile(path.join(userSettings, "settings.json"), JSON.stringify({
     "git.enabled": onboardingSmoke && process.env.GSC_ONBOARDING_EMPTY_WINDOW ? nativeEnabled : !nativeEnabled,
     "git.autorefresh": true, "git.autofetch": false,
-    ...(blameSmoke || graphSmoke || stashSmoke ? { "chat.disableAIFeatures": true } : {}),
+    ...(blameSmoke || graphSmoke || stashSmoke || githubHttpSmoke ? { "chat.disableAIFeatures": true } : {}),
+    ...(githubHttpSmoke ? { "http.proxySupport": "on" } : {}),
   }));
+  if (githubHttpSmoke && process.env.GSC_HTTP_LANGUAGE_EXTENSION) {
+    // 기본 사용자 profile을 건드리지 않고 공식 언어팩을 소유 fixture 안에 복사한다.
+    const source = await realpath(process.env.GSC_HTTP_LANGUAGE_EXTENSION);
+    if (!source.startsWith("/private/tmp/gsc-http-language-extensions/")) throw new Error("Expected an owned temporary language-pack installation.");
+    const target = path.join(directory, "extensions", path.basename(source));
+    await cp(source, target, { recursive: true });
+    const manifest = JSON.parse(await readFile(path.join(target, "package.json"), "utf8"));
+    const localization = manifest.contributes.localizations.find(item => item.languageId === "ko");
+    if (!localization) throw new Error("The isolated language pack must contain Korean translations.");
+    const translations = Object.fromEntries(localization.translations.map(item => [item.id, path.resolve(target, item.path)]));
+    if (Object.values(translations).some(file => !file.startsWith(target + path.sep))) throw new Error("Language pack translation escaped its fixture.");
+    const hash = createHash("sha256").update(await readFile(translations.vscode)).digest("hex");
+    // VS Code의 실제 NLS loader가 사용하는 profile-local language-pack cache를 초기화한다.
+    await writeFile(path.join(directory, "profile", "languagepacks.json"), JSON.stringify({ ko: { hash, translations,
+      extensions: [{ extensionIdentifier: { id: `${manifest.publisher}.${manifest.name}`.toLowerCase() }, version: manifest.version }], label: localization.localizedLanguageName } }));
+  }
   if (process.env.GSC_ONBOARDING_EMPTY_WINDOW) return { directory, repoRoot };
   if (process.env.GSC_GIT_STARTUP_UI_CAPTURE) return { directory, repoRoot, launchPath: repoRoot };
   if (onboardingSmoke) {
@@ -90,7 +109,8 @@ async function main() {
       extensionTestsEnv: {
         GSC_EXTENSION_TEST_FIXTURE: fixture.repoRoot,
         GSC_EXTENSION_TEST_PROFILE: path.join(fixture.directory, "profile"),
-        ...(graphSmoke || stashSmoke ? { GSC_TEST_MAIN_INSPECTOR_PORT: process.env.GSC_TEST_MAIN_INSPECTOR_PORT || "9239" } : {}),
+        ...(graphSmoke || stashSmoke || githubHttpSmoke ? { GSC_TEST_MAIN_INSPECTOR_PORT: process.env.GSC_TEST_MAIN_INSPECTOR_PORT || "9239" } : {}),
+        ...(githubHttpSmoke ? { GSC_HTTP_RESULT_DIR: process.env.GSC_HTTP_RESULT_DIR || "/private/tmp/gsc-http-host-results" } : {}),
         ...(blameSmoke ? {
           GSC_BLAME_RESULT_DIR: process.env.GSC_BLAME_RESULT_DIR || path.join(workspaceRoot, "test-results", "native-blame"),
           GSC_TEST_MAIN_INSPECTOR_PORT: process.env.GSC_TEST_MAIN_INSPECTOR_PORT || "9239",
@@ -108,7 +128,8 @@ async function main() {
         "--disable-extensions", "--skip-welcome", "--disable-workspace-trust",
         `--user-data-dir=${path.join(fixture.directory, "profile")}`,
         `--extensions-dir=${path.join(fixture.directory, "extensions")}`,
-        ...(blameSmoke || graphSmoke || stashSmoke ? [`--inspect=127.0.0.1:${process.env.GSC_TEST_MAIN_INSPECTOR_PORT || "9239"}`, "--new-window"] : []),
+        ...(blameSmoke || graphSmoke || stashSmoke || githubHttpSmoke ? [`--inspect=127.0.0.1:${process.env.GSC_TEST_MAIN_INSPECTOR_PORT || "9239"}`, "--new-window"] : []),
+        ...(githubHttpSmoke ? [`--locale=${process.env.GSC_HTTP_SMOKE_LOCALE || "en"}`] : []),
         ...(stashSmoke ? ["--locale=en"] : []),
         ...(process.env.GSC_TEST_DEBUG_PORT ? [`--remote-debugging-port=${process.env.GSC_TEST_DEBUG_PORT}`] : []),
         ...(fixture.launchPath ? [fixture.launchPath] : []),

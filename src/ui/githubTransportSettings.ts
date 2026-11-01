@@ -9,6 +9,7 @@ export async function gitHubReadNetworkPolicy(root: string): Promise<GitHubNetwo
   const http = vscode.workspace.getConfiguration("http", uri);
   return { transport: config.get<string>("githubReadTransport", "auto") === "cli" ? "cli" : "auto",
     systemProxy: await detectGitHubSystemProxy(), proxy: http.get<string>("proxy", ""),
+    proxySupport: http.get<string>("proxySupport", "override"),
     proxyStrictSSL: http.get<boolean>("proxyStrictSSL", true),
     proxyAuthorization: Boolean(http.get<string>("proxyAuthorization", "") || http.get<string>("proxyKerberosServicePrincipal", "")),
     customCertificates: Boolean(http.get<string[]>("certificates", []).length) };

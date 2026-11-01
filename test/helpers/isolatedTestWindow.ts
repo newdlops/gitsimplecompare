@@ -37,6 +37,37 @@ export class IsolatedTestWindow {
     assert.ok(state.windowFocused && state.contentsFocused, "Native UI smoke requires an already focused isolated window; use headless Graph tests while working in another app.");
   }
 
+  /** 전용 창을 읽기/입력 대상으로 선택하지만 사용자 앱의 포커스를 가져오지 않는다. */
+  async selectOwnedWindow(): Promise<void> {
+    this.windowId = await this.evaluate(`(function(){var e=require('electron');if(e.app.getPath('userData')!==${JSON.stringify(this.profile)})throw Error('profile changed');var windows=e.BrowserWindow.getAllWindows().filter(w=>w.getTitle().includes('workspace'));if(windows.length!==1)throw Error('expected one isolated workspace window');return windows[0].id;})()`);
+  }
+
+  /** 실제 Settings의 두 신규 기여 항목과 control/overflow 상태만 읽으며 다른 창은 검사하지 않는다. */
+  async githubSettingsState(): Promise<any> {
+    const query = `(()=>({width:innerWidth,height:innerHeight,rows:Array.from(document.querySelectorAll('[data-key]')).filter(r=>/^gitSimpleCompare.github(?:ReadTransport|GitProactiveAuth)$/.test(r.getAttribute('data-key')||'')).map(r=>{const control=r.querySelector('select,[role="checkbox"],[role="combobox"]'),b=r.getBoundingClientRect(),c=control?.getBoundingClientRect();return{key:r.getAttribute('data-key'),text:r.innerText,tag:control?.tagName,role:control?.getAttribute('role'),value:control?.value,checked:control?.getAttribute('aria-checked'),tooltip:control?.getAttribute('title')||control?.getAttribute('aria-label'),bounds:{left:b.left,right:b.right,top:b.top,bottom:b.bottom},control:c?{x:c.left+c.width/2,y:c.top+c.height/2}:null}})}))()`;
+    return this.evaluate(`(async function(){${this.ownedWindow()}return w.webContents.executeJavaScript(${JSON.stringify(query)});})()`);
+  }
+
+  /** 소유 Settings control의 실제 위치에 마우스 입력을 보내고 렌더링된 체크/선택 상태 변화를 검사한다. */
+  async clickGithubSetting(key: string): Promise<void> {
+    const state = await this.githubSettingsState(), row = state.rows.find((item: any) => item.key === key);
+    assert.ok(row?.control && row.bounds.top >= 0 && row.bounds.bottom <= state.height, "The owned setting must be visible before clicking");
+    const { x, y } = row.control;
+    await this.evaluate(`(function(){${this.ownedWindow()}w.webContents.sendInputEvent({type:'mouseMove',x:${Math.round(x)},y:${Math.round(y)}});w.webContents.sendInputEvent({type:'mouseDown',button:'left',clickCount:1,x:${Math.round(x)},y:${Math.round(y)}});w.webContents.sendInputEvent({type:'mouseUp',button:'left',clickCount:1,x:${Math.round(x)},y:${Math.round(y)}});return true;})()`);
+  }
+
+  /** Settings의 이미 선택한 control에만 허용한 탐색 키를 전달한다. OS/global keyboard를 쓰지 않는다. */
+  async githubSettingsKeys(keys: string[]): Promise<void> {
+    assert(keys.every(key => ["Home", "Down", "Up", "Enter", "Escape", "Tab", "Space"].includes(key)));
+    await this.evaluate(`(function(){${this.ownedWindow()}for(var key of ${JSON.stringify(keys)}){w.webContents.sendInputEvent({type:'keyDown',keyCode:key});w.webContents.sendInputEvent({type:'keyUp',keyCode:key});}return true;})()`);
+  }
+
+  /** UI QA에 지정한 desktop/compact 크기로 전용 test 창만 조정하며 활성화하지 않는다. */
+  async settingsViewport(width: number, height: number): Promise<void> {
+    assert(width >= 800 && width <= 1600 && height >= 600 && height <= 1100);
+    await this.evaluate(`(function(){${this.ownedWindow()}w.setContentSize(${width},${height});return true;})()`);
+  }
+
   /** 전용 창의 실제 native/renderer focus만 진단해 VS Code API와 차이가 나는 경계를 남긴다. */
   async focusState(): Promise<Record<string, boolean>> {
     return this.evaluate(`(async function(){${this.ownedWindow()}return{windowFocused:w.isFocused(),contentsFocused:w.webContents.isFocused(),visible:w.isVisible(),minimized:w.isMinimized(),focusable:w.isFocusable(),appHidden:e.app.isHidden(),documentFocused:await w.webContents.executeJavaScript('document.hasFocus()')};})()`);

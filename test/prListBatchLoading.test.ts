@@ -332,7 +332,7 @@ test("refreshing eighty unchanged PRs avoids stable connections while preserving
   assert.equal(result.pullRequests[0].reviewDecision, "CHANGES_REQUESTED");
   assert.ok(result.pullRequests.every(pr => pr.commitHashesComplete && pr.fileCountComplete && pr.commentCountComplete));
   assert.equal(stableReads, 0, "unchanged commit/file connections must not be downloaded again");
-  assert.equal(requests, 1, "the fresh mutable fields and verified stable connections need only one round trip");
+  assert.equal(requests, 5, "the shallow identity precedes four bounded mutable batches");
   assert.equal(previous.pullRequests[0].commentCount, 5, "the previous successful snapshot must remain immutable");
 });
 
@@ -391,10 +391,10 @@ test("a cached refresh rejects missing mutable connections before publishing a s
   let published = 0;
   await assert.rejects(fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
     const summary = options.operation === "graph-pr-list-page", response = JSON.parse(projectedPage(args, nodes, summary));
-    if (summary) delete response.data.repository.pullRequests.nodes[0].reviewThreads;
+    if (!summary) delete response.data.nodes[0].reviewThreads;
     return JSON.stringify(response);
   }, { previous, onProgress: () => { published++; } }), /not available|incomplete/i);
-  assert.equal(published, 0);
+  assert.equal(published, 1, "the shallow identity may display, but missing mutable metadata cannot publish a complete snapshot");
 });
 
 test("a cached refresh counts review tails without redownloading complete commit connections", async () => {
@@ -412,5 +412,5 @@ test("a cached refresh counts review tails without redownloading complete commit
   assert.equal(result.pullRequests[0].commentCount, 209);
   assert.equal(result.pullRequests[0].commentCountComplete, true);
   assert.deepEqual(result.pullRequests[0].commitHashes, ["start-1", "head-1"]);
-  assert.equal(requests, 2);
+  assert.equal(requests, 3, "identity, fresh mutable metadata, then the complete review tail");
 });
