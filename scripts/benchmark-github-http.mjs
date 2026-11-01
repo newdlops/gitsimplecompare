@@ -15,6 +15,7 @@ const output = argument("output") ?? "/private/tmp/gsc-github-http-benchmark.jso
 assert(Number.isInteger(pairs) && pairs > 0 && pairs <= 7);
 assert(["all", "reads", "transport", "native"].includes(scenario));
 const samples = [], comparisons = [], scratch = await mkdtemp("/private/tmp/gsc-http-benchmark-");
+const budgetChecks = [];
 const protectedPaths = [".git/HEAD", ".git/index", ".git/config"].map(name => path.join(root, name));
 const protectedBefore = await Promise.all(protectedPaths.map(fileHash));
 let currentMeasurement, nativeDirectory, nativeChecks;
@@ -26,7 +27,8 @@ childProcess.spawn = function(command, args, options) {
     assert(args.includes("--dry-run"), "Native benchmark must never perform a real push");
   }
   const owned = currentMeasurement, started = performance.now();
-  const api = args?.[0] === "api", credential = args?.[0] === "auth" && args?.[1] === "token";
+  const api = args?.[0] === "api", repository = args?.[0] === "repo" && args?.[1] === "view";
+  const credential = args?.[0] === "auth" && args?.[1] === "token";
   const child = originalSpawn.apply(this, arguments);
   if (owned && api) {
     owned.cliApiProcesses++;
@@ -36,6 +38,7 @@ childProcess.spawn = function(command, args, options) {
     owned.credentialCliProcesses++;
     child.once("close", () => { owned.credentialCliMs += performance.now() - started; });
   }
+  if (owned && repository) owned.repositoryCliProcesses++;
   return child;
 };
 
@@ -53,6 +56,30 @@ function digest(value) { return createHash("sha256").update(JSON.stringify(canon
 async function fileHash(file) { try { return createHash("sha256").update(await readFile(file)).digest("hex"); } catch (error) { if (error.code === "ENOENT") return null; throw error; } }
 /** 표본은 반올림해 저장하되 실제 비교는 canonical DTO 전체에 수행한다. */
 function rounded(value) { return Math.round(value * 10) / 10; }
+
+/** 무거운 표본 묶음 전에 실제 quota를 확인하며 한도를 넘겨 요청하거나 다른 계정을 사용하지 않는다. */
+async function ensureBudget(minimum) {
+  for (;;) {
+    const quota = await new Promise((resolve, reject) => childProcess.execFile(process.env.GITHUB_CLI_PATH || "gh",
+      ["api", "graphql", "-f", "query=query { rateLimit { remaining resetAt } }"], { cwd: root, env: process.env, timeout: 30000,
+        maxBuffer: 1024 * 1024 }, (error, stdout) => {
+        if (error) reject(new Error("GitHub quota probe failed")); else {
+          try { resolve(JSON.parse(stdout).data.rateLimit); } catch { reject(new Error("GitHub quota probe returned invalid data")); }
+        }
+      }));
+    budgetChecks.push({ observedAtUtc: new Date().toISOString(), remaining: quota.remaining, resetAt: quota.resetAt, required: minimum });
+    if (quota.remaining >= minimum) return;
+    const until = Date.parse(quota.resetAt) + 2000;
+    assert(Number.isFinite(until) && until > Date.now(), "Quota reset time must be observable before waiting");
+    console.log(JSON.stringify({ waitingForQuota: true, remaining: quota.remaining, resumeAtUtc: new Date(until).toISOString() }));
+    while (Date.now() < until) await new Promise(resolve => setTimeout(resolve, Math.min(30000, until - Date.now())));
+  }
+}
+
+/** 중단돼도 완결한 표본과 동등성 SHA를 잃지 않으며 partial artifact를 완료 결과로 취급하지 않는다. */
+async function checkpoint(status = "running") {
+  await writeFile(output + ".partial", JSON.stringify({ status, observedAtUtc: new Date().toISOString(), pairs, samples, comparisons, budgetChecks }, null, 2) + "\n");
+}
 
 /** 커밋 전 소스를 임시 디렉터리에만 풀어 현재 checkout을 이동하지 않고 동일 Node에서 번들한다. */
 async function bundle(source, name, current) {
@@ -86,7 +113,7 @@ async function measure(api, label, pair, mode, task) {
   const started = performance.now(), logStart = api.__outputLines.length;
   let first;
   const metric = currentMeasurement = { scenario: label, pair, mode, cliApiProcesses: 0, credentialCliProcesses: 0,
-    credentialCliMs: 0, cliResponseBytes: 0 };
+    repositoryCliProcesses: 0, credentialCliMs: 0, cliResponseBytes: 0 };
   try {
     const value = await task(() => { first ??= performance.now() - started; });
     const wallMs = performance.now() - started;
@@ -98,9 +125,10 @@ async function measure(api, label, pair, mode, task) {
       decodedBytes: requests.reduce((sum, request) => sum + request.bytes, 0),
       queueMs: rounded(requests.reduce((sum, request) => sum + (request.queueMs ?? 0), 0)),
       payloadSha256: digest(value) });
+    if (mode === "auto") assert(metric.directHttpRequests > 0, "Supported direct comparison unexpectedly used only CLI");
     samples.push(metric);
     console.log(JSON.stringify({ sample: label, pair, mode, wallMs: metric.wallMs, firstMs: metric.firstMs,
-      apiReads: metric.cliApiProcesses + metric.directHttpRequests, credentialCliProcesses: metric.credentialCliProcesses }));
+      apiReads: metric.cliApiProcesses + metric.repositoryCliProcesses + metric.directHttpRequests, credentialCliProcesses: metric.credentialCliProcesses }));
     return value;
   } finally { currentMeasurement = undefined; }
 }
@@ -117,6 +145,7 @@ async function readPairs(before, after) {
   for (let pair = 1; pair <= pairs; pair++) {
     const values = {};
     for (const mode of pair % 2 ? ["before-cli", "after-cli"] : ["after-cli", "before-cli"]) {
+      await ensureBudget(mode === "before-cli" ? 240 : 340);
       const api = mode === "before-cli" ? before : after;
       const finish = await lifetime(api, mode === "after-cli" ? "cli" : "auto");
       try {
@@ -137,6 +166,7 @@ async function readPairs(before, after) {
     for (const [label, key] of [["list-cold", "cold"], ["list-warm", "warm"], ["detail-reopen", "detail"], ["search", "search"]]) {
       compare(label, pair, values["before-cli"][key], values["after-cli"][key]);
     }
+    await checkpoint();
   }
 }
 
@@ -145,6 +175,7 @@ async function transportPairs(api) {
   let mode = "cli";
   const stop = await lifetime(api, () => mode);
   try {
+    await ensureBudget(280);
     let previous = await api.fetchPullRequestListPage(root);
     previous = await api.fetchPullRequestListPage(root, undefined, undefined, undefined, { previous });
     const service = new api.PullRequestService(root);
@@ -152,6 +183,7 @@ async function transportPairs(api) {
     for (let pair = 1; pair <= pairs; pair++) {
       const values = {};
       for (const selected of pair % 2 ? ["cli", "auto"] : ["auto", "cli"]) {
+        await ensureBudget(110);
         mode = selected;
         const list = await measure(api, "same-code-transport", pair, selected, progress =>
           api.fetchPullRequestListPage(root, undefined, undefined, undefined, { previous, onProgress: progress }));
@@ -163,6 +195,7 @@ async function transportPairs(api) {
         compare(label, pair, values.cli[key], values.auto[key]);
       }
       previous = values.auto.list;
+      await checkpoint();
     }
   } finally { await stop(); }
 }
@@ -220,7 +253,7 @@ function summaries() {
   for (const sample of samples) { const key = `${sample.scenario}:${sample.mode}`; const items = groups.get(key) ?? []; items.push(sample); groups.set(key, items); }
   return [...groups].map(([key, items]) => ({ key, count: items.length, medianMs: median(items.map(item => item.wallMs)),
     ...(items[0].firstMs === undefined ? {} : { medianFirstMs: median(items.map(item => item.firstMs)),
-      apiReads: [...new Set(items.map(item => item.cliApiProcesses + item.directHttpRequests))] }) }));
+      apiReads: [...new Set(items.map(item => item.cliApiProcesses + item.repositoryCliProcesses + item.directHttpRequests))] }) }));
 }
 
 /** 재현 가능한 공개 요청만 수행한 뒤 원문 없는 성능/동등성 artifact를 쓴다. */
@@ -241,14 +274,14 @@ async function main() {
     sourceProtectedFilesUnchanged: true, allPairedDTOsEqual: comparisons.every(item => item.equal),
     limitations: ["One public repository; live mutable remote data must remain equal between each pair.",
       "Direct figures require an Agent-preserving network policy. VS Code default proxySupport=override selects CLI; after-cli represents that supported fallback.",
-      "CLI API process counts are structural read counts, not packet captures. Direct HTTP counts are actual request-close events.",
+      "CLI api/repo-view process counts are structural read counts, not packet captures. Direct HTTP counts are actual request-close events.",
       "CLI API timing has GH_DEBUG disabled. Native Git HTTP tracing is enabled equally in both modes and never persisted.",
       "Transport-only comparison retains immutable snapshots across policy-resolver modes; it does not measure UI setting changes.",
       "Native fixture is shallow, blobless and up to date. Push is always dry-run; no object upload throughput is claimed."],
-    nativeChecks, summary: summaries(), comparisons, samples };
+    nativeChecks, budgetChecks, summary: summaries(), comparisons, samples };
   await writeFile(output, JSON.stringify(record, null, 2) + "\n"); console.log(JSON.stringify({ output, summary: record.summary, allPairedDTOsEqual: record.allPairedDTOsEqual }));
 }
 
 try { await main(); }
-catch (error) { console.error(JSON.stringify({ failure: error.name, message: error instanceof assert.AssertionError ? error.message : "Public benchmark failed", kind: error.kind, status: error.status })); process.exitCode = 1; }
+catch (error) { await checkpoint("failed"); console.error(JSON.stringify({ failure: error.name, message: error instanceof assert.AssertionError ? error.message : "Public benchmark failed", kind: error.kind, status: error.status })); process.exitCode = 1; }
 finally { childProcess.spawn = originalSpawn; await rm(scratch, { recursive: true, force: true }); }

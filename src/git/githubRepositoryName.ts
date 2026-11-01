@@ -32,7 +32,9 @@ export async function readGitHubRepositoryName(repoRoot: string, runner: GhExecu
     }
   }
   if (entry.name) return entry.name;
-  const canonical = remote === undefined ? undefined : gitHubRepositoryScopes.get(repoRoot, `repository:${remote}`);
+  // 이름 캐시의 remote key는 안정성 세대를 포함한다. scope는 요청 전후 검증용 snapshot key를 사용한다.
+  const requestContext = remote === undefined ? undefined : await captureGitHubRequestContext(repoRoot, env, ["repo"], options.signal);
+  const canonical = gitHubRepositoryScopes.get(repoRoot, requestContext);
   if (canonical) { entry.name = canonical.name; return canonical.name; }
   let reader = entry.readers.get(runner);
   if (!reader) {

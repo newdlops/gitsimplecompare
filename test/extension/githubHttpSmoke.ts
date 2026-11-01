@@ -13,6 +13,7 @@ import { graphQLRequest } from "../../src/git/githubReadRequest";
 import { gitHubReadNetworkPolicy } from "../../src/ui/githubTransportSettings";
 import { GitHubHttpTransport } from "../../src/git/githubHttpTransport";
 import { GitHubCredentialProvider } from "../../src/git/githubCredential";
+import { searchPullRequests } from "../../src/git/pullRequestSearchService";
 
 /** 시간 자체를 성과로 쓰지 않으며 실제 상태가 도착했는지 bounded 대기로 확인한다. */
 async function waitFor(check: () => boolean | Promise<boolean>, label: string): Promise<void> {
@@ -75,6 +76,16 @@ async function verifyHostReads(root: string): Promise<void> {
   try {
     await config.update("githubReadTransport", "auto", vscode.ConfigurationTarget.Workspace);
     assert.equal(await read(), "cli"); assert.equal(await read(), "http");
+    const executeHttp = GitHubHttpTransport.prototype.read;
+    let searchHttpReads = 0;
+    GitHubHttpTransport.prototype.read = async function(this: GitHubHttpTransport, ...args: Parameters<typeof executeHttp>) {
+      searchHttpReads++; return executeHttp.apply(this, args);
+    };
+    try {
+      const result = await searchPullRequests(root, "#14848", undefined, undefined, readGitHubInteractive);
+      assert(result.pullRequests.some(pr => pr.number === 14848));
+      assert(searchHttpReads >= 2, "Actual search must stay on HTTP after canonical scope discovery");
+    } finally { GitHubHttpTransport.prototype.read = executeHttp; }
     const http = vscode.workspace.getConfiguration("http");
     await http.update("proxySupport", "override", vscode.ConfigurationTarget.Global);
     stop = beginGitHubReadLifetime(); assert.equal(await read(), "cli");
@@ -134,7 +145,7 @@ export async function run(): Promise<void> {
   try {
     const settings = await verifySettings(root, owned, directory);
     const record = { node: process.versions.node, vscode: vscode.version, language: vscode.env.language,
-      actualPublicHttpRead: true, forcedCli: true, unsupportedPoliciesBeforeHttp: true,
+      actualPublicHttpRead: true, actualSearchHttpReads: true, forcedCli: true, unsupportedPoliciesBeforeHttp: true,
       defaultOverrideAgentPolicyUsesCli: true, verifiedDirectAgentPolicy: "on (isolated test profile only)",
       tlsValidation: true, cancellationIsolation: true, keepAliveReuse: true, disposalClose: true, settings };
     await writeFile(path.join(directory, `host-${vscode.env.language}.json`), JSON.stringify(record, null, 2) + "\n");

@@ -14,6 +14,7 @@ import { GitHubApiError } from "../src/git/githubApiError";
 import { searchPullRequests } from "../src/git/pullRequestSearchService";
 import { __outputLines } from "./helpers/vscodeMock";
 import type { GhExecute } from "../src/git/ghRunner";
+import { readGitHubRepositoryName } from "../src/git/githubRepositoryName";
 
 /** 실제 세션의 파일 metadata 관찰을 쓰며 환경·GitHub 설정은 임시 fixture에 격리한다. */
 async function fixture(t: test.TestContext) {
@@ -137,4 +138,33 @@ test("queued requests report the actual slot wait rather than a constant zero", 
   await new Promise(resolve => setTimeout(resolve, 20)); releases[0](); await queued;
   assert(seen.find(options => options.operation === "queued-metric").queueMs >= 20);
   releases.forEach(release => release()); await blockers;
+});
+
+test("verified canonical scope supplies repository name without an extra CLI bootstrap", async t => {
+  const f = await fixture(t), bootstrap = createGitHubReadSession(f.root, async () => JSON.stringify({ data: { repository: {
+    nameWithOwner: "owner/repo", url: "https://github.com/owner/repo" } } }));
+  await bootstrap(["api", "graphql"], f.root, { operation: "fixture-bootstrap" }); await completeGitHubReadSession(bootstrap);
+  let calls = 0;
+  const name = await readGitHubRepositoryName(f.root, async () => { calls++; return JSON.stringify({ nameWithOwner: "owner/repo" }); },
+    { operation: "fixture-name" });
+  assert.equal(name, "owner/repo"); assert.equal(calls, 0);
+});
+
+test("production search composition preserves verified HTTP routing and one actual credential lease", async t => {
+  const f = await fixture(t), bootstrap = createGitHubReadSession(f.root, async () => JSON.stringify({ data: { repository: {
+    nameWithOwner: "owner/repo", url: "https://github.com/owner/repo" } } }));
+  await bootstrap(["api", "graphql"], f.root, { operation: "fixture-bootstrap" }); await completeGitHubReadSession(bootstrap);
+  let cli = 0, http = 0, credentials = 0;
+  const output = (query: string) => query.includes("search(query:")
+    ? JSON.stringify({ data: { search: { nodes: [], issueCount: 0, pageInfo: { hasNextPage: false } } } })
+    : JSON.stringify({ data: { repository: { p7: pr() } } });
+  const runtime = new GitHubReadRuntime({ policy: async () => ({ transport: "auto", systemProxy: "none" }),
+    credentials: new GitHubCredentialProvider(async () => { credentials++; return "fixture-token"; }),
+    cli: async (args) => { cli++; return args[0] === "repo" ? JSON.stringify({ nameWithOwner: "owner/repo" }) : output(args.find(arg => arg.startsWith("query=")) ?? ""); },
+    http: { read: async request => { http++; assert.equal(request.kind, "graphql"); return output(request.kind === "graphql" ? request.query : ""); }, dispose: async () => {} } });
+  const cache = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
+  t.after(async () => { await cache.dispose(); await runtime.dispose(); });
+  const result = await searchPullRequests(f.root, "#7", undefined, undefined, (args, root, options) => cache.read(args, root, options));
+  assert.equal(result.pullRequests[0].number, 7);
+  assert.deepEqual({ cli, http, credentials }, { cli: 0, http: 2, credentials: 1 });
 });
