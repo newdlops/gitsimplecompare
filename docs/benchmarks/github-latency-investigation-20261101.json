@@ -1,0 +1,344 @@
+{
+  "observedAtUtc": "2026-11-01T07:11:14.192Z",
+  "baselineCommit": "9e753266ecfc8881afc0a6faeaa5c9d6d6943fe4",
+  "version": "0.1.72184",
+  "remoteWrites": false,
+  "productSourceChanged": false,
+  "repository": "cli/cli",
+  "method": "Read-only public API measurements through the existing list/detail services, with a GhExecute transport collecting HTTP counts and timings. Debug bodies and authentication headers are never persisted.",
+  "metadataBatchComparisons": {
+    "concurrentRequests": 4,
+    "large": [
+      {
+        "size": 20,
+        "metadataRequests": 4,
+        "medianMs": 3503.9,
+        "samplesMs": [
+          3741.7,
+          3241,
+          3503.9
+        ],
+        "allPayloadsEqual": true
+      },
+      {
+        "size": 40,
+        "metadataRequests": 2,
+        "medianMs": 5302.3,
+        "samplesMs": [
+          4275.7,
+          8892.2,
+          5302.3
+        ],
+        "allPayloadsEqual": true
+      },
+      {
+        "size": 80,
+        "metadataRequests": 1,
+        "medianMs": 7905.3,
+        "samplesMs": [
+          7391.5,
+          9454.3,
+          7905.3
+        ],
+        "allPayloadsEqual": true
+      }
+    ],
+    "small": [
+      {
+        "size": 5,
+        "metadataRequests": 16,
+        "medianMs": 5255.2,
+        "samplesMs": [
+          5007.8,
+          5255.2,
+          5395.9
+        ],
+        "allPayloadsEqual": true
+      },
+      {
+        "size": 10,
+        "metadataRequests": 8,
+        "medianMs": 3839.3,
+        "samplesMs": [
+          3735.6,
+          3839.3,
+          4707.6
+        ],
+        "allPayloadsEqual": true
+      },
+      {
+        "size": 20,
+        "metadataRequests": 4,
+        "medianMs": 3006.4,
+        "samplesMs": [
+          3006.4,
+          2838.3,
+          3534
+        ],
+        "allPayloadsEqual": true
+      }
+    ],
+    "limitation": "Three rotating samples per batch size from one public repository are descriptive measurements, not a universal latency guarantee."
+  },
+  "listAndDetail": {
+    "observedAtUtc": "2026-11-01T06:30:50.320Z",
+    "repository": "cli/cli",
+    "readOnly": true,
+    "pullRequests": 80,
+    "detail": {
+      "number": 14848,
+      "files": 738,
+      "stableSnapshot": true
+    },
+    "views": [
+      {
+        "name": "list-cold",
+        "wallMs": 5292.5,
+        "firstMs": 1431.5,
+        "calls": [
+          {
+            "operation": "graph-pr-list-page",
+            "wallMs": 1400.5,
+            "httpRequests": 1,
+            "responseBytes": 26511
+          },
+          {
+            "operation": "graph-pr-list-nodes",
+            "wallMs": 2516,
+            "httpRequests": 1,
+            "responseBytes": 33868
+          },
+          {
+            "operation": "graph-pr-list-nodes",
+            "wallMs": 2783.2,
+            "httpRequests": 1,
+            "responseBytes": 65909
+          },
+          {
+            "operation": "graph-pr-list-nodes",
+            "wallMs": 2804.3,
+            "httpRequests": 1,
+            "responseBytes": 48475
+          },
+          {
+            "operation": "graph-pr-commit-page",
+            "wallMs": 982.7,
+            "httpRequests": 1,
+            "responseBytes": 5163
+          },
+          {
+            "operation": "graph-pr-list-nodes",
+            "wallMs": 3804.6,
+            "httpRequests": 1,
+            "responseBytes": 35569
+          }
+        ]
+      },
+      {
+        "name": "list-refresh",
+        "wallMs": 4504.5,
+        "firstMs": 4502.6,
+        "calls": [
+          {
+            "operation": "graph-pr-list-page",
+            "wallMs": 4497,
+            "httpRequests": 1,
+            "responseBytes": 93922
+          }
+        ]
+      },
+      {
+        "name": "detail-first",
+        "wallMs": 9391.3,
+        "firstMs": 912.3,
+        "calls": [
+          {
+            "operation": "pr-detail",
+            "wallMs": 908.8,
+            "httpRequests": 1,
+            "responseBytes": 12264
+          },
+          {
+            "operation": "pr-detail-threads",
+            "wallMs": 675.1,
+            "httpRequests": 1,
+            "responseBytes": 247
+          },
+          {
+            "operation": "pr-detail-files",
+            "wallMs": 785.7,
+            "httpRequests": 1,
+            "responseBytes": 11723
+          },
+          {
+            "operation": "pr-detail-files",
+            "wallMs": 804.2,
+            "httpRequests": 1,
+            "responseBytes": 12146
+          },
+          {
+            "operation": "pr-detail-files",
+            "wallMs": 891.1,
+            "httpRequests": 1,
+            "responseBytes": 10215
+          },
+          {
+            "operation": "pr-detail-files",
+            "wallMs": 1808.4,
+            "httpRequests": 1,
+            "responseBytes": 10986
+          },
+          {
+            "operation": "pr-detail-files",
+            "wallMs": 1780.9,
+            "httpRequests": 1,
+            "responseBytes": 10226
+          },
+          {
+            "operation": "pr-detail-files",
+            "wallMs": 1216.2,
+            "httpRequests": 1,
+            "responseBytes": 9924
+          },
+          {
+            "operation": "pr-detail-files",
+            "wallMs": 1183.5,
+            "httpRequests": 1,
+            "responseBytes": 3929
+          }
+        ]
+      },
+      {
+        "name": "detail-repeat",
+        "wallMs": 6298.2,
+        "firstMs": 725.1,
+        "calls": [
+          {
+            "operation": "pr-detail",
+            "wallMs": 723.6,
+            "httpRequests": 1,
+            "responseBytes": 12264
+          },
+          {
+            "operation": "pr-detail-threads",
+            "wallMs": 506.9,
+            "httpRequests": 1,
+            "responseBytes": 247
+          },
+          {
+            "operation": "pr-detail-files",
+            "wallMs": 768.4,
+            "httpRequests": 1,
+            "responseBytes": 11723
+          },
+          {
+            "operation": "pr-detail-files",
+            "wallMs": 1186.3,
+            "httpRequests": 1,
+            "responseBytes": 12146
+          },
+          {
+            "operation": "pr-detail-files",
+            "wallMs": 851.7,
+            "httpRequests": 1,
+            "responseBytes": 10215
+          },
+          {
+            "operation": "pr-detail-files",
+            "wallMs": 705.7,
+            "httpRequests": 1,
+            "responseBytes": 10986
+          },
+          {
+            "operation": "pr-detail-files",
+            "wallMs": 698.6,
+            "httpRequests": 1,
+            "responseBytes": 10226
+          },
+          {
+            "operation": "pr-detail-files",
+            "wallMs": 689,
+            "httpRequests": 1,
+            "responseBytes": 9924
+          },
+          {
+            "operation": "pr-detail-files",
+            "wallMs": 662.6,
+            "httpRequests": 1,
+            "responseBytes": 3929
+          }
+        ]
+      }
+    ]
+  },
+  "rejectedCommentCountShortcut": {
+    "checked": 80,
+    "withInlineComments": 44,
+    "mismatches": 64,
+    "reason": "totalCommentsCount does not equal the current conversation-plus-inline-comment contract."
+  },
+  "directHttp": {
+    "evidenceFile": "github-direct-http-20261101.json",
+    "credentialLookupMs": 400,
+    "sampleTimesExcludeCredentialLookup": true,
+    "summary": [
+      {
+        "kind": "thin",
+        "cli": 2253.8,
+        "http-fresh": 1956.7,
+        "http-pooled": 1669.7
+      },
+      {
+        "kind": "heavy",
+        "cli": 3602.8,
+        "http-fresh": 2820.1,
+        "http-pooled": 3060.8
+      }
+    ],
+    "caution": "The observed credential lookup cost was 400ms and was outside the request samples. This is a transport component comparison, not an end-to-end production improvement."
+  },
+  "native": {
+    "logsRead": 8,
+    "completedTransferTimingSamples": 0,
+    "baselineTests": {
+      "passed": 13,
+      "failed": 0,
+      "logSha256": "cf53d22c7a01a58a3cb2890d07deb466208b084f40f4c497b675f424596ef927"
+    },
+    "evidenceFile": "github-native-transfers-20261101.json",
+    "normalMedianMs": {
+      "fetch-up-to-date": 530,
+      "pull-up-to-date": 621.5,
+      "push-preflight-advertisement": 500.4,
+      "push-dry-run-up-to-date": 674.8
+    },
+    "proactivePushDryRunMedianMs": 448,
+    "observations": "Normal pull/fetch use one native transfer command. An isolated shallow up-to-date worktree measured HTTPS latency, and every push was --dry-run. Actual object upload speed was not measured."
+  },
+  "nextCandidates": [
+    "Reuse completed immutable PR files only after current head/base and authorization context validation; continue refreshing comments.",
+    "Keep the first list refresh query light, and hydrate mutable metadata in bounded batches.",
+    "Use a direct HTTPS read adapter with the existing gh authentication source, bounded persistent connections and a compatibility CLI route.",
+    "Treat native Git proactive authentication as an explicit opt-in; preserve hooks, leases, original commit validation and Git configuration."
+  ],
+  "sources": [
+    "https://cli.github.com/manual/gh_api",
+    "https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api",
+    "https://docs.github.com/en/graphql/reference/pulls",
+    "https://cli.github.com/manual/gh_auth_token",
+    "https://cli.github.com/manual/gh_help_environment",
+    "https://nodejs.org/docs/latest-v18.x/api/https.html",
+    "https://code.visualstudio.com/docs/setup/network",
+    "https://git-scm.com/docs/git-config"
+  ],
+  "evidenceSha256": {
+    "gsc-github-latency.json": "4a3267e5635bb7e5ed4e0aee380d2ea003454bac90520e07bf759737308f1712",
+    "gsc-github-latency-small.json": "f0054bafa04e4173c89228fc847e5c3ad51a85990ca7105ca7af2e8b1aa05950",
+    "gsc-github-view-probe.json": "c4ae386491d6245747f6c811de50178783e42826712c48306ccef59684b4ccf1",
+    "gsc-github-count-probe.json": "63bf8365c861c6d7a71f296fdcf8ec526feb172f6aa4707b2244afc7e8721847",
+    "gsc-github-native-log-probe.json": "f1836bee084b2bdc09263d9cf2fed10adb99c110278e75fe4a43a85b4612955a",
+    "gsc-direct-http-probe.json": "b60c2a7e0aa2636a8cf1ee586e7f64c675fed6c9370eb3e25f1db4c1d091de1e",
+    "gsc-native-github-transfer-probe.json": "1d28e68aaf4ebfda5269b433f1d15947a43193b95f20c00f14a88d4169fc1fbc",
+    "gsc-native-github-proactive-probe.json": "e740691ef434d9af5bf77f8d2d4167b0b3c60edffc4c79ed4a23d49e2c503d1d"
+  }
+}

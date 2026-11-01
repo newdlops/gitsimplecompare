@@ -1,0 +1,141 @@
+{
+  "observedAtUtc": "2026-11-01T06:57:15.475Z",
+  "supported": true,
+  "repository": "cli/cli",
+  "remoteWrites": false,
+  "credentialLookupMs": 400,
+  "tokenPersisted": false,
+  "nodeVersion": "v22.22.2",
+  "maximumConcurrentRequests": 4,
+  "samples": [
+    {
+      "kind": "thin",
+      "mode": "cli",
+      "wallMs": 2253.8,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "thin",
+      "mode": "http-fresh",
+      "wallMs": 1726.7,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "thin",
+      "mode": "http-pooled",
+      "wallMs": 1854.6,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "thin",
+      "mode": "http-pooled",
+      "wallMs": 1617.6,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "thin",
+      "mode": "cli",
+      "wallMs": 2599.2,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "thin",
+      "mode": "http-fresh",
+      "wallMs": 1956.7,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "thin",
+      "mode": "http-fresh",
+      "wallMs": 2125.7,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "thin",
+      "mode": "http-pooled",
+      "wallMs": 1669.7,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "thin",
+      "mode": "cli",
+      "wallMs": 2214.6,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "heavy",
+      "mode": "cli",
+      "wallMs": 4423.6,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "heavy",
+      "mode": "http-fresh",
+      "wallMs": 4176.6,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "heavy",
+      "mode": "http-pooled",
+      "wallMs": 3418.5,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "heavy",
+      "mode": "http-pooled",
+      "wallMs": 2859.8,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "heavy",
+      "mode": "cli",
+      "wallMs": 3602.8,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "heavy",
+      "mode": "http-fresh",
+      "wallMs": 2820.1,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "heavy",
+      "mode": "http-fresh",
+      "wallMs": 2666.4,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "heavy",
+      "mode": "http-pooled",
+      "wallMs": 3060.8,
+      "requests": 4,
+      "equalPayload": true
+    },
+    {
+      "kind": "heavy",
+      "mode": "cli",
+      "wallMs": 3353.4,
+      "requests": 4,
+      "equalPayload": true
+    }
+  ],
+  "limitations": "Standalone Node timing; this does not prove VS Code Extension Host proxy/CA compatibility or a production speedup. Three alternating samples per mode are descriptive.",
+  "sampleTimesExcludeCredentialLookup": true,
+  "caution": "The 400ms credential lookup is outside request samples. This is a component comparison, not an end-to-end production speedup."
+}

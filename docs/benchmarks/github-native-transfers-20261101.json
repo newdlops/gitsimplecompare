@@ -1,0 +1,338 @@
+{
+  "normal": {
+    "observedAtUtc": "2026-11-01T06:41:04.901Z",
+    "readOnlyRemote": true,
+    "pushWasDryRun": true,
+    "sourceRepositoryProtectedFilesUnchanged": true,
+    "repository": "newdlops/gitsimplecompare",
+    "limitations": "Shallow, blobless, up-to-date temporary worktree; measures connection and command latency, not real object upload throughput. User hooks were isolated to an empty fixture directory.",
+    "samples": [
+      {
+        "operation": "fetch-initial-shallow",
+        "wallMs": 1218.8,
+        "httpMethods": [
+          "GET",
+          "POST",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "fetch-up-to-date",
+        "wallMs": 533.6,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "pull-up-to-date",
+        "wallMs": 562,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "push-preflight-advertisement",
+        "wallMs": 500.4,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "push-dry-run-up-to-date",
+        "wallMs": 709,
+        "httpMethods": [
+          "GET",
+          "GET"
+        ],
+        "responseStatuses": [
+          401,
+          200
+        ]
+      },
+      {
+        "operation": "fetch-up-to-date",
+        "wallMs": 530,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "pull-up-to-date",
+        "wallMs": 946.7,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "push-preflight-advertisement",
+        "wallMs": 552.1,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "push-dry-run-up-to-date",
+        "wallMs": 617.5,
+        "httpMethods": [
+          "GET",
+          "GET"
+        ],
+        "responseStatuses": [
+          401,
+          200
+        ]
+      },
+      {
+        "operation": "fetch-up-to-date",
+        "wallMs": 512.7,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "pull-up-to-date",
+        "wallMs": 621.5,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "push-preflight-advertisement",
+        "wallMs": 482.1,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "push-dry-run-up-to-date",
+        "wallMs": 674.8,
+        "httpMethods": [
+          "GET",
+          "GET"
+        ],
+        "responseStatuses": [
+          401,
+          200
+        ]
+      }
+    ]
+  },
+  "proactive": {
+    "observedAtUtc": "2026-11-01T07:00:30.065Z",
+    "readOnlyRemote": true,
+    "pushWasDryRun": true,
+    "sourceRepositoryProtectedFilesUnchanged": true,
+    "repository": "newdlops/gitsimplecompare",
+    "limitations": "Shallow, blobless, up-to-date temporary worktree; measures connection and command latency, not real object upload throughput. User hooks were isolated to an empty fixture directory.",
+    "samples": [
+      {
+        "operation": "fetch-initial-shallow",
+        "wallMs": 1015.2,
+        "httpMethods": [
+          "GET",
+          "POST",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "fetch-up-to-date",
+        "wallMs": 518.8,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "pull-up-to-date",
+        "wallMs": 565.4,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "push-preflight-advertisement",
+        "wallMs": 540.4,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "push-dry-run-up-to-date",
+        "wallMs": 535.1,
+        "httpMethods": [
+          "GET"
+        ],
+        "responseStatuses": [
+          200
+        ]
+      },
+      {
+        "operation": "fetch-up-to-date",
+        "wallMs": 504.4,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "pull-up-to-date",
+        "wallMs": 540.6,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "push-preflight-advertisement",
+        "wallMs": 525.7,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "push-dry-run-up-to-date",
+        "wallMs": 448,
+        "httpMethods": [
+          "GET"
+        ],
+        "responseStatuses": [
+          200
+        ]
+      },
+      {
+        "operation": "fetch-up-to-date",
+        "wallMs": 827.1,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "pull-up-to-date",
+        "wallMs": 713,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "push-preflight-advertisement",
+        "wallMs": 580.5,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseStatuses": [
+          200,
+          200
+        ]
+      },
+      {
+        "operation": "push-dry-run-up-to-date",
+        "wallMs": 413.5,
+        "httpMethods": [
+          "GET"
+        ],
+        "responseStatuses": [
+          200
+        ]
+      }
+    ],
+    "proactiveAuthentication": true
+  },
+  "baselineTests": {
+    "passed": 13,
+    "failed": 0,
+    "logSha256": "cf53d22c7a01a58a3cb2890d07deb466208b084f40f4c497b675f424596ef927"
+  }
+}
