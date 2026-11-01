@@ -97,6 +97,17 @@ test("known-final file metadata cannot certify completeness at the 3000-file API
   assert.equal(files.files.length, 3000); assert.equal(files.truncated, true);
 });
 
+test("selected commit retains its API-cap error even with known-final Link metadata", async t => {
+  const f = await fixture(t), count = join(f.root, "count"), executable = join(f.root, "gh-commit-cap");
+  const hash = "b".repeat(40); await writeFile(count, "0");
+  await writeFile(executable, `#!${process.execPath}\nconst fs=require('node:fs'),a=process.argv.slice(2),c=${JSON.stringify(count)},n=Number(fs.readFileSync(c))+1;fs.writeFileSync(c,String(n));if(a.includes('--include'))console.log('HTTP/2 200 OK\\n'+(n<30?'link: <https://api.github.com/repos/owner/repo/commits/${hash}?per_page=100&page='+(n+1)+'>; rel="next"\\n':'')+'content-type: application/json\\n');console.log(JSON.stringify({sha:${JSON.stringify(hash)},files:Array.from({length:100},(_,i)=>({filename:n+'-'+i,status:'modified'}))}));\n`);
+  await chmod(executable, 0o755); process.env.GITHUB_CLI_PATH = executable;
+  const reset = setGitHubReadPolicyResolver(async () => ({ transport: "cli", systemProxy: "none" }));
+  const stop = beginGitHubReadLifetime(); t.after(async () => { await stop(); reset(); });
+  await assert.rejects(fetchRemotePreviewCommit(f.root, "owner/repo", hash), /file limit/i);
+  assert.equal(Number(await readFile(count, "utf8")), 30);
+});
+
 test("publish reads use independent HTTP sessions and the created PR identity", async t => {
   const f = await fixture(t), executable = join(f.root, "gh-publish-read");
   await writeFile(executable, `#!${process.execPath}\nconsole.log(process.argv[3]==='list'?'[]':JSON.stringify({number:7,title:'legacy'}));\n`);
