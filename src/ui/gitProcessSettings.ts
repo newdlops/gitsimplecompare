@@ -13,6 +13,7 @@ import { beginGitHubReadLifetime } from "../git/githubReadCache";
 import { setGitHubReadPolicyResolver } from "../git/githubReadRuntime";
 import { gitHubReadNetworkPolicy } from "./githubTransportSettings";
 import { setGitHubApiErrorLocalizer } from "../git/githubApiError";
+import { setGitHubProactiveAuthResolver } from "../git/githubGitProactiveAuth";
 import { beginFileHistoryReadLifetime } from "../git/fileHistoryReadCache";
 import { clearGitHubRepositoryNameCache } from "../git/githubRepositoryName";
 import { logError, logInfo } from "./outputLog";
@@ -51,6 +52,7 @@ function protectedPaths(): string[] {
 export function registerGitProcessManagement(activeRoot: () => string | undefined, storageDirectory?: string): vscode.Disposable {
   const resetGitHubPolicy = setGitHubReadPolicyResolver(gitHubReadNetworkPolicy);
   const resetGitHubErrors = setGitHubApiErrorLocalizer(message => vscode.l10n.t(message));
+  const resetGitHubGitAuth = setGitHubProactiveAuthResolver(repo => configuration(repo).get<boolean>("githubGitProactiveAuth", false));
   let stopGitHubReads = beginGitHubReadLifetime();
   const stopHistoryReads = beginFileHistoryReadLifetime(repo => configuration(repo).get<boolean>("cancelUnusedGitReads", true), logInfo,
     storageDirectory ? path.join(storageDirectory, "git-file-history-v1") : undefined);
@@ -207,7 +209,7 @@ export function registerGitProcessManagement(activeRoot: () => string | undefine
       .then(() => undefined).finally(() => process.removeListener("exit", hostExit));
     void shutdown.catch(() => undefined);
     for (const subscription of subscriptions) subscription.dispose();
-    resetTimeout(); resetLogger(); resetStatusPolicy(); resetBlame(); resetGitHubPolicy(); resetGitHubErrors();
+    resetTimeout(); resetLogger(); resetStatusPolicy(); resetBlame(); resetGitHubPolicy(); resetGitHubErrors(); resetGitHubGitAuth();
   };
   activeShutdown = async () => { dispose(); await shutdown; };
   return { dispose };

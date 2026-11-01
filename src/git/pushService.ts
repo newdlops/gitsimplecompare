@@ -5,6 +5,7 @@ import { GitError, runGit } from "./gitExec";
 import { pushValidatedBranchCommits, pushConfigurationFingerprint, readPushConfiguration, SequentialPushError, type PushExecutionOptions, type PushExecutionResult } from "./sequentialPush";
 import type { GitConfigSnapshot } from "./gitConfigSnapshot";
 import { readPushCheckoutIdentity } from "./pushCheckoutIdentity";
+import { captureGitHubProactiveAuth } from "./githubGitProactiveAuth";
 
 /** 확인 당시의 커밋·목적 ref·설정 세대다. URL 원문은 로그에 노출하지 않도록 해시만 보존한다. */
 interface PushSnapshot {
@@ -12,6 +13,7 @@ interface PushSnapshot {
   targetRef: string;
   configFingerprint: string;
   remoteHead: string;
+  githubProactiveAuth?: boolean;
 }
 
 /** 현재 브랜치 push 가 실제로 실행한 방식 */
@@ -74,6 +76,7 @@ interface PushTarget {
 export async function getCurrentPushPlan(
   repoRoot: string
 ): Promise<PushCurrentPlan> {
+  const githubProactiveAuth = captureGitHubProactiveAuth(repoRoot);
   const [{ checkout, upstreamCommit }, { config, fingerprint: configFingerprint }] = await Promise.all([
     readPushCheckoutIdentity(repoRoot),
     readPushConfiguration(repoRoot),
@@ -126,7 +129,7 @@ export async function getCurrentPushPlan(
   const tracking = plan.mode === "setUpstream"
     ? `refs/remotes/${plan.remote}/${plan.branch}` : trackingRef;
   const remoteHead = !tracking ? "" : referenceTips.get(tracking) ?? "";
-  return { ...plan, snapshot: { head, targetRef, configFingerprint, remoteHead } };
+  return { ...plan, snapshot: { head, targetRef, configFingerprint, remoteHead, githubProactiveAuth } };
 }
 
 /**
@@ -210,7 +213,8 @@ async function executePush(repoRoot: string, plan: PushCurrentPlan, force?: Forc
     execution = await pushValidatedBranchCommits(repoRoot, {
       branch: plan.branch!, remote: plan.remote!, head: plan.snapshot.head, targetRef: plan.snapshot.targetRef,
     }, { ...options, setUpstream: false, includePublishedBranches: plan.mode === "setUpstream", requireCurrentBranch: true,
-      approvedConfigurationFingerprint: plan.snapshot.configFingerprint });
+      approvedConfigurationFingerprint: plan.snapshot.configFingerprint,
+      githubProactiveAuth: plan.snapshot.githubProactiveAuth ?? false });
   } else {
     const args = ["push"];
     if (force === "force") args.push("--force");
@@ -218,7 +222,7 @@ async function executePush(repoRoot: string, plan: PushCurrentPlan, force?: Forc
       args.push(`--force-with-lease=${plan.snapshot.targetRef}:${plan.snapshot.remoteHead}`);
     }
     args.push(plan.remote!, `${plan.snapshot.head}:${plan.snapshot.targetRef}`);
-    await runGit(args, repoRoot, { retryOnLock: false });
+    await runGit(args, repoRoot, { retryOnLock: false, githubProactiveAuth: plan.snapshot.githubProactiveAuth ?? false });
   }
   if (plan.mode === "setUpstream") {
     try {

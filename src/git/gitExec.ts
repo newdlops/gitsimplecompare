@@ -2,6 +2,7 @@
 import { GitError } from "./gitError";
 import { executeGitProcess } from "./gitProcessRunner";
 import { executeGitReadPipeline } from "./gitReadPipeline";
+import { canUseGitHubProactiveAuth, captureGitHubProactiveAuth, isGitHubProactiveAuthCommand } from "./githubGitProactiveAuth";
 export { GitError } from "./gitError";
 
 /** 조회·쓰기 호출이 함께 사용하는 실행 옵션. 시간 제한은 검증된 조회에만 적용한다. */
@@ -23,6 +24,8 @@ export interface RunGitOptions {
   allowPrivateIndexWrites?: boolean;
   /** 등록한 private index의 고정 index-info 명령만 허용한다. 실제 저장소 mutation 알림을 만들지 않는다. */
   privateIndexOnly?: boolean;
+  /** 논리 작업 시작 때 고정한 사전 인증 opt-in. 없으면 단일 명령 시작 시 사용자 설정을 읽는다. */
+  githubProactiveAuth?: boolean;
 }
 
 /** 성공한 명령의 두 출력 스트림을 손실 없이 제공한다. */
@@ -132,8 +135,19 @@ export function runGitLiteralPaths(args: string[], cwd: string, options?: Record
  * @returns close 확인 뒤 두 UTF-8 출력 또는 원본 출력을 가진 GitError
  */
 export async function runGitDetailed(args: string[], cwd: string, options?: Record<string, string> | RunGitOptions): Promise<GitCommandOutput> {
-  const normalized = normalizeOptions(options);
+  let normalized = normalizeOptions(options);
   const executable = resolveGitExecutable(cwd, normalized.executable);
+  if (isGitHubProactiveAuthCommand(args)) {
+    normalized = { ...normalized, githubProactiveAuth: normalized.githubProactiveAuth ?? captureGitHubProactiveAuth(cwd) };
+    const probeOptions = normalized;
+    const use = await canUseGitHubProactiveAuth(args, cwd, probeOptions,
+      probe => runGitDetailedOnce(probe, cwd, probeOptions, undefined, executable).then(output => output.stdout));
+    if (use) {
+      const env = normalized.inheritEnv === false && normalized.env?.GIT_CONFIG_COUNT === undefined
+        ? { ...normalized.env, GIT_CONFIG_COUNT: "0" } : normalized.env ?? {};
+      normalized = { ...normalized, env: withGitConfigOverrides(env, { "http.proactiveAuth": "auto" }) };
+    }
+  }
   return withGitRetry(args, normalized, () => runGitDetailedOnce(args, cwd, normalized, undefined, executable));
 }
 
@@ -188,7 +202,7 @@ async function withGitRetry<T>(args: string[], options: RunGitOptions, run: () =
 /** 옵션 키가 없는 기존 env shortcut도 그대로 지원한다. */
 function normalizeOptions(options?: Record<string, string> | RunGitOptions): RunGitOptions {
   if (!options) return {};
-  return ["env", "inheritEnv", "clearEnv", "executable", "retryOnLock", "beforeRetry", "signal", "maxBuffer", "readTimeoutMs", "allowPrivateIndexWrites", "privateIndexOnly"].some(key => key in options)
+  return ["env", "inheritEnv", "clearEnv", "executable", "retryOnLock", "beforeRetry", "signal", "maxBuffer", "readTimeoutMs", "allowPrivateIndexWrites", "privateIndexOnly", "githubProactiveAuth"].some(key => key in options)
     ? options as RunGitOptions : { env: options as Record<string, string> };
 }
 

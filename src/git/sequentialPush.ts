@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { GitError, runGit, runGitWithInput, runGitStreamWithInput, runGitReadPipeline, withGitConfigOverrides, type RunGitOptions } from "./gitExec";
 import { readGitConfigSnapshot } from "./gitConfigSnapshot";
 import { MAX_PUBLISHED_TIPS, readPublishedPushTips, readPushBranchAdvertisement } from "./pushPublishedHistory";
+import { captureGitHubProactiveAuth } from "./githubGitProactiveAuth";
 import { estimateOutgoingObjectBytes } from "./pushObjectEstimate";
 import { logInfo } from "../ui/outputLog";
 
@@ -31,6 +32,7 @@ export interface PushProgress {
 
 /** 공통 push 실행 옵션. threshold=0은 크기에 관계없이 안전한 다중 커밋을 분할한다. */
 export interface PushExecutionOptions {
+  githubProactiveAuth?: boolean;
   signal?: AbortSignal;
   onProgress?: (progress: PushProgress) => void;
   sequentialThresholdBytes?: number;
@@ -125,7 +127,8 @@ async function executeBranchPush(repoRoot: string, target: BranchPushTarget, opt
     throw new Error("A fixed commit and a remote branch are required for pushing.");
   }
   // lease가 일반 fast-forward 보호를 우회하므로 실제로 전송되는 원본 DAG만 조상 판단에 사용한다.
-  const runOptions: RunGitOptions = { signal: options.signal, retryOnLock: false, env: {
+  const runOptions: RunGitOptions = { signal: options.signal, retryOnLock: false,
+    githubProactiveAuth: options.githubProactiveAuth ?? captureGitHubProactiveAuth(repoRoot), env: {
     GIT_NO_REPLACE_OBJECTS: "1", GIT_GRAFT_FILE: process.platform === "win32" ? "NUL" : "/dev/null",
   } };
   const fingerprint = options.approvedConfigurationFingerprint ?? await pushConfigurationFingerprint(repoRoot, runner, runOptions);

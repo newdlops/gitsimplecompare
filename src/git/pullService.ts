@@ -8,11 +8,12 @@ import { readGitCheckoutIdentity, type GitCheckoutIdentity } from "./repositoryI
 import { readGitConfigSnapshot } from "./gitConfigSnapshot";
 import { hasWorkingTreeChanges } from "./workingTreeChanges";
 import { logWarn } from "../ui/outputLog";
+import { captureGitHubProactiveAuth } from "./githubGitProactiveAuth";
 export type { PullRollbackSnapshot } from "./pullRollbackStore";
 
 type LocalChangeBlocker = "none" | "tracked" | "untracked" | "mixed";
 type PullTarget = { remote: string; mergeRef: string };
-type PullPreparation = { identity: GitCheckoutIdentity; target: PullTarget };
+type PullPreparation = { identity: GitCheckoutIdentity; target: PullTarget; githubProactiveAuth: boolean };
 
 export type PullConflictStage = "pull" | "restoreLocalChanges";
 
@@ -49,17 +50,18 @@ export class PullService {
    * @returns 완료 또는 충돌 상태. 충돌 상태에는 rollback 에 필요한 snapshot 이 포함될 수 있다.
    */
   async pullCurrent(): Promise<PullCurrentResult> {
+    const githubProactiveAuth = captureGitHubProactiveAuth(this.repoRoot);
     const identity = await readGitCheckoutIdentity(this.repoRoot);
     const { head, branch, gitDir } = identity;
     const operation = detectOperationInGitDir(gitDir);
     if (operation !== "none") throw new Error(`Cannot pull while ${operation} is in progress.`);
     const target = await this.readPullTarget(branch);
-    const preparation = { identity, target };
+    const preparation = { identity, target, githubProactiveAuth };
     const hadLocalChanges = await this.hasLocalChanges();
     await this.assertPreparation(preparation);
 
     try {
-      await this.runPull();
+      await this.runPull(preparation.githubProactiveAuth);
     } catch (err) {
       const state = await this.tryIsConflictState(err);
       if (state.conflicted) {
@@ -109,7 +111,7 @@ export class PullService {
       throw new Error(`${errorText(error)} Saved local changes remain in stash ${snapshot.hash}.`);
     }
     try {
-      await this.runPull();
+      await this.runPull(preparation.githubProactiveAuth);
     } catch (err) {
       const state = await this.tryIsConflictState(err);
       if (state.conflicted) {
@@ -217,8 +219,8 @@ export class PullService {
   }
 
   /** 현재 브랜치의 upstream 변경을 merge pull 방식으로 가져온다. */
-  private async runPull(): Promise<void> {
-    await runGit(["pull", "--no-rebase", "--no-edit"], this.repoRoot, { retryOnLock: false });
+  private async runPull(githubProactiveAuth: boolean): Promise<void> {
+    await runGit(["pull", "--no-rebase", "--no-edit"], this.repoRoot, { retryOnLock: false, githubProactiveAuth });
   }
 
   /** 지정 snapshot 을 기준으로 pull 직전 상태를 복원한다. */
