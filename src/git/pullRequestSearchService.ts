@@ -3,7 +3,8 @@
 // - 결과는 PullRequestInfo 로 정규화해 기존 preview/open/action 흐름에 그대로 합칠 수 있게 한다.
 import { readGitHub } from "./githubReadCache";
 import { readGitHubRepositoryName } from "./githubRepositoryName";
-import { createGitHubReadSession, completeGitHubReadSession } from "./githubReadSession";
+import { createGitHubReadSession, completeGitHubReadSession, inheritGitHubReadSession,
+  gitHubCommitSnapshotHint, gitHubReadSessionState, gitHubSnapshotIdentity } from "./githubReadSession";
 import { graphQLRequest, restRead } from "./githubReadRequest";
 import { GitHubApiError } from "./githubApiError";
 import { GhCliError } from "./ghCli";
@@ -13,7 +14,7 @@ import type { GhExecute } from "./ghRunner";
 import { completeSearchPullRequests, fetchSearchPullRequestsByNumber } from "./pullRequestSearchReads";
 import { splitRepositoryName } from "./githubRepository";
 import {
-  PULL_REQUEST_INFO_QUERY,
+  buildPullRequestInfoQuery,
 } from "./pullRequestInfo";
 import type { GhPullRequestNode, PullRequestInfo } from "./pullRequestInfo";
 
@@ -48,18 +49,19 @@ const PULL_REQUEST_SEARCH_PAGE_SIZE = 50;
 const PULL_REQUEST_SEARCH_INITIAL_LIMIT = 200;
 const PULL_REQUEST_SEARCH_MORE_LIMIT = 100;
 
-const PULL_REQUEST_SEARCH_QUERY = `
+/** 검색의 가변 연결은 항상 새로 받고 검증할 불변 후보가 있을 때만 commit/file 연결을 생략한다. */
+function searchQuery(stable: boolean): string { return `
 query($searchQuery: String!, $limit: Int!, $cursor: String) {
   search(query: $searchQuery, type: ISSUE, first: $limit, after: $cursor) {
     issueCount
     pageInfo { hasNextPage endCursor }
     nodes {
       ... on PullRequest {
-${PULL_REQUEST_INFO_QUERY}
+${buildPullRequestInfoQuery(100, 100, stable)}
       }
     }
   }
-}`;
+}`; }
 
 /**
  * GitHub PR 전체 검색을 수행한다.
@@ -84,19 +86,23 @@ export async function searchPullRequests(
     controller.signal.throwIfAborted();
     return queue.run(() => read(args, root, { ...options, signal: controller.signal }), controller.signal);
   };
+  inheritGitHubReadSession(read, runner);
   try {
     const trimmed = query.trim();
     if (!trimmed) return { query, pullRequests: [], hasMore: false, totalCount: 0 };
     const repository = await repositoryName(repoRoot, runner);
     const [owner, name] = splitRepositoryName(repository);
+    const reuseStable = gitHubCommitSnapshotHint(execute, repository);
     const [search, exact, associated] = await Promise.all([
-      searchByText(repoRoot, owner, name, trimmed, cursor, runner),
-      cursor ? Promise.resolve(undefined) : searchByNumber(repoRoot, owner, name, trimmed, runner),
-      cursor ? Promise.resolve([]) : searchByCommitHash(repoRoot, owner, name, trimmed, runner),
+      searchByText(repoRoot, owner, name, trimmed, cursor, runner, reuseStable),
+      cursor ? Promise.resolve(undefined) : searchByNumber(repoRoot, owner, name, trimmed, runner, reuseStable),
+      cursor ? Promise.resolve([]) : searchByCommitHash(repoRoot, owner, name, trimmed, runner, reuseStable),
     ]);
     const pullRequests = mergeByNumber([...(exact ? [exact] : []), ...associated, ...search.pullRequests]);
     controller.signal.throwIfAborted();
     await completeGitHubReadSession(read, controller.signal);
+    const identity = gitHubSnapshotIdentity(read, repository), snapshots = gitHubReadSessionState(read)?.snapshots;
+    if (identity) for (const pr of pullRequests) snapshots?.commits.put(identity, pr);
     return { query, pullRequests, hasMore: search.hasMore, nextCursor: search.nextCursor,
       totalCount: Math.max(search.totalCount, pullRequests.length) };
   } finally { signal?.removeEventListener("abort", cancel); controller.abort(); }
@@ -109,7 +115,8 @@ async function searchByText(
   name: string,
   query: string,
   cursor: string | undefined,
-  runner: GhExecute
+  runner: GhExecute,
+  reuseStable: boolean
 ): Promise<{ pullRequests: PullRequestInfo[]; hasMore: boolean; nextCursor?: string; totalCount: number }> {
   const max = cursor ? PULL_REQUEST_SEARCH_MORE_LIMIT : PULL_REQUEST_SEARCH_INITIAL_LIMIT;
   const pullRequests: PullRequestInfo[] = [];
@@ -118,7 +125,7 @@ async function searchByText(
   let totalCount = 0;
   const cursors = new Set(cursor ? [cursor] : []);
   do {
-    const page = await searchPage(repoRoot, owner, name, query, nextCursor, Math.min(PULL_REQUEST_SEARCH_PAGE_SIZE, max - pullRequests.length), runner);
+    const page = await searchPage(repoRoot, owner, name, query, nextCursor, Math.min(PULL_REQUEST_SEARCH_PAGE_SIZE, max - pullRequests.length), runner, reuseStable);
     pullRequests.push(...page.pullRequests);
     totalCount = Math.max(totalCount, page.totalCount);
     nextCursor = page.nextCursor;
@@ -139,8 +146,10 @@ async function searchPage(
   query: string,
   cursor: string | undefined,
   limit: number,
-  runner: GhExecute
+  runner: GhExecute,
+  reuseStable: boolean
 ): Promise<{ pullRequests: PullRequestInfo[]; hasMore: boolean; nextCursor?: string; totalCount: number }> {
+  const document = searchQuery(!reuseStable);
   const out = await runner([
     "api",
     "graphql",
@@ -150,15 +159,15 @@ async function searchPage(
     `limit=${limit}`,
     ...(cursor ? ["-f", `cursor=${cursor}`] : []),
     "-f",
-    `query=${PULL_REQUEST_SEARCH_QUERY}`,
-  ], repoRoot, { operation: "pr-search", request: graphQLRequest(PULL_REQUEST_SEARCH_QUERY,
+    `query=${document}`,
+  ], repoRoot, { operation: "pr-search", request: graphQLRequest(document,
     { searchQuery: buildSearchQuery(owner, name, query), limit, ...(cursor ? { cursor } : {}) }) });
   const response = JSON.parse(out) as GhSearchResponse, search = response.data?.search;
   if (response.errors?.length || !search || !Array.isArray(search.nodes)
     || typeof search.pageInfo?.hasNextPage !== "boolean" || !Number.isSafeInteger(search.issueCount) || Number(search.issueCount) < 0) {
     throw new Error("GitHub pull request search is incomplete. Refresh to try again.");
   }
-  const pullRequests = await completeSearchPullRequests(repoRoot, owner, name, search.nodes, runner);
+  const pullRequests = await completeSearchPullRequests(repoRoot, owner, name, search.nodes, runner, reuseStable);
   return {
     pullRequests: pullRequests.filter(pr => pr.number > 0),
     hasMore: Boolean(search?.pageInfo?.hasNextPage),
@@ -173,7 +182,8 @@ async function searchByNumber(
   owner: string,
   name: string,
   query: string,
-  runner: GhExecute
+  runner: GhExecute,
+  reuseStable: boolean
 ): Promise<PullRequestInfo | undefined> {
   const match = /^#?(\d+)$/.exec(query.trim());
   if (!match) {
@@ -181,7 +191,7 @@ async function searchByNumber(
   }
   const number = Number(match[1]);
   if (!Number.isSafeInteger(number) || number <= 0 || number > 2_147_483_647) return undefined;
-  return (await fetchSearchPullRequestsByNumber(repoRoot, owner, name, [number], runner))[0];
+  return (await fetchSearchPullRequestsByNumber(repoRoot, owner, name, [number], runner, reuseStable))[0];
 }
 
 /**
@@ -199,7 +209,8 @@ async function searchByCommitHash(
   owner: string,
   name: string,
   query: string,
-  runner: GhExecute
+  runner: GhExecute,
+  reuseStable: boolean
 ): Promise<PullRequestInfo[]> {
   const hash = pullRequestCommitHashQuery(query);
   if (!hash) {
@@ -230,7 +241,7 @@ async function searchByCommitHash(
     }
     if (numbers.size === before) throw new Error("GitHub pull request association pagination did not advance.");
   }
-  return fetchSearchPullRequestsByNumber(repoRoot, owner, name, [...numbers], runner);
+  return fetchSearchPullRequestsByNumber(repoRoot, owner, name, [...numbers], runner, reuseStable);
 }
 
 /**

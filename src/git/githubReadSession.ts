@@ -28,6 +28,16 @@ export function gitHubFileSnapshotHint(execute: GhExecute, repository: string, n
   return snapshotHints.get(execute)?.hasFiles(repository, number) ?? false;
 }
 
+/** 같은 canonical 저장소의 완전한 commit 후보가 있으면 검색에서 stable connection을 생략할 수 있다. */
+export function gitHubCommitSnapshotHint(execute: GhExecute, repository: string): boolean {
+  return snapshotHints.get(execute)?.commits.has(repository) ?? false;
+}
+
+/** 큐 wrapper가 이미 고정된 세션 identity를 공유하게 하며 환경·인증을 다시 해석하지 않는다. */
+export function inheritGitHubReadSession(source: GhExecute, wrapper: GhExecute): void {
+  const state = sessions.get(source); if (state) sessions.set(wrapper, state);
+}
+
 /** 성공한 현재 페이지가 고정한 canonical 저장소·실제 인증만 불변 캐시의 identity로 반환한다. */
 export function gitHubSnapshotIdentity(execute: GhExecute, repository: string): GitHubSnapshotIdentity | undefined {
   const state = sessions.get(execute), scope = state?.scope;

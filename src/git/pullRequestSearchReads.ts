@@ -5,7 +5,9 @@ import { graphQLResult, GitHubApiError } from "./githubApiError";
 import { graphQLRequest } from "./githubReadRequest";
 import { completePullRequestCommits, mapPullRequestReads } from "./pullRequestCommitPages";
 import { fetchRemainingReviewThreadCommentCounts } from "./pullRequestCommentCounts";
-import { PULL_REQUEST_INFO_QUERY, pullRequestInfoFromGraphQl, type GhPullRequestNode, type PullRequestInfo } from "./pullRequestInfo";
+import { buildPullRequestInfoQuery, pullRequestInfoFromGraphQl, type GhPullRequestNode, type PullRequestInfo } from "./pullRequestInfo";
+import { gitHubSnapshotIdentity, gitHubReadSessionState } from "./githubReadSession";
+import { withStableConnections, sameAnchor } from "./pullRequestListReads";
 
 const BATCH_SIZE = 20;
 interface SearchNodesResponse {
@@ -20,7 +22,30 @@ interface SearchNodesResponse {
  * @returns 정확한 원본 순서의 완성된 PR. 한 연결 실패도 호출자에게 전파한다.
  */
 export async function completeSearchPullRequests(root: string, owner: string, name: string,
-  nodes: GhPullRequestNode[], runner: GhExecute): Promise<PullRequestInfo[]> {
+  nodes: GhPullRequestNode[], runner: GhExecute, stableOmitted = false): Promise<PullRequestInfo[]> {
+  if (stableOmitted) {
+    for (const node of nodes) assertSearchPullRequest(node, false);
+    const identity = gitHubSnapshotIdentity(runner, `${owner}/${name}`), snapshots = gitHubReadSessionState(runner)?.snapshots;
+    const missing: GhPullRequestNode[] = [];
+    nodes = nodes.map(node => {
+      const known = identity && node.headRefOid && node.baseRefOid && node.baseRefName
+        ? snapshots?.commits.get(identity, node.number!, node.headRefOid, node.baseRefOid, node.baseRefName) : undefined;
+      if (known) return withStableConnections(node, known);
+      missing.push(node); return node;
+    });
+    const repaired = new Map<number, GhPullRequestNode>();
+    const groups: GhPullRequestNode[][] = [];
+    for (let index = 0; index < missing.length; index += BATCH_SIZE) groups.push(missing.slice(index, index + BATCH_SIZE));
+    await mapPullRequestReads(groups, async group => {
+      const values = await readNumberNodes(root, owner, name, group.map(node => node.number!), runner, true);
+      group.forEach((anchor, index) => {
+        const value = values[index];
+        if (!value || !sameAnchor(value, anchor)) throw new Error("Pull request head/base changed while loading search metadata. Refresh to try again.");
+        repaired.set(value.number!, value);
+      });
+    });
+    nodes = nodes.map(node => repaired.get(node.number!) ?? node);
+  }
   for (const node of nodes) assertSearchPullRequest(node);
   const counts = await fetchRemainingReviewThreadCommentCounts(root, owner, name, nodes, undefined, runner);
   return mapPullRequestReads(nodes, async node => {
@@ -36,12 +61,21 @@ export async function completeSearchPullRequests(root: string, owner: string, na
  * @returns 존재하는 PR 전체. 명시적인 null만 누락 PR로 인정하고 잘못된 번호/부분 응답은 거절한다.
  */
 export async function fetchSearchPullRequestsByNumber(root: string, owner: string, name: string,
-  numbers: readonly number[], runner: GhExecute): Promise<PullRequestInfo[]> {
+  numbers: readonly number[], runner: GhExecute, reuseStable = false): Promise<PullRequestInfo[]> {
   if (numbers.some(number => !Number.isSafeInteger(number) || number <= 0)) throw incomplete();
   const selected = [...new Set(numbers)], groups: number[][] = [];
   for (let index = 0; index < selected.length; index += BATCH_SIZE) groups.push(selected.slice(index, index + BATCH_SIZE));
   const pages = await mapPullRequestReads(groups, async group => {
-    const fields = group.map(number => `p${number}: pullRequest(number: ${number}) { ${PULL_REQUEST_INFO_QUERY} }`).join("\n");
+    const nodes = await readNumberNodes(root, owner, name, group, runner, !reuseStable);
+    return completeSearchPullRequests(root, owner, name, nodes.filter((node): node is GhPullRequestNode => node !== null), runner, reuseStable);
+  });
+  return pages.flat();
+}
+
+/** 양의 번호 묶음을 raw node로 읽으며 예상한 null+NOT_FOUND만 정상 누락으로 허용한다. */
+async function readNumberNodes(root: string, owner: string, name: string, group: readonly number[], runner: GhExecute,
+  stable: boolean): Promise<Array<GhPullRequestNode | null>> {
+    const fields = group.map(number => `p${number}: pullRequest(number: ${number}) { ${buildPullRequestInfoQuery(100, 100, stable)} }`).join("\n");
     let requestError: GhCliError | GitHubApiError | undefined;
     const query = `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { ${fields} } }`;
     const out = await runner(["api", "graphql", "-F", `owner=${owner}`, "-F", `name=${name}`, "-f",
@@ -55,15 +89,12 @@ export async function fetchSearchPullRequestsByNumber(root: string, owner: strin
       requestError = error; return error.stdout;
     });
     const repository = parseNumberBatch(out, group, requestError);
-    const nodes = group.flatMap(number => {
+    return group.map(number => {
       const node = repository[`p${number}`];
-      if (node === null) return [];
+      if (node === null) return null;
       if (!node || node.number !== number) throw incomplete();
-      return [node];
+      return node;
     });
-    return completeSearchPullRequests(root, owner, name, nodes, runner);
-  });
-  return pages.flat();
 }
 
 /**
@@ -89,14 +120,14 @@ function parseNumberBatch(output: string, numbers: readonly number[], requestErr
 }
 
 /** 필수 identity/합계/연결을 검증해 검색의 부분 데이터를 쓰기 가능한 PR snapshot으로 바꾸지 않는다. */
-function assertSearchPullRequest(node: GhPullRequestNode): void {
+function assertSearchPullRequest(node: GhPullRequestNode, stable = true): void {
   if (!node || !Number.isSafeInteger(node.number) || Number(node.number) <= 0 || typeof node.title !== "string"
     || !["OPEN", "CLOSED", "MERGED"].includes(node.state || "") || !node.url || !node.headRefOid || !node.baseRefOid
     || typeof node.headRefName !== "string" || typeof node.baseRefName !== "string"
-    || !Array.isArray(node.commits?.nodes) || typeof node.commits.pageInfo?.hasNextPage !== "boolean"
     || !Array.isArray(node.reviewThreads?.nodes) || typeof node.reviewThreads.pageInfo?.hasNextPage !== "boolean"
     || !Number.isSafeInteger(node.comments?.totalCount) || Number(node.comments?.totalCount) < 0
-    || !Number.isSafeInteger(node.files?.totalCount) || Number(node.files?.totalCount) < 0) throw incomplete();
+    || stable && (!Array.isArray(node.commits?.nodes) || typeof node.commits.pageInfo?.hasNextPage !== "boolean"
+      || !Number.isSafeInteger(node.files?.totalCount) || Number(node.files?.totalCount) < 0)) throw incomplete();
 }
 
 /** API 원문이나 인증값을 포함하지 않는 재시도 가능한 검색 계약 오류다. */

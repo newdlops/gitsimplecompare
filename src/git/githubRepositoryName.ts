@@ -32,6 +32,8 @@ export async function readGitHubRepositoryName(repoRoot: string, runner: GhExecu
     }
   }
   if (entry.name) return entry.name;
+  const canonical = remote === undefined ? undefined : gitHubRepositoryScopes.get(repoRoot, `repository:${remote}`);
+  if (canonical) { entry.name = canonical.name; return canonical.name; }
   let reader = entry.readers.get(runner);
   if (!reader) {
     const owned = entry;

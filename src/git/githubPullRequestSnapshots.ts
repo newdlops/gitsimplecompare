@@ -1,4 +1,5 @@
 // PR의 불변 raw 파일만 저장한다. 댓글이 합쳐진 DTO는 저장하지 않아 새 리뷰 상태를 가리지 않는다.
+import { GitHubCommitSnapshots } from "./githubCommitSnapshots";
 export interface RawPullRequestFile { path: string; additions: number; deletions: number; changeType: string; }
 export interface GitHubSnapshotIdentity { host: string; repository: string; credentialKey: string; }
 interface FileEntry { repository: string; number: number; credentialKey: string; files: RawPullRequestFile[]; bytes: number; }
@@ -6,6 +7,7 @@ interface Limits { maxEntries?: number; maxBytes?: number; maxEntryBytes?: numbe
 
 /** 활성화별 bounded immutable snapshot 저장소. 각 반환값은 새 객체여서 소비자 변경을 격리한다. */
 export class GitHubPullRequestSnapshots {
+  readonly commits = new GitHubCommitSnapshots();
   private readonly files = new Map<string, FileEntry>();
   private bytes = 0;
   constructor(private readonly limits: Limits = {}) {}
@@ -39,11 +41,12 @@ export class GitHubPullRequestSnapshots {
 
   /** 401로 무효화된 인증의 완전한 snapshot도 즉시 제거한다. */
   invalidateCredential(credentialKey: string): void {
+    this.commits.invalidateCredential(credentialKey);
     for (const [key, value] of this.files) if (value.credentialKey === credentialKey) this.remove(key);
   }
 
   /** 소유 활성화만 정리하므로 이전 disposer가 새 활성화의 저장소를 지우지 못한다. */
-  clear(): void { this.files.clear(); this.bytes = 0; }
+  clear(): void { this.files.clear(); this.bytes = 0; this.commits.clear(); }
   /** API·정규화 버전, canonical host/repository, PR 앵커와 실제 인증을 한 cache key에 넣는다. */
   private key(identity: GitHubSnapshotIdentity, number: number, head: string, base: string): string {
     return JSON.stringify(["raw-files-v1", identity.host, identity.repository.toLowerCase(), number, head, base, identity.credentialKey]);
