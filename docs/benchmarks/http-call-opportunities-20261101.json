@@ -1,0 +1,329 @@
+{
+  "scope": "Git Simple Compare extension runtime; other HTTP/HTTPS opportunities after the existing PR list/detail/search work",
+  "sourceCommit": "7fbde33cf76b04db373a0e4868ad2dbfa3b407f0",
+  "status": "Investigation complete; candidates are not implemented and real-world speed gains have not been measured.",
+  "candidates": [
+    {
+      "id": "H1",
+      "priority": "P1",
+      "area": "Suggested changeset 웹 인증 fallback 중복 요청",
+      "evidence": [
+        {
+          "file": "src/git/pullRequestSuggestedChangesets.ts",
+          "line": 76
+        },
+        {
+          "file": "src/git/pullRequestSuggestedChangesets.ts",
+          "line": 89
+        },
+        {
+          "file": "src/git/pullRequestSuggestedChangesets.ts",
+          "line": 110
+        },
+        {
+          "file": "src/git/pullRequestSuggestedChangesets.ts",
+          "line": 237
+        }
+      ],
+      "finding": "files 페이지 실패 뒤 comment permalink 후보에 같은 files URL이 다시 들어간다. credential별 동일 URL을 같은 조회에서 다시 읽는다.",
+      "opportunity": "논리 조회 안에서 URL·인증 identity·표현이 같은 성공/실패 요청을 공유한다. 실제로 같은 토큰인 인증 경로의 중복도 별도로 확인한다.",
+      "evidenceStrength": "Mock 실행: VS Code token 3회, gh token 3회, cookie 1회. 앞의 두 credential은 files URL을 각각 두 번 요청했다.",
+      "preserve": "인증이 다른 요청을 합치지 않는다. session·cookie 변경과 새로고침은 새 시도이며 실패를 영구 캐시하지 않는다.",
+      "measure": "인증 시도 수, 동일 credential/URL 재요청 수, HTML 보조 조회 완료 시간"
+    },
+    {
+      "id": "H2",
+      "priority": "P1",
+      "area": "GitHub HTML fragment 직렬 순회",
+      "evidence": [
+        {
+          "file": "src/git/githubWebHtml.ts",
+          "line": 65
+        },
+        {
+          "file": "src/git/githubWebHtml.ts",
+          "line": 74
+        },
+        {
+          "file": "src/git/githubWebHtml.ts",
+          "line": 190
+        }
+      ],
+      "finding": "최대 120개 fragment와 깊이 2를 허용하지만 독립 fragment도 한 개씩 await한다. 자체 Agent나 압축 응답 처리는 이 경로에 없다.",
+      "opportunity": "먼저 전체 지연을 계측하고 독립 fragment의 작은 동시성 한도, 동일 조회 공유, HTML 전용 연결 수명과 압축 수신을 각각 검증한다.",
+      "evidenceStrength": "Mock 실행: base + 독립 fragment 3개 = GET 4회, 동시 body 요청 최대 1개. Node 18/22의 기본 HTTPS Agent 차이도 로컬에서 확인했다.",
+      "preserve": "기존 탐색 순서와 파싱 결과, same-origin/PR 제한, 페이지·깊이·바이트 상한, 취소와 proxy/CA 정책을 보존한다. github.com Cookie 요청을 api.github.com Bearer 요청과 혼합하지 않는다.",
+      "measure": "fragment별 queue/TTFB/완료, 전체 suggestions 동등성, TLS 연결 수, wire/decoded bytes"
+    },
+    {
+      "id": "H3",
+      "priority": "P1",
+      "area": "Stack Advance 후보 PR 조회",
+      "evidence": [
+        {
+          "file": "src/git/pullRequestStackAdvanceService.ts",
+          "line": 83
+        },
+        {
+          "file": "src/git/pullRequestStackAdvanceService.ts",
+          "line": 94
+        },
+        {
+          "file": "src/git/pullRequestStackAdvanceService.ts",
+          "line": 273
+        },
+        {
+          "file": "src/commands/pullRequestStacks.ts",
+          "line": 369
+        }
+      ],
+      "finding": "부모 branch마다 gh pr view를 순차 호출한다. 호출 개수가 부모 branch 수 N에 비례한다.",
+      "opportunity": "부모별 PR 정보를 한정된 GraphQL 묶음으로 읽는 방식을 우선 검토한다. 단순히 병렬 요청 수부터 늘리지 않는다.",
+      "evidenceStrength": "Mock 실행: 부모 8개에서 branch 조회 8회, 동시 조회 최대 1개. 실제 HTTP 패킷 수는 측정하지 않았다.",
+      "preserve": "upstream branch 해석, 기존 PR 선택 의미, MERGED 판단, 오류 격리, 실제 실행 직전 최신 상태 검증",
+      "measure": "부모 branch 수별 CLI/API 호출 수, 후보 목록 전체 동등성, 후보 선택창 준비 시간"
+    },
+    {
+      "id": "H4",
+      "priority": "P1",
+      "area": "에디터 리뷰 댓글의 첫 표시",
+      "evidence": [
+        {
+          "file": "src/git/pullRequestReviewComments.ts",
+          "line": 132
+        },
+        {
+          "file": "src/git/pullRequestReviewComments.ts",
+          "line": 148
+        },
+        {
+          "file": "src/providers/pullRequestCommentCache.ts",
+          "line": 197
+        }
+      ],
+      "finding": "REST 댓글을 받은 뒤에도 suggested changeset 웹 fallback이 끝나야 댓글 결과를 반환한다.",
+      "opportunity": "API 댓글을 먼저 게시하고 HTML로 얻는 추가 suggestion을 뒤에 보완하는 방식을 검토한다. 이는 먼저 체감 대기를 줄이는 후보이며 HTTP 총시간 감소와는 별도로 측정한다.",
+      "evidenceStrength": "현재 서비스와 cache 호출 흐름을 직접 읽어 확인했다. 실제 UI 첫 표시 시간은 이번 조사에서 측정하지 않았다.",
+      "preserve": "이미 있는 2분 TTL·singleflight·캐시 상한·취소를 유지한다. 에디터/브랜치 변경 뒤 늦은 HTML 결과를 게시하지 않는다.",
+      "measure": "API 댓글 준비 시각, 첫 표시 시각, suggestions 완성 시각, 네트워크 총시간"
+    },
+    {
+      "id": "M1",
+      "priority": "P2",
+      "area": "리뷰 댓글·PR Conversation REST 읽기",
+      "evidence": [
+        {
+          "file": "src/git/pullRequestReviewComments.ts",
+          "line": 214
+        },
+        {
+          "file": "src/git/pullRequestPreviewConversation.ts",
+          "line": 107
+        },
+        {
+          "file": "src/git/pullRequestPreviewConversation.ts",
+          "line": 193
+        },
+        {
+          "file": "src/git/pullRequestService.ts",
+          "line": 269
+        }
+      ],
+      "finding": "공통 typed request가 없는 REST 호출이며 HTTP 전송 대상이 아니다. Conversation은 timeline/reviews/comments를 이미 병렬·지연 로딩한다. 각 페이지는 길이가 100 미만일 때 끝난다.",
+      "opportunity": "지원 환경에서 typed REST/session 경로와 조건부 GET을 연결한다. Link 메타데이터를 보존해 정확히 100의 배수에서 불필요한 빈 마지막 페이지가 필요한지도 확인한다.",
+      "evidenceStrength": "호출 옵션과 실제 Conversation 진입점을 확인했다. 페이지 끝의 추가 호출은 상한 도달 전 page-size 판정에서 도출한 정적 근거다.",
+      "preserve": "Accept full media type, 모든 댓글·review·timeline, timeline 실패 fallback, 기존 30초 preview cache·lazy load, auth/정책 경계",
+      "measure": "탭 첫 표시/완료, 0/99/100/101/200건의 요청 수와 전체 DTO, 200/304 bytes"
+    },
+    {
+      "id": "M2",
+      "priority": "P2",
+      "area": "PR head/base와 선행 PR GraphQL 조회",
+      "evidence": [
+        {
+          "file": "src/git/pullRequestRefLookup.ts",
+          "line": 32
+        },
+        {
+          "file": "src/git/pullRequestDependencyLookup.ts",
+          "line": 26
+        },
+        {
+          "file": "src/git/pullRequestDependencyLookup.ts",
+          "line": 59
+        },
+        {
+          "file": "src/git/githubReadRuntime.ts",
+          "line": 57
+        }
+      ],
+      "finding": "ref 조회 1개와 선행 PR 조회 2개가 typed request 없이 실행되어 HTTP 연결 재사용 대상이 아니다. 선행 조회는 이미 최대 12 commit/4 PR 묶음과 30초 TTL을 갖는다.",
+      "opportunity": "새 캐시를 중복 도입하기보다 기존 세션·typed GraphQL 경계에 연결한다. 기본 override/Enterprise/proxy 환경에서는 CLI 정책을 유지한다.",
+      "evidenceStrength": "세 호출 지점의 options와 runtime의 unconverted-command 선택을 확인했다.",
+      "preserve": "head/base 최신성, 부분 오류, 기존 bounded batch·TTL, 쓰기 전 재검증, CLI 강제·지원 정책",
+      "measure": "사용자 비교/선행 진단의 thin-query 시간, credential 비용 포함 CLI/HTTP 쌍, 데이터 동등성"
+    },
+    {
+      "id": "M3",
+      "priority": "P2",
+      "area": "Stack Submit의 PR 탐색 범위",
+      "evidence": [
+        {
+          "file": "src/git/pullRequestStackSubmitService.ts",
+          "line": 83
+        },
+        {
+          "file": "src/git/pullRequestStackSubmitService.ts",
+          "line": 119
+        },
+        {
+          "file": "src/git/pullRequestStackService.ts",
+          "line": 164
+        },
+        {
+          "file": "src/git/pullRequestStackService.ts",
+          "line": 191
+        }
+      ],
+      "finding": "submit은 repo 정보와 열린 PR 최대 1000개를 읽고, layer마다 다시 PR 정보를 조회한다. Graph 표시용 getGraphSnapshot은 이미 pager 결과를 재사용한다.",
+      "opportunity": "submit 대상 head 집합에 필요한 읽기만 묶고 operation 안에서 검증된 repository metadata를 재사용한다.",
+      "evidenceStrength": "실제 submit 호출과 getSnapshot의 두 읽기, layer별 후속 읽기를 확인했다. gh 내부 pagination의 HTTP 수는 미측정이다.",
+      "preserve": "쓰기/PR 생성의 최신 중복 확인, 현재 body와 사용자 편집, base 변경 순서, remote lease·hook. 쓰기를 무조건 병렬화하지 않는다.",
+      "measure": "stack 크기·저장소 열린 PR 수에 따른 읽기 수, 계획 준비 시간, create/edit 전 최신성"
+    },
+    {
+      "id": "L1",
+      "priority": "P3",
+      "area": "Clone from GitHub 저장소 catalog",
+      "evidence": [
+        {
+          "file": "src/git/githubRepositoryCatalog.ts",
+          "line": 74
+        },
+        {
+          "file": "src/git/githubRepositoryCatalog.ts",
+          "line": 85
+        },
+        {
+          "file": "src/commands/repositorySetup.ts",
+          "line": 192
+        }
+      ],
+      "finding": "기본 fetch로 GET /user/repos를 페이지당 100개씩 요청한다. 페이지는 사용자 요청 시에만 읽지만 온보딩을 다시 열면 첫 페이지부터 다시 시작한다.",
+      "opportunity": "OAuth session별 짧고 bounded한 페이지 재사용·ETag 재검증을 검토한다. 먼저 다시 열기 빈도와 응답 헤더를 측정한다.",
+      "evidenceStrength": "catalog와 실제 picker 호출을 확인했다. endpoint ETag와 실제 지연은 이번에 측정하지 않았다.",
+      "preserve": "gh/Git에 의존하지 않는 onboarding, VS Code OAuth identity·권한 변경, 취소, 사용자 선택형 pagination. fetch가 연결을 재사용하지 않는다고 가정하지 않는다.",
+      "measure": "동일 session 재열기 호출 수, 페이지 body bytes, 304 지원, 첫 선택창 표시"
+    }
+  ],
+  "conditionalOrDeferred": [
+    {
+      "area": "localhost inspector HTTP 탐색",
+      "evidence": [
+        {
+          "file": "src/providers/nativeDiffOverlayInspector.ts",
+          "line": 66
+        },
+        {
+          "file": "src/providers/nativeOverlayConnection.ts",
+          "line": 76
+        }
+      ],
+      "finding": "실패 경로는 기본 21 port × 6 round 탐색이 가능하다. 이미 기본 포트 우선, 나머지 포트 병렬 탐색, 열린 WebSocket·진행 중 연결 재사용과 실패 cooldown이 있다.",
+      "opportunity": "비기본 포트 재연결이 실제 병목일 때만 마지막 성공 포트를 PID·프로필에 묶어 먼저 검사한다.",
+      "priority": "P3/실측 후",
+      "preserve": "다른 VS Code/Node process에 붙지 않도록 PID 소유 검증을 생략하지 않는다."
+    },
+    {
+      "area": "대형 repository HTTPS clone 전송량",
+      "evidence": [
+        {
+          "file": "src/git/repositorySetupService.ts",
+          "line": 205
+        }
+      ],
+      "finding": "현재 clone은 전체 Git clone이며 shallow/partial 옵션이 없다.",
+      "opportunity": "대형 저장소에서 사용자 선택형 partial clone의 효과를 별도로 조사할 수 있다. 기본 history depth를 줄이는 작업은 이번 후보의 즉시 적용 범위가 아니다.",
+      "priority": "별도 요구사항·대형 저장소 실측 필요",
+      "preserve": "브랜치 비교·과거 이력·오프라인 사용에 필요한 객체를 보존하고 지연 객체 fetch 비용까지 포함한다."
+    }
+  ],
+  "alreadyCoveredOrExcluded": [
+    "이전 구현에서 개선한 PR 목록/검색/상세 파일 snapshot과 typed transport는 신규 후보로 중복 계산하지 않았다.",
+    "live commit 파일 경로는 pullRequestPreviewRemote.fetchRemotePreviewCommit으로 30분 OID cache·typed REST·lazy load가 이미 있다.",
+    "pullRequestPreviewCommits.fetchExistingPullRequestCommits는 src 안에 현재 호출자가 없어 우선순위에서 제외했다.",
+    "media의 SVG namespace URL과 openExternal은 자체 HTTP 다운로드로 계산하지 않았다.",
+    "AI CLI와 native Git의 내부 HTTP는 각 CLI가 소유한다. 확장이 직접 제어하는 반복 호출/전송량과 구분했다.",
+    "native fetch/pull 사전 인증 기본 활성화는 앞선 실측에서 회귀가 확인되어 추천하지 않는다."
+  ],
+  "localProbes": {
+    "sourceCommit": "7fbde33cf76b04db373a0e4868ad2dbfa3b407f0",
+    "externalNetworkUsed": false,
+    "realCredentialsRead": false,
+    "fragmentTrace": {
+      "requests": 4,
+      "independentFragments": 3,
+      "maximumBodyRequestsInFlight": 1,
+      "passesOwnAgent": false
+    },
+    "stackAdvanceTrace": {
+      "parentBranches": 8,
+      "branchReads": 8,
+      "maximumInFlightBranchReads": 1
+    },
+    "fallbackTrace": {
+      "inputComments": 12,
+      "directHttpsRequests": 7,
+      "ghWebProcesses": 1,
+      "ghCredentialProcesses": 1,
+      "maximumBodyRequestsInFlight": 1,
+      "byCredential": {
+        "vscode-token": {
+          "requests": 3,
+          "filesPageRequests": 2
+        },
+        "gh-token": {
+          "requests": 3,
+          "filesPageRequests": 2
+        },
+        "cookie": {
+          "requests": 1,
+          "filesPageRequests": 1
+        }
+      }
+    },
+    "limitation": "Mock responses prove current control flow and structural call counts only; no real-world speedup has been measured."
+  },
+  "standaloneRuntimeObservation": {
+    "node18": {
+      "version": "18.20.8",
+      "globalHttpsKeepAlive": false
+    },
+    "node22": {
+      "version": "22.22.2",
+      "globalHttpsKeepAlive": true,
+      "globalHttpsAgentTimeoutMs": 5000
+    },
+    "limitation": "실제 VS Code Agent/proxy 정책의 이번 신규 경로 측정은 하지 않았다. Keep-Alive 추가만으로 모든 Host가 빨라진다는 주장은 하지 않는다."
+  },
+  "primaryReferences": [
+    {
+      "url": "https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api",
+      "supports": "조건부 GET·Link pagination·secondary limit·쓰기 pacing. 병렬 수 증가보다 중복 제거와 batching을 먼저 검토한다."
+    },
+    {
+      "url": "https://nodejs.org/api/https.html#httpsglobalagent",
+      "supports": "Node 19 이후 global HTTPS Agent keep-alive 기본값 변경; Node 18과 최신 Host를 구분해야 한다."
+    }
+  ],
+  "proposedInvestigationOrder": [
+    "H1",
+    "H2",
+    "H3",
+    "H4",
+    "M1",
+    "M2",
+    "M3",
+    "L1"
+  ]
+}
