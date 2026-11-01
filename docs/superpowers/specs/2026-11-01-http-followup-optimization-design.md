@@ -220,3 +220,8 @@ builder가 남긴 질문은 이 private OAuth hydration 계약 하나다. 위 na
 - [GitHub REST 조건부 요청·pagination·rate limit](https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api)
 - [GitHub CLI 2.95 branch PR finder](https://github.com/cli/cli/blob/v2.95.0/pkg/cmd/pr/shared/finder.go)
 - [Git clone filter 의미](https://git-scm.com/docs/git-clone#Documentation/git-clone.txt---filterltfilter-specgt)
+
+
+## 구현·검증 완료 기록
+
+2026-11-01: H1/H2/H3/H4/M1/M2/M3/L1/D1/D2를 구현했다. 최종 제품 소스는 `0e2419e`이며 이후 Graph 검사 동기화만 변경했다. [최종 검증 기록](../../benchmarks/http-followup-verification-20261101.md)에 360파일 전체, Node 18, EN/KO 실제 Host, 10개 성능 비교와 리뷰 Important 3개 수정 결과를 기록했다. 기존 전용 브랜치를 보관한다.

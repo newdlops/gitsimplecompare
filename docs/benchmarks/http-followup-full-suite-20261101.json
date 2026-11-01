@@ -1,4 +1,6 @@
 {
+  "sourceHead": "e4cf62b05f4417a050e84f84f4feece5ca8620ee",
+  "node": "v22.22.2",
   "rendererVerification": true,
   "concurrency": 3,
   "timeoutMsPerGroup": 900000,
@@ -240,6 +242,7 @@
     "test/processIdentitySelection.test.ts",
     "test/productSurfaceManifest.test.ts",
     "test/pullPreparationSafety.test.ts",
+    "test/pullRequestApiBudgets.test.ts",
     "test/pullRequestBranchLookup.test.ts",
     "test/pullRequestCommentBatch.test.ts",
     "test/pullRequestCommentLoading.test.ts",
@@ -254,6 +257,7 @@
     "test/pullRequestGraphJump.test.ts",
     "test/pullRequestListService.test.ts",
     "test/pullRequestMatching.test.ts",
+    "test/pullRequestPreviewCommentPages.test.ts",
     "test/pullRequestPreviewPublish.test.ts",
     "test/pullRequestQuickEdit.test.ts",
     "test/pullRequestQuickEditService.test.ts",
@@ -336,6 +340,7 @@
     "test/sharedMonitorInspection.test.ts",
     "test/sharedWebviewPrimitives.test.ts",
     "test/snapshotDigest.test.ts",
+    "test/sshRemoteHost.test.ts",
     "test/stackConfigSafety.test.ts",
     "test/stagedChangesProbe.test.ts",
     "test/staleBranchCommand.test.ts",
@@ -543,13 +548,14 @@
         "test/graphPullRequestStartup.test.ts",
         "test/graphPullRequestUndo.test.ts",
         "test/graphRebaseExternalSync.test.ts",
-        "test/graphReferenceIdentity.test.ts"
+        "test/graphReferenceIdentity.test.ts",
+        "test/graphReferenceRows.test.ts"
       ],
       "code": 0,
-      "elapsedMs": 205638,
+      "elapsedMs": 265955,
       "summary": {
-        "tests": 1255,
-        "pass": 1254,
+        "tests": 1261,
+        "pass": 1260,
         "fail": 0,
         "cancelled": 0,
         "skipped": 1
@@ -558,7 +564,6 @@
     {
       "group": 2,
       "files": [
-        "test/graphReferenceRows.test.ts",
         "test/graphReferenceState.test.ts",
         "test/graphRefreshCoordinator.test.ts",
         "test/graphRefreshFingerprint.test.ts",
@@ -616,6 +621,7 @@
         "test/processIdentitySelection.test.ts",
         "test/productSurfaceManifest.test.ts",
         "test/pullPreparationSafety.test.ts",
+        "test/pullRequestApiBudgets.test.ts",
         "test/pullRequestBranchLookup.test.ts",
         "test/pullRequestCommentBatch.test.ts",
         "test/pullRequestCommentLoading.test.ts",
@@ -630,6 +636,7 @@
         "test/pullRequestGraphJump.test.ts",
         "test/pullRequestListService.test.ts",
         "test/pullRequestMatching.test.ts",
+        "test/pullRequestPreviewCommentPages.test.ts",
         "test/pullRequestPreviewPublish.test.ts",
         "test/pullRequestQuickEdit.test.ts",
         "test/pullRequestQuickEditService.test.ts",
@@ -712,6 +719,7 @@
         "test/sharedMonitorInspection.test.ts",
         "test/sharedWebviewPrimitives.test.ts",
         "test/snapshotDigest.test.ts",
+        "test/sshRemoteHost.test.ts",
         "test/stackConfigSafety.test.ts",
         "test/stagedChangesProbe.test.ts",
         "test/staleBranchCommand.test.ts",
@@ -738,10 +746,10 @@
         "test/workingTreeSnapshot.test.ts"
       ],
       "code": 0,
-      "elapsedMs": 325600,
+      "elapsedMs": 387213,
       "summary": {
-        "tests": 1431,
-        "pass": 1431,
+        "tests": 1444,
+        "pass": 1444,
         "fail": 0,
         "cancelled": 0,
         "skipped": 0
@@ -749,5 +757,5 @@
     }
   ],
   "complete": true,
-  "inputHash": "036d7e57553b808312f09c636bce0f765c0b05376a5c85f8feab9cc894afd844"
+  "inputHash": "54b6b77c61ed2cac1737e1b8568c0b72292bf60c9ad1fdf66523e9fb78924a31"
 }

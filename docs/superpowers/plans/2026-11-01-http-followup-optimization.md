@@ -142,8 +142,8 @@
 **Files:** actual Host smoke helpers/specs, reproducible benchmark(s), `docs/benchmarks/` results, plan/spec status.
 **Interfaces:** map each of H1/H2/H3/H4/M1/M2/M3/L1/D1/D2 to implementation, functional proof and actual or controlled performance evidence; all before/after comparisons validate the complete applicable payload.
 
-- [ ] Run full `GSC_VERIFY_PR_RENDERER=1 npm test`, types, production package and Node18 relevant tests. State optional skips or missing tooling precisely.
-- [ ] Run actual EN/KO Host: progressive comments/delayed failure/stale file/thread expansion, forced CLI/supported HTTP/dispose, Settings full/blobless controls. Inspect 1440×900 and 900×700 function and appearance separately.
-- [ ] Measure at least three alternating pairs or deterministic request-count comparisons for each candidate; include authorization, end-to-end completion, bytes, clone checkout and hydration. Label mock/local/public evidence and disclose regressions.
-- [ ] Dispatch one fresh whole-branch reviewer per executing-plans; regrade findings, fix Important/Critical with RED→GREEN and final full green suite; no re-review loop.
-- [ ] Commit verified results and completion map, collect all rulings/deferred minors, clean only this plan workspace, retain reviewable branch.
+- [x] Run full `GSC_VERIFY_PR_RENDERER=1 npm test`, types, production package and Node18 relevant tests. State optional skips or missing tooling precisely.
+- [x] Run actual EN/KO Host: progressive comments/delayed failure/stale file/thread expansion, forced CLI/supported HTTP/dispose, Settings full/blobless controls. Inspect 1440×900 and 900×700 function and appearance separately.
+- [x] Measure at least three alternating pairs or deterministic request-count comparisons for each candidate; include authorization, end-to-end completion, bytes, clone checkout and hydration. Label mock/local/public evidence and disclose regressions.
+- [x] Dispatch one fresh whole-branch reviewer per executing-plans; regrade findings, fix Important/Critical with RED→GREEN and final full green suite; no re-review loop.
+- [x] Commit verified results and completion map, collect all rulings/deferred minors, clean only this plan workspace, retain reviewable branch.

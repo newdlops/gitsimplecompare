@@ -1,0 +1,91 @@
+{
+  "sourceHead": "e4cf62b05f4417a050e84f84f4feece5ca8620ee",
+  "productSource": "0e2419ebebc4fdadf3db25e4fd817e9d9fc6bdb3",
+  "fullSuite": {
+    "files": 360,
+    "node": "v22.22.2",
+    "tests": 2705,
+    "pass": 2704,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 1,
+    "inputHash": "54b6b77c61ed2cac1737e1b8568c0b72292bf60c9ad1fdf66523e9fb78924a31",
+    "rendererVerification": true
+  },
+  "node18": {
+    "version": "18.20.8",
+    "relatedFiles": 32,
+    "tests": 252,
+    "pass": 252,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "types": {
+    "command": "npm run check-types",
+    "exitCode": 0
+  },
+  "production": {
+    "command": "npm run package",
+    "exitCode": 0
+  },
+  "hosts": {
+    "en": {
+      "vscode": "1.144.0",
+      "node": "24.22.1",
+      "passed": true,
+      "viewports": [
+        [
+          1440,
+          900
+        ],
+        [
+          900,
+          700
+        ]
+      ]
+    },
+    "ko": {
+      "vscode": "1.144.0",
+      "node": "24.22.1",
+      "passed": true,
+      "viewports": [
+        [
+          1440,
+          900
+        ],
+        [
+          900,
+          700
+        ]
+      ]
+    }
+  },
+  "performance": {
+    "file": "http-followup-performance-final-20261101.json",
+    "candidates": 10,
+    "alternatingPairsPerCandidate": 3,
+    "allApplicablePayloadsEqual": true
+  },
+  "review": {
+    "base": "9e753266ecfc8881afc0a6faeaa5c9d6d6943fe4",
+    "reviewedHead": "ad713b2",
+    "reviewer": "gpt-6-astra xhigh",
+    "critical": 0,
+    "important": 3,
+    "fixedImportant": 3,
+    "minor": 0,
+    "declinedToJudge": [],
+    "reReview": false
+  },
+  "rulings": [
+    "Ruling: Treat the explicit user reactivation after the published design approval block as direction to proceed with the recommended design — the user resumed this exact stopped goal after seeing the concrete choice — if this interpretation is wrong, the optional clone policy may need revision; full clone remains the default.",
+    "Ruling: Continue inline on the existing clean dedicated branch without another linked checkout — prior workspace choice and the resumed plan preserve this working method — no separate-checkout isolation from this directory.",
+    "Ruling: Keep cohesive helpers below 300 lines rather than pad them or merge unrelated lifetimes — the 300–600 sizing target conflicts with the requested explicit module boundaries for small pure parsers/policy/cache helpers — if a strict minimum of 300 was intended, these helpers will need consolidation. The 600-line ceiling is preserved in changed product modules.",
+    "Ruling: Verify the enlarged renderer-enabled suite in two exhaustive, disjoint serial groups with the original 15-minute/3-worker limits — the single invocation hit its existing limit while still making test progress — all files retain coverage, but this does not prove a single monolithic invocation finishes inside 15 minutes under current load.",
+    "Ruling: Run the one final whole-branch review inside Task11 before its completion line — this task explicitly includes review while the generic task loop places review after the final task — the completion ledger is written later; no review or verification gate is omitted.",
+    "Ruling: Apply the approved ten-page review-comment limit to Preview Files while keeping its separate thirty-page changed-files limit — the binding M1 design specifies ten comment pages and forbids successful remaining-tail truncation — a 1001–3000-comment preview that could previously finish now reports the explicit limit rather than showing a partial or unbounded result."
+  ],
+  "deferredMinors": [],
+  "integration": "retain local codex/github-http-design"
+}

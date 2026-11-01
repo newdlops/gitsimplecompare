@@ -206,7 +206,7 @@
   ],
   "progressiveComments": {
     "apiBeforeHtml": true,
-    "firstReadyMs": 823,
+    "firstReadyMs": 732,
     "htmlFailureKeepsApi": true,
     "nativeExpandedThreadPreserved": true,
     "staleFileSuppressed": true,
