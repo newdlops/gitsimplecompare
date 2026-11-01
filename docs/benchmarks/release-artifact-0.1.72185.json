@@ -108,6 +108,41 @@
     "fullSuiteTests": 2723,
     "fullSuitePassed": 2722,
     "fullSuiteFailed": 0,
-    "fullSuiteSkipped": 1
-  }
+    "fullSuiteSkipped": 1,
+    "marketplacePublishExitCode": 0,
+    "marketplaceExactDownloadMatched": true,
+    "localInstallExitCode": 0,
+    "registeredVersion": "0.1.72185",
+    "registeredEntries": 1,
+    "installedRuntimeFilesMatched": 84,
+    "publicLatestVersionMatched": true,
+    "serverValidationPassed": true
+  },
+  "publication": {
+    "publisher": "newdlops",
+    "extensionId": "newdlops.gitsimplecompare",
+    "version": "0.1.72185",
+    "url": "https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare",
+    "releaseCommit": "e522b6b3d3480876236644c81c7ed08d7dc1c75a",
+    "remoteMainVerified": true,
+    "downloadSha256": "5834c856cfa1cc3d3ba78a501dd738f7906e1d0c1fcd6a8029269ea3f01a503a",
+    "downloadExactPackageMatched": true,
+    "serverValidated": true,
+    "serverVersionFlags": 1,
+    "publicLatestVersion": "0.1.72185",
+    "gallerySha256": "5834c856cfa1cc3d3ba78a501dd738f7906e1d0c1fcd6a8029269ea3f01a503a",
+    "verifiedAtUtc": "2026-11-01T15:08:42.983Z"
+  },
+  "limitations": [
+    "Existing user windows were not reloaded; reload them to activate the locally installed update.",
+    "The complete manual publishing checklist was not repeated; isolated extracted-VSIX activation and command smoke passed."
+  ],
+  "runtimeAdded": [],
+  "runtimeRemoved": [],
+  "runtimeChanged": [
+    "package.nls.json",
+    "package.nls.ko.json",
+    "dist/extension.js",
+    "l10n/bundle.l10n.ko.json"
+  ]
 }
