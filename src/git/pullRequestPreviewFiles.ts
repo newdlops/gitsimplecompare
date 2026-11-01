@@ -7,6 +7,8 @@ import { FileChangeStatus } from "./gitTypes";
 import { splitRepositoryName } from "./githubRepository";
 import { inheritReplyCommentLocations } from "./pullRequestCommentLocations";
 import { createGitHubReadSession, completeGitHubReadSession, gitHubReadSessionState } from "./githubReadSession";
+import { decodeRestPage, nextRestPage, GitHubRestPageError } from "./githubRestPages";
+import { readSessionRestApiBase } from "./githubRestSession";
 import { restRead } from "./githubReadRequest";
 
 /** 댓글이나 patch 본문 없이 PR changed-files 목록에 필요한 파일 정보 */
@@ -199,14 +201,17 @@ async function readPagedResult<T>(
   const all: T[] = [];
   for (let page = 1; page <= MAX_PAGES; page++) {
     const path = `repos/${owner}/${name}/${route}?per_page=${PAGE_SIZE}&page=${page}`;
+    const metadata = route.endsWith("/comments");
     const out = await runner([
       "api",
       ...headers.flatMap((header) => ["-H", header]),
       path,
-    ], cwd, { operation: "pr-preview-files", request: restRead(`/${path}`, headers.find(header => /^Accept:/i.test(header))?.slice(7).trim()).request });
-    const items = JSON.parse(out) as T[];
+    ], cwd, { operation: "pr-preview-files", request: { ...restRead(`/${path}`, headers.find(header => /^Accept:/i.test(header))?.slice(7).trim()).request, ...(metadata ? { responseMode: "page" as const } : {}) } });
+    const result = metadata ? decodeRestPage<T[]>(out) : undefined;
+    const items = result ? result.data : JSON.parse(out) as T[];
+    if (!Array.isArray(items)) throw new GitHubRestPageError("invalid-json");
     all.push(...items);
-    if (items.length < PAGE_SIZE) {
+    if (result ? nextRestPage(result, `/${path}`, page, PAGE_SIZE, readSessionRestApiBase(runner)) === undefined : items.length < PAGE_SIZE) {
       return { items: all, truncated: false };
     }
   }

@@ -98,11 +98,11 @@
 **Files:** modify `pullRequestPreviewConversation.ts`, relevant preview helpers and focused conversation tests.
 **Interfaces:** consume Task 1 envelope and typed REST within one logical session; retain lazy tab entry, three streams, 100/page, ten-page bound, timeline fallback and original DTO ordering.
 
-- [ ] Add RED boundaries, exact-multiple no-empty-tail, full media, 304, malformed Link, tail failure, account/context change and forced CLI cases.
-- [ ] Run preview/conversation/composition tests; expected RED.
-- [ ] Wire metadata-aware pages and final context validation; report a real remaining-tail limit instead of claiming complete truncated data.
-- [ ] Run affected preview tests and types; expected green.
-- [ ] Commit `perf: reuse typed REST pagination for PR conversations`.
+- [x] Add RED boundaries, exact-multiple no-empty-tail, full media, 304, malformed Link, tail failure, account/context change and forced CLI cases.
+- [x] Run preview/conversation/composition tests; expected RED.
+- [x] Wire metadata-aware pages and final context validation; report a real remaining-tail limit instead of claiming complete truncated data.
+- [x] Run affected preview tests and types; expected green.
+- [x] Commit `perf: reuse typed REST pagination for PR conversations`.
 
 ## Task 8: OAuth catalog conditional reuse
 

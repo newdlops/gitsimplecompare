@@ -24,6 +24,8 @@ export function readSessionRepository(execute: GhExecute): GitHubRepositoryScope
  * @param execute canonical scope가 고정된 실행기 @returns 끝 slash 없는 HTTPS API 기준 주소
  */
 export function readSessionRestApiBase(execute: GhExecute): string {
-  const { host } = readSessionRepository(execute);
+  const state = gitHubReadSessionState(execute);
+  const host = (state?.candidate || state?.scope ? readSessionRepository(execute).host : state?.env.GH_HOST || "github.com").toLowerCase();
+  if (!/^[a-z0-9][a-z0-9.-]*$/.test(host)) throw new GitHubRestPageError("metadata");
   return host === "github.com" || host.endsWith(".ghe.com") ? `https://api.${host}` : `https://${host}/api/v3`;
 }

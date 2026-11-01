@@ -1,6 +1,12 @@
 // PR preview Conversation 탭에 표시할 GitHub 대화 이력을 읽는 모듈.
 // - 기존 PR 은 GitHub timeline/review/comment 를 합쳐 GitHub Conversation 탭에 가깝게 보여준다.
-import { runGh } from "./ghCli";
+import { GhCliError } from "./ghCli";
+import { readGitHubInteractive } from "./githubReadCache";
+import { createGitHubReadSession, completeGitHubReadSession, gitHubReadSessionState, GitHubReadContextChangedError } from "./githubReadSession";
+import { restRead } from "./githubReadRequest";
+import { decodeRestPage, nextRestPage, GitHubRestPageError } from "./githubRestPages";
+import { readSessionRestApiBase } from "./githubRestSession";
+import { GitHubApiError } from "./githubApiError";
 import type { GhExecute } from "./ghRunner";
 import { splitRepositoryName } from "./githubRepository";
 
@@ -93,8 +99,10 @@ export async function buildPullRequestConversation(
   pr: PreviewPullRequestRef | undefined,
   body: string,
   fallbackAuthor: string,
-  runner: GhExecute = runGh
+  runner: GhExecute = readGitHubInteractive,
+  signal?: AbortSignal
 ): Promise<PullRequestConversationItem[]> {
+  signal?.throwIfAborted();
   const opening: PullRequestConversationItem = {
     kind: "body",
     author: pr?.author || fallbackAuthor,
@@ -104,20 +112,34 @@ export async function buildPullRequestConversation(
     return [opening];
   }
   const [owner, name] = splitRepositoryName(repository);
-  const [timeline, reviews, reviewComments] = await Promise.all([
-    readTimeline(cwd, owner, name, pr.number, runner).catch(() => undefined),
-    readReviews(cwd, owner, name, pr.number, runner),
-    readReviewComments(cwd, owner, name, pr.number, runner),
-  ]);
-  const issueItems = timeline
-    ? timeline.map(normalizeTimelineItem).filter(Boolean) as PullRequestConversationItem[]
-    : (await readIssueComments(cwd, owner, name, pr.number, runner)).map(normalizeComment);
-  return uniqueItems([
-    opening,
-    ...issueItems,
-    ...reviews.map(normalizeReview),
-    ...reviewComments.map(normalizeReviewComment),
-  ]).sort(compareConversationItems);
+  const owns = !gitHubReadSessionState(runner), read = createGitHubReadSession(cwd, runner);
+  const controller = new AbortController(), abort = () => controller.abort();
+  let timedOut = false;
+  signal?.addEventListener("abort", abort, { once: true });
+  const timer = setTimeout(() => { timedOut = true; abort(); }, 30_000);
+  if (signal?.aborted) abort();
+  const streams = [
+    readTimeline(cwd, owner, name, pr.number, read, controller.signal).catch(error => {
+      if (!mayFallbackTimeline(error)) throw error;
+      return undefined;
+    }),
+    readReviews(cwd, owner, name, pr.number, read, controller.signal),
+    readReviewComments(cwd, owner, name, pr.number, read, controller.signal),
+  ] as const;
+  try {
+    const [timeline, reviews, reviewComments] = await Promise.all(streams);
+    const issueItems = timeline
+      ? timeline.map(normalizeTimelineItem).filter(Boolean) as PullRequestConversationItem[]
+      : (await readIssueComments(cwd, owner, name, pr.number, read, controller.signal)).map(normalizeComment);
+    await completeGitHubReadSession(read, controller.signal, owns);
+    return uniqueItems([opening, ...issueItems, ...reviews.map(normalizeReview), ...reviewComments.map(normalizeReviewComment)])
+      .sort(compareConversationItems);
+  } catch (error) {
+    controller.abort(); await Promise.allSettled(streams);
+    if (timedOut && !signal?.aborted) throw new GitHubApiError("timeout", "pr-preview-conversation");
+    throw error;
+  } finally { clearTimeout(timer); signal?.removeEventListener("abort", abort); controller.abort(); }
+
 }
 
 /** GitHub timeline API 를 페이지 단위로 읽는다. */
@@ -126,9 +148,10 @@ async function readTimeline(
   owner: string,
   name: string,
   number: number,
-  runner: GhExecute
+  runner: GhExecute,
+  signal?: AbortSignal
 ): Promise<GhTimelineItem[]> {
-  return readPaged<GhTimelineItem>(cwd, owner, name, `issues/${number}/timeline`, undefined, runner);
+  return readPaged<GhTimelineItem>(cwd, owner, name, `issues/${number}/timeline`, undefined, runner, signal);
 }
 
 /** GitHub issue comments API 를 페이지 단위로 읽는다. */
@@ -137,14 +160,15 @@ async function readIssueComments(
   owner: string,
   name: string,
   number: number,
-  runner: GhExecute
+  runner: GhExecute,
+  signal?: AbortSignal
 ): Promise<GhIssueComment[]> {
   return readPaged<GhIssueComment>(
     cwd,
     owner,
     name,
     `issues/${number}/comments`,
-    ["Accept: application/vnd.github.full+json"], runner
+    ["Accept: application/vnd.github.full+json"], runner, signal
   );
 }
 
@@ -154,14 +178,15 @@ async function readReviews(
   owner: string,
   name: string,
   number: number,
-  runner: GhExecute
+  runner: GhExecute,
+  signal?: AbortSignal
 ): Promise<GhReview[]> {
   return readPaged<GhReview>(
     cwd,
     owner,
     name,
     `pulls/${number}/reviews`,
-    ["Accept: application/vnd.github.full+json"], runner
+    ["Accept: application/vnd.github.full+json"], runner, signal
   );
 }
 
@@ -171,14 +196,15 @@ async function readReviewComments(
   owner: string,
   name: string,
   number: number,
-  runner: GhExecute
+  runner: GhExecute,
+  signal?: AbortSignal
 ): Promise<GhReviewComment[]> {
   return readPaged<GhReviewComment>(
     cwd,
     owner,
     name,
     `pulls/${number}/comments`,
-    ["Accept: application/vnd.github-commitcomment.full+json"], runner
+    ["Accept: application/vnd.github-commitcomment.full+json"], runner, signal
   );
 }
 
@@ -196,22 +222,34 @@ async function readPaged<T>(
   name: string,
   route: string,
   headers: string[] = ["Accept: application/vnd.github+json"],
-  runner: GhExecute = runGh
+  runner: GhExecute = readGitHubInteractive,
+  signal?: AbortSignal
 ): Promise<T[]> {
   const all: T[] = [];
   for (let page = 1; page <= MAX_PAGES; page++) {
-    const out = await runner([
-      "api",
-      ...headers.flatMap((header) => ["-H", header]),
-      `repos/${owner}/${name}/${route}?per_page=${PAGE_SIZE}&page=${page}`,
-    ], cwd, { operation: "pr-preview-conversation" });
-    const items = JSON.parse(out) as T[];
-    all.push(...items);
-    if (items.length < PAGE_SIZE) {
-      break;
-    }
+    const path = `/repos/${owner}/${name}/${route}?per_page=${PAGE_SIZE}&page=${page}`;
+    const accept = headers.find(header => /^Accept:/i.test(header))?.slice(7).trim() ?? "application/vnd.github+json";
+    const request = restRead(path, accept, ["api", ...headers.flatMap(header => ["-H", header]), path.slice(1)]);
+    const out = await runner(request.args, cwd, { operation: "pr-preview-conversation", signal,
+      request: { ...request.request, responseMode: "page" } });
+    signal?.throwIfAborted();
+    const result = decodeRestPage<T[]>(out);
+    if (!Array.isArray(result.data)) throw new GitHubRestPageError("invalid-json");
+    all.push(...result.data);
+    if (nextRestPage(result, path, page, PAGE_SIZE, readSessionRestApiBase(runner)) === undefined) break;
+    if (page === MAX_PAGES) throw new GitHubRestPageError("pagination");
   }
   return all;
+}
+
+/** timeline 미지원/일반 서버 오류만 같은 인증의 issue comments로 보완한다. 인증·취소·불완전 페이지는 실패한다. */
+function mayFallbackTimeline(error: unknown): boolean {
+  if (error instanceof GitHubRestPageError || error instanceof GitHubReadContextChangedError
+    || error instanceof Error && error.name === "AbortError") return false;
+  if (error instanceof GitHubApiError) return ["http", "network", "timeout"].includes(error.kind);
+  if (error instanceof GhCliError) return !["ABORTED", "ETIMEDOUT", "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"].includes(String(error.code))
+    && !/HTTP (?:401|403|429)|not authenticated|rate limit|authentication failed/i.test(error.message + " " + error.stderr);
+  return true;
 }
 
 /** GitHub timeline 항목을 preview conversation 항목으로 바꾼다. */

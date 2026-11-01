@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { buildPullRequestConversation } from "../src/git/pullRequestPreviewConversation";
 import { PullRequestReviewCommentService } from "../src/git/pullRequestReviewComments";
 import { encodeRestPage, restPageMetadata } from "../src/git/githubRestPages";
 import test from "node:test";
@@ -235,4 +236,43 @@ test("editor comment bootstrap and REST pages use one typed HTTP session with a 
   const result = await service.getActiveBranchReviewComments("topic");
   assert.equal(result?.number, 7); assert.deepEqual(result?.comments, []);
   assert.deepEqual({ http, cli, credentials }, { http: 2, cli: 0, credentials: 1 });
+});
+
+
+for (const transport of ["auto", "cli", "unknown-scope"] as const) {
+  test(`Conversation ${transport} keeps three REST streams in one fixed production session`, async t => {
+    const f = await fixture(t);
+    const context = await captureGitHubRequestContext(f.root, { ...process.env }, ["repo"]);
+    if (transport !== "unknown-scope") gitHubRepositoryScopes.learn(f.root, context, { nameWithOwner: "owner/repo", url: "https://github.com/owner/repo" });
+    let http = 0, cli = 0, credentials = 0;
+    const value = encodeRestPage("[]", restPageMetadata(200, {}));
+    const runtime = new GitHubReadRuntime({ policy: async () => ({ transport: transport === "cli" ? "cli" : "auto", systemProxy: "none" }),
+      credentials: new GitHubCredentialProvider(async () => { credentials++; return "fixture-token"; }),
+      cli: async args => { cli++; assert(args.includes("--include")); return "[]"; },
+      http: { read: async request => { http++; assert.equal(request.kind, "rest"); return value; }, dispose: async () => {} } });
+    const cache = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
+    t.after(async () => { await cache.dispose(); await runtime.dispose(); });
+    const runner: GhExecute = (args, root, options) => cache.read(args, root, options);
+    assert.equal((await buildPullRequestConversation(f.root, "owner/repo", { number: 7 }, "body", "author", runner)).length, 1);
+    assert.deepEqual({ http, cli, credentials }, transport === "auto" ? { http: 3, cli: 0, credentials: 1 }
+      : { http: 0, cli: 3, credentials: transport === "cli" ? 1 : 0 });
+  });
+}
+
+test("Conversation rejects a changed auth context instead of publishing a successful empty timeline", async t => {
+  const f = await fixture(t);
+  const context = await captureGitHubRequestContext(f.root, { ...process.env }, ["repo"]);
+  gitHubRepositoryScopes.learn(f.root, context, { nameWithOwner: "owner/repo", url: "https://github.com/owner/repo" });
+  let calls = 0;
+  const runtime = new GitHubReadRuntime({ policy: async () => ({ transport: "auto", systemProxy: "none" }),
+    credentials: new GitHubCredentialProvider(async () => "fixture-token"),
+    http: { read: async () => {
+      if (++calls === 3) await writeFile(f.hosts, "fixture: changed-during-conversation\n");
+      return encodeRestPage("[]", restPageMetadata(200, {}));
+    }, dispose: async () => {} } });
+  const cache = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
+  t.after(async () => { await cache.dispose(); await runtime.dispose(); });
+  const runner: GhExecute = (args, root, options) => cache.read(args, root, options);
+  await assert.rejects(buildPullRequestConversation(f.root, "owner/repo", { number: 7 }, "body", "author", runner), { name: "GitHubReadContextChangedError" });
+  assert.equal(calls, 3);
 });

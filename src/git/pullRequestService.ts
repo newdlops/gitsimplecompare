@@ -268,7 +268,7 @@ export class PullRequestService {
   /** Conversation 탭을 열 때만 대화를 읽고 파일 탭과 같은 댓글 cache/취소 정책을 공유한다. */
   async getPreviewConversation(preview: StagedPullRequestPreview, signal?: AbortSignal): Promise<PullRequestConversationItem[]> {
     const result = await buildPullRequestConversation(this.repoRoot, preview.repository, preview.existingPr,
-      preview.body, preview.sourceBranch, this.previewRead(this.repoRoot, preview.existingPr, signal));
+      preview.body, preview.sourceBranch, this.previewRead(this.repoRoot, preview.existingPr, signal), signal);
     signal?.throwIfAborted();
     return result;
   }
