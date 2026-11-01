@@ -1,0 +1,53 @@
+{
+  "productSource": "2e8f6a77f2da92330ab61add1102da1285c44e90",
+  "inputHash": "9a3a2161048646ff104cc080e7428e57194202be0678689c11565514a0cf842d",
+  "inputFiles": 1150,
+  "unitFiles": 361,
+  "node": "v22.22.2",
+  "fullSuite": {
+    "command": "GSC_VERIFY_PR_RENDERER=1 npm test",
+    "exitCode": 0,
+    "rendererVerification": true,
+    "tests": 2723,
+    "pass": 2722,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 1,
+    "duration_ms": 498391.197625
+  },
+  "typecheck": {
+    "command": "npm run check-types",
+    "exitCode": 0
+  },
+  "production": {
+    "command": "npm run package",
+    "exitCode": 0
+  },
+  "performance": {
+    "file": "http-next-performance-20261101.json",
+    "sourceHead": "c40a75a96cc39531f5ef52d60143036feb81e79c",
+    "candidates": 7,
+    "pairsPerCandidate": 5,
+    "all35PayloadsEqual": true,
+    "liveGitHubLatency": false
+  },
+  "review": {
+    "model": "gpt-6-astra high",
+    "base": "fd2a7b9",
+    "head": "dd90d85",
+    "includedCapFix": "fc526f9",
+    "critical": 0,
+    "important": 0,
+    "minor": 0,
+    "declinedToJudge": [],
+    "independentProbeExit": 137
+  },
+  "postReviewRegression": {
+    "commit": "2e8f6a7",
+    "description": "Preserve empty commit title OID fallback on snapshot reuse",
+    "redObserved": true,
+    "focusedTests": 27,
+    "focusedPass": 27,
+    "includedInFinalFullSuite": true
+  }
+}
