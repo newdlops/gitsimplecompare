@@ -43,11 +43,11 @@
 **Files:** modify `pullRequestRefLookup.ts`, `pullRequestDependencyLookup.ts`; add focused ref/composition tests and extend existing dependency tests.
 **Interfaces:** existing public signatures/DTOs remain; each logical query owns `createGitHubReadSession`/completion and supplies typed GraphQL. Canonical metadata may be observed from the same successful response.
 
-- [ ] Add failures proving real production composition uses HTTP after canonical discovery, one credential lease, correct placeholders, partial/error/context-change handling and unchanged prerequisite limits.
-- [ ] Run focused ref/dependency/integration tests; expected RED.
-- [ ] Connect typed descriptors, sessions and final validation without new stale-head caching.
-- [ ] Run focused tests and types; expected green.
-- [ ] Commit `perf: route ref and prerequisite reads through typed sessions`.
+- [x] Add failures proving real production composition uses HTTP after canonical discovery, one credential lease, correct placeholders, partial/error/context-change handling and unchanged prerequisite limits.
+- [x] Run focused ref/dependency/integration tests; expected RED.
+- [x] Connect typed descriptors, sessions and final validation without new stale-head caching.
+- [x] Run focused tests and types; expected green.
+- [x] Commit `perf: route ref and prerequisite reads through typed sessions`.
 
 ## Task 3: Shared branch PR lookup and Advance
 

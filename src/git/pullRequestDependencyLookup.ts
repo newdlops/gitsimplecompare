@@ -2,6 +2,8 @@
 import { readGitHub, type GitHubReadOptions } from "./githubReadCache";
 import type { GhExecute } from "./ghRunner";
 import { pullRequestInfoFromGraphQl, type GhPullRequestNode, type PullRequestInfo } from "./pullRequestInfo";
+import { graphQLRequest } from "./githubReadRequest";
+import { createGitHubReadSession, completeGitHubReadSession, gitHubReadSessionState } from "./githubReadSession";
 
 interface Node extends GhPullRequestNode { body?: string }
 interface LookupRepository {
@@ -31,14 +33,17 @@ export async function lookupPullRequestDependencies(root: string, pr: PullReques
   }`).join("\n");
   const query = `query($owner:String!,$name:String!,$number:Int!,$base:String!) {
     repository(owner:$owner,name:$name) {
+      nameWithOwner url
       current:pullRequest(number:$number) { headRefOid body }
       parents:pullRequests(headRefName:$base,first:3,states:[OPEN,MERGED]) { nodes { ${BASIC} } }
       ${fields}
     }
   }`;
   const options: GitHubReadOptions = { operation: "pr-prerequisite-discovery", signal, ttlMs: 30_000,
-    version: JSON.stringify([pr.headHash, pr.baseRefName, selected]) };
-  const output = await execute(["api", "graphql", "-F", "owner={owner}", "-F", "name={repo}",
+    version: JSON.stringify([pr.headHash, pr.baseRefName, selected]),
+    request: graphQLRequest(query, { owner: "{owner}", name: "{repo}", number: pr.number, base: pr.baseRefName }) };
+  const owns = !gitHubReadSessionState(execute), read = createGitHubReadSession(root, execute);
+  const output = await read(["api", "graphql", "-F", "owner={owner}", "-F", "name={repo}",
     "-F", `number=${pr.number}`, "-f", `base=${pr.baseRefName}`, "-f", `query=${query}`], root, options);
   const repository = parseRepository(output);
   // 새 PR 내용을 예전 OID의 진단 근거로 섞지 않는다.
@@ -48,8 +53,10 @@ export async function lookupPullRequestDependencies(root: string, pr: PullReques
     const node = repository[`c${index}`] as { associatedPullRequests?: { nodes?: Node[] } } | undefined;
     associated.set(selected[index], normalize(node?.associatedPullRequests?.nodes));
   }
-  return { associated, parents: normalize(repository.parents?.nodes),
+  const result = { associated, parents: normalize(repository.parents?.nodes),
     declared: declaredPrerequisites(repository.current?.body || "", pr.url, pr.number) };
+  if (owns) await completeGitHubReadSession(read, signal);
+  return result;
 }
 
 /**
@@ -63,14 +70,19 @@ export async function lookupPullRequestDependencyDetails(root: string, numbers: 
   const fields = selected.map(number => `p${number}:pullRequest(number:${number}) { ${BASIC}
     commits(first:100) { nodes { commit { oid } } pageInfo { hasNextPage } }
   }`).join("\n");
-  const options: GitHubReadOptions = { operation: "pr-prerequisite-details", signal, ttlMs: 30_000 };
-  const output = await execute(["api", "graphql", "-F", "owner={owner}", "-F", "name={repo}", "-f",
-    `query=query($owner:String!,$name:String!) { repository(owner:$owner,name:$name) { ${fields} } }`], root, options);
+  const query = `query($owner:String!,$name:String!) { repository(owner:$owner,name:$name) { nameWithOwner url ${fields} } }`;
+  const options: GitHubReadOptions = { operation: "pr-prerequisite-details", signal, ttlMs: 30_000,
+    request: graphQLRequest(query, { owner: "{owner}", name: "{repo}" }) };
+  const owns = !gitHubReadSessionState(execute), read = createGitHubReadSession(root, execute);
+  const output = await read(["api", "graphql", "-F", "owner={owner}", "-F", "name={repo}", "-f",
+    `query=${query}`], root, options);
   const repository = parseRepository(output);
-  return selected.flatMap(number => {
+  const result = selected.flatMap(number => {
     const node = repository[`p${number}`] as Node | undefined;
     return node ? [pullRequestInfoFromGraphQl(node)] : [];
   });
+  if (owns) await completeGitHubReadSession(read, signal);
+  return result;
 }
 
 /** 기본 정보만 받은 PR을 전체 commit 목록으로 잘못 간주하지 않게 표시한다. */

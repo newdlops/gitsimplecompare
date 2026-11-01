@@ -15,6 +15,8 @@ import { searchPullRequests } from "../src/git/pullRequestSearchService";
 import { __outputLines } from "./helpers/vscodeMock";
 import type { GhExecute } from "../src/git/ghRunner";
 import { readGitHubRepositoryName } from "../src/git/githubRepositoryName";
+import { fetchPullRequestRefs } from "../src/git/pullRequestRefLookup";
+import { lookupPullRequestDependencies, lookupPullRequestDependencyDetails } from "../src/git/pullRequestDependencyLookup";
 
 /** 실제 세션의 파일 metadata 관찰을 쓰며 환경·GitHub 설정은 임시 fixture에 격리한다. */
 async function fixture(t: test.TestContext) {
@@ -38,6 +40,43 @@ function pr(): any { return { number: 7, title: "Fixture", state: "OPEN", url: "
   headRefName: "topic", baseRefName: "main", headRefOid: "head", baseRefOid: "base", headHash: "head", baseHash: "base", files: { totalCount: 1 }, comments: { totalCount: 0 },
   commits: { nodes: [{ commit: { oid: "head", messageHeadline: "Fixture" } }], pageInfo: { hasNextPage: false } },
   reviewThreads: { nodes: [], pageInfo: { hasNextPage: false } } }; }
+
+for (const operation of ["refs", "prerequisites", "prerequisite-details"] as const) {
+  test(`production ${operation} uses typed HTTP after scope discovery with one actual credential lease`, async t => {
+    const f = await fixture(t);
+    const context = await captureGitHubRequestContext(f.root, { ...process.env }, ["repo"]);
+    gitHubRepositoryScopes.learn(f.root, context, { nameWithOwner: "owner/repo", url: "https://github.com/owner/repo" });
+    let http = 0, cli = 0, credentials = 0;
+    const value = JSON.stringify({ data: { repository: { nameWithOwner: "owner/repo", url: "https://github.com/owner/repo",
+      pullRequest: pr(), current: { headRefOid: "head", body: "" }, parents: { nodes: [] }, p7: pr() } } });
+    const runtime = new GitHubReadRuntime({ policy: async () => ({ transport: "auto", systemProxy: "none" }),
+      credentials: new GitHubCredentialProvider(async () => { credentials++; return "fixture-token"; }),
+      cli: async () => { cli++; return value; },
+      http: { read: async request => {
+        http++; assert.equal(request.kind, "graphql");
+        if (request.kind === "graphql") {
+          assert.equal(request.variables.owner, "owner"); assert.equal(request.variables.name, "repo");
+        }
+        return value;
+      }, dispose: async () => {} } });
+    const cache = new GitHubReadCache(runtime.execute, 30_000, runtime.prepare.bind(runtime));
+    t.after(async () => { await cache.dispose(); await runtime.dispose(); });
+    const runner: GhExecute = (args, root, options) => cache.read(args, root, options);
+    if (operation === "refs") assert.equal((await fetchPullRequestRefs(f.root, 7, runner))?.headHash, "head");
+    else if (operation === "prerequisites") await lookupPullRequestDependencies(f.root, pr(), [], undefined, runner);
+    else assert.equal((await lookupPullRequestDependencyDetails(f.root, [7], undefined, runner))[0].number, 7);
+    assert.deepEqual({ http, cli, credentials }, { http: 1, cli: 0, credentials: 1 });
+  });
+}
+
+test("ref response cannot publish across a repository-context change", async t => {
+  const f = await fixture(t);
+  const runner: GhExecute = async () => {
+    await writeFile(f.config, '[remote "origin"]\nurl = https://github.com/owner/changed.git\n');
+    return JSON.stringify({ data: { repository: { pullRequest: pr() } } });
+  };
+  await assert.rejects(fetchPullRequestRefs(f.root, 7, runner), { name: "GitHubReadContextChangedError" });
+});
 
 test("production drawer placeholder reopens 738 files with one authorized API", async t => {
   const f = await fixture(t), counter = join(f.root, "calls"), executable = join(f.root, "gh-fixture");

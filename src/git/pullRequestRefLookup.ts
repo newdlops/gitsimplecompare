@@ -4,10 +4,13 @@
 import { readGitHubInteractive } from "./githubReadCache";
 import type { GhExecute } from "./ghRunner";
 import { pullRequestInfoFromGraphQl, type GhPullRequestNode, type PullRequestInfo } from "./pullRequestInfo";
+import { createGitHubReadSession, completeGitHubReadSession, gitHubReadSessionState } from "./githubReadSession";
+import { graphQLRequest } from "./githubReadRequest";
 
 /** head/base commit 과 목록 표시 필드만 요청하는 최소 GraphQL selection. */
 const PULL_REQUEST_REFS_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
+    nameWithOwner url
     pullRequest(number: $number) {
       number title state url isDraft updatedAt
       headRefName headRefOid baseRefName baseRefOid
@@ -18,6 +21,7 @@ const PULL_REQUEST_REFS_QUERY = `query($owner: String!, $name: String!, $number:
 }`;
 
 interface PullRequestRefsResponse {
+  errors?: unknown[];
   data?: { repository?: { pullRequest?: GhPullRequestNode | null } | null };
 }
 
@@ -34,10 +38,20 @@ export async function fetchPullRequestRefs(
   number: number,
   runner: GhExecute = readGitHubInteractive
 ): Promise<PullRequestInfo | undefined> {
-  const output = await runner([
+  const owns = !gitHubReadSessionState(runner);
+  const read = createGitHubReadSession(repoRoot, runner);
+  const output = await read([
     "api", "graphql", "-F", "owner={owner}", "-F", "name={repo}",
     "-F", `number=${number}`, "-f", `query=${PULL_REQUEST_REFS_QUERY}`,
-  ], repoRoot, { operation: "pull-request-refs" });
-  const node = (JSON.parse(output) as PullRequestRefsResponse).data?.repository?.pullRequest;
-  return node ? pullRequestInfoFromGraphQl(node) : undefined;
+  ], repoRoot, { operation: "pull-request-refs", request: graphQLRequest(PULL_REQUEST_REFS_QUERY,
+    { owner: "{owner}", name: "{repo}", number }) });
+  const response = JSON.parse(output) as PullRequestRefsResponse;
+  const repository = response.data?.repository;
+  if (response.errors?.length || !repository || !Object.prototype.hasOwnProperty.call(repository, "pullRequest")) {
+    throw new Error("Cannot read complete pull request refs. Refresh and try again.");
+  }
+  const node = repository.pullRequest;
+  const result = node ? pullRequestInfoFromGraphQl(node) : undefined;
+  if (owns) await completeGitHubReadSession(read);
+  return result;
 }
