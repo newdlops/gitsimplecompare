@@ -153,6 +153,7 @@ export async function fetchRemotePreviewCommit(root: string, repository: string,
     if (value.sha !== hash || !Array.isArray(value.files)) throw new Error("GitHub returned incomplete commit files.");
     result.files.push(...value.files.map(file => ({ path: file.filename, oldPath: file.previous_filename,
       status: normalizePreviewStatus(file.status), additions: file.additions ?? 0, deletions: file.deletions ?? 0, patch: file.patch, comments: [] })));
+    if (page >= 30 && value.files.length >= 100) throw new Error("GitHub commit file limit reached. Open this commit on GitHub to inspect all files.");
     if (nextRestPage({ ...response, data: value.files }, `/${path}`, page, 100, readSessionRestApiBase(runner)) === undefined) {
       await completeGitHubReadSession(runner, signal);
       return result;

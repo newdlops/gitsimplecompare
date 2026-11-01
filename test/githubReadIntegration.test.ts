@@ -85,6 +85,18 @@ test("selected commit file object stops at a known final full page", async t => 
   assert.equal(Number(await readFile(count, "utf8")), 1);
 });
 
+test("known-final file metadata cannot certify completeness at the 3000-file API cap", async t => {
+  const f = await fixture(t);
+  const files = await fetchPullRequestChangedFiles(f.root, "owner/repo", 7, async (_args, _root, options) => {
+    if (options.request?.kind !== "rest") throw new Error("REST required");
+    const url = new URL(options.request.path, "https://api.github.com"), page = Number(url.searchParams.get("page"));
+    const next = new URL(url); next.searchParams.set("page", String(page + 1));
+    return encodeRestPage(JSON.stringify(Array.from({ length: 100 }, (_, index) => ({ filename: `${page}-${index}`, status: "modified" }))),
+      restPageMetadata(200, page < 30 ? { link: `<${next}>; rel="next"` } : {}));
+  });
+  assert.equal(files.files.length, 3000); assert.equal(files.truncated, true);
+});
+
 test("publish reads use independent HTTP sessions and the created PR identity", async t => {
   const f = await fixture(t), executable = join(f.root, "gh-publish-read");
   await writeFile(executable, `#!${process.execPath}\nconsole.log(process.argv[3]==='list'?'[]':JSON.stringify({number:7,title:'legacy'}));\n`);

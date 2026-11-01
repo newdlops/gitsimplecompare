@@ -221,7 +221,8 @@ async function readPagedResult<T>(
     if (!Array.isArray(items)) throw new GitHubRestPageError("invalid-json");
     all.push(...items);
     if (nextRestPage(result, `/${path}`, page, PAGE_SIZE, readSessionRestApiBase(runner)) === undefined) {
-      return { items: all, truncated: false };
+      // API 파일 상한은 Link의 부재로 완전성을 증명할 수 없다. 댓글의 독립 상한과는 구분한다.
+      return { items: all, truncated: route.endsWith("/files") && all.length >= MAX_PAGES * PAGE_SIZE };
     }
   }
   return { items: all, truncated: true };
