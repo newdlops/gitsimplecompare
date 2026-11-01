@@ -76,11 +76,11 @@
 **Files:** create `src/git/githubWebReadContext.ts`, `src/git/githubWebTransport.ts`, focused HTML transport/context tests; modify/split `githubWebHtml.ts`, `pullRequestSuggestedChangesets.ts` and parser helpers as necessary.
 **Interfaces:** context owns 30s deadline, auth/URL/Accept memoization, max two body reads, resource disposal and metrics; HTML parsing functions retain their existing exported behavior. Keep fragment maximum 120/depth2 and deterministic breadth-first result order.
 
-- [ ] Add RED fixtures for repeated files URL, distinct/same credential, duplicate child fragments, out-of-order responses, gzip/br/deflate, 64MiB wire/decoded bounds, deadline/abort/redirect and request/response/decoder close.
-- [ ] Run focused HTML/suggestion tests; expected RED.
-- [ ] Implement context sharing, two-reader scheduling, Host-managed compatibility path and proven owned keep-alive Agent; split the existing 601-line suggestion module by responsibility.
-- [ ] Run focused tests, secret-error checks and types; expected green, no new dependency.
-- [ ] Commit `perf: share and bound GitHub HTML enrichment reads`.
+- [x] Add RED fixtures for repeated files URL, distinct/same credential, duplicate child fragments, out-of-order responses, gzip/br/deflate, 64MiB wire/decoded bounds, deadline/abort/redirect and request/response/decoder close.
+- [x] Run focused HTML/suggestion tests; expected RED.
+- [x] Implement context sharing, two-reader scheduling, Host-managed compatibility path and proven owned keep-alive Agent; split the existing 601-line suggestion module by responsibility.
+- [x] Run focused tests, secret-error checks and types; expected green, no new dependency.
+- [x] Commit `perf: share and bound GitHub HTML enrichment reads`.
 
 ## Task 6: Progressive editor comments with actual typed bootstrap
 

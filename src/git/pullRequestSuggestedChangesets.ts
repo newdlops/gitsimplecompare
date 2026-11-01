@@ -2,9 +2,10 @@
 // - REST/GraphQL review comment API 에 없는 Copilot suggested changeset 을 보조적으로 읽기 위한 경로다.
 import { runGh } from "./ghCli";
 import { isGitHubHtml, readGitHubWebHtmlWithFragments } from "./githubWebHtml";
-import { parseCopilotSuggestedChangesetPayloads } from "./pullRequestSuggestedChangesetPayload";
-import { suggestedDiffRowsFromBlob } from "./pullRequestSuggestedChangesetHtmlRows";
-import { encodeSuggestedChangeRows } from "../utils/suggestedChangeFormat";
+import { parsePullRequestSuggestedChangesets, mergeSuggestedChangesets } from "./pullRequestSuggestedChangesetParser";
+export { parsePullRequestSuggestedChangesets } from "./pullRequestSuggestedChangesetParser";
+import { GitHubWebReadContext } from "./githubWebReadContext";
+import type { GitHubNetworkPolicy } from "./githubHttpPolicy";
 
 const WEB_COOKIE_ENV = "GIT_SIMPLE_COMPARE_GITHUB_COOKIE";
 
@@ -36,6 +37,8 @@ export interface PullRequestSuggestedChangesetOptions {
   webAccessToken?: string;
   /** VS Code SecretStorage 등에 저장된 github.com Cookie 헤더 값 */
   webCookie?: string;
+  /** Host가 캡처한 proxy/CA 정책이며 확인되지 않으면 기존 Host 관리 HTTPS를 유지한다. */
+  networkPolicy?: GitHubNetworkPolicy;
   /** 활성 에디터 요청이 폐기될 때 gh 및 HTTPS 순회를 중단할 신호 */
   signal?: AbortSignal;
 }
@@ -70,78 +73,81 @@ export async function readPullRequestSuggestedChangesets(
   options: PullRequestSuggestedChangesetOptions = {},
   comments: PullRequestSuggestedChangesetComment[] = []
 ): Promise<PullRequestSuggestedChangesetRead> {
-  throwIfAborted(options.signal);
-  const url = `https://github.com/${owner}/${name}/pull/${number}/files`;
-  const reasons: string[] = [];
-  const ghHtml = await readWithGhApi(repoRoot, url, options.signal);
-  throwIfAborted(options.signal);
-  if (ghHtml.ok) {
-    return parsedRead(ghHtml.html, "gh-api-web");
-  }
-  reasons.push(`gh-api-web: ${ghHtml.reason}`);
+  const context = new GitHubWebReadContext({ signal: options.signal, policy: options.networkPolicy });
+  try {
+    throwIfAborted(context.signal);
+    const url = `https://github.com/${owner}/${name}/pull/${number}/files`;
+    const reasons: string[] = [];
+    const ghHtml = await readWithGhApi(repoRoot, url, context.signal);
+    throwIfAborted(context.signal);
+    if (ghHtml.ok) {
+      return parsedRead(ghHtml.html, "gh-api-web");
+    }
+    reasons.push(`gh-api-web: ${ghHtml.reason}`);
 
-  if (options.webAccessToken) {
-    const vscodeTokenHtml = await readWithToken(url, options.webAccessToken, options.signal);
-    if (vscodeTokenHtml.ok) {
-      return parsedRead(vscodeTokenHtml.html, "vscode-auth-web");
+    if (options.webAccessToken) {
+      const vscodeTokenHtml = await readWithToken(url, options.webAccessToken, context.signal, context);
+      if (vscodeTokenHtml.ok) {
+        return parsedRead(vscodeTokenHtml.html, "vscode-auth-web");
+      }
+      reasons.push(`vscode-auth-web: ${vscodeTokenHtml.reason}`);
+      const vscodeCommentHtml = await readCommentPages(
+        comments,
+        (pageUrl) => readWithToken(pageUrl, options.webAccessToken || "", context.signal, context),
+        context.signal
+      );
+      if (vscodeCommentHtml.ok) {
+        return mapRead(vscodeCommentHtml.byCommentId, "vscode-auth-comment-page");
+      }
+      reasons.push(`vscode-auth-comment-page: ${vscodeCommentHtml.reason}`);
+    } else {
+      reasons.push("vscode-auth-web: no VS Code GitHub session");
+      reasons.push("vscode-auth-comment-page: no VS Code GitHub session");
     }
-    reasons.push(`vscode-auth-web: ${vscodeTokenHtml.reason}`);
-    const vscodeCommentHtml = await readCommentPages(
-      comments,
-      (pageUrl) => readWithToken(pageUrl, options.webAccessToken || "", options.signal),
-      options.signal
-    );
-    if (vscodeCommentHtml.ok) {
-      return mapRead(vscodeCommentHtml.byCommentId, "vscode-auth-comment-page");
-    }
-    reasons.push(`vscode-auth-comment-page: ${vscodeCommentHtml.reason}`);
-  } else {
-    reasons.push("vscode-auth-web: no VS Code GitHub session");
-    reasons.push("vscode-auth-comment-page: no VS Code GitHub session");
-  }
 
-  const ghToken = await readGhToken(repoRoot, options.signal);
-  if (ghToken.ok) {
-    const ghTokenHtml = await readWithToken(url, ghToken.token, options.signal);
-    if (ghTokenHtml.ok) {
-      return parsedRead(ghTokenHtml.html, "gh-token-web");
+    const ghToken = await readGhToken(repoRoot, context.signal);
+    if (ghToken.ok) {
+      const ghTokenHtml = await readWithToken(url, ghToken.token, context.signal, context);
+      if (ghTokenHtml.ok) {
+        return parsedRead(ghTokenHtml.html, "gh-token-web");
+      }
+      reasons.push(`gh-token-web: ${ghTokenHtml.reason}`);
+      const ghCommentHtml = await readCommentPages(
+        comments,
+        (pageUrl) => readWithToken(pageUrl, ghToken.token, context.signal, context),
+        context.signal
+      );
+      if (ghCommentHtml.ok) {
+        return mapRead(ghCommentHtml.byCommentId, "gh-token-comment-page");
+      }
+      reasons.push(`gh-token-comment-page: ${ghCommentHtml.reason}`);
+    } else {
+      reasons.push(`gh-token-web: ${ghToken.reason}`);
+      reasons.push(`gh-token-comment-page: ${ghToken.reason}`);
     }
-    reasons.push(`gh-token-web: ${ghTokenHtml.reason}`);
-    const ghCommentHtml = await readCommentPages(
-      comments,
-      (pageUrl) => readWithToken(pageUrl, ghToken.token, options.signal),
-      options.signal
-    );
-    if (ghCommentHtml.ok) {
-      return mapRead(ghCommentHtml.byCommentId, "gh-token-comment-page");
-    }
-    reasons.push(`gh-token-comment-page: ${ghCommentHtml.reason}`);
-  } else {
-    reasons.push(`gh-token-web: ${ghToken.reason}`);
-    reasons.push(`gh-token-comment-page: ${ghToken.reason}`);
-  }
 
-  if (options.webCookie) {
-    const storedCookieHtml = await readWithCookie(url, options.webCookie, options.signal);
-    if (storedCookieHtml.ok) {
-      return parsedRead(storedCookieHtml.html, "stored-web-cookie");
+    if (options.webCookie) {
+      const storedCookieHtml = await readWithCookie(url, options.webCookie, context.signal, context);
+      if (storedCookieHtml.ok) {
+        return parsedRead(storedCookieHtml.html, "stored-web-cookie");
+      }
+      reasons.push(`stored-web-cookie: ${storedCookieHtml.reason}`);
+    } else {
+      reasons.push("stored-web-cookie: not set");
     }
-    reasons.push(`stored-web-cookie: ${storedCookieHtml.reason}`);
-  } else {
-    reasons.push("stored-web-cookie: not set");
-  }
 
-  const envCookie = process.env[WEB_COOKIE_ENV]?.trim();
-  if (envCookie) {
-    const envCookieHtml = await readWithCookie(url, envCookie, options.signal);
-    if (envCookieHtml.ok) {
-      return parsedRead(envCookieHtml.html, "env-web-cookie");
+    const envCookie = process.env[WEB_COOKIE_ENV]?.trim();
+    if (envCookie) {
+      const envCookieHtml = await readWithCookie(url, envCookie, context.signal, context);
+      if (envCookieHtml.ok) {
+        return parsedRead(envCookieHtml.html, "env-web-cookie");
+      }
+      reasons.push(`env-web-cookie: ${envCookieHtml.reason}`);
+    } else {
+      reasons.push(`env-web-cookie: ${WEB_COOKIE_ENV} is not set`);
     }
-    reasons.push(`env-web-cookie: ${envCookieHtml.reason}`);
-  } else {
-    reasons.push(`env-web-cookie: ${WEB_COOKIE_ENV} is not set`);
-  }
-  return emptyRead(reasons.join("; "));
+    return emptyRead(reasons.join("; "));
+  } finally { await context.dispose(); }
 }
 
 /**
@@ -195,13 +201,14 @@ async function readGhToken(
 async function readWithToken(
   url: string,
   token: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  context?: GitHubWebReadContext
 ): Promise<{ ok: true; html: string } | { ok: false; reason: string }> {
   const read = await readGitHubWebHtmlWithFragments(url, {
     Authorization: `Bearer ${token}`,
     Accept: "text/html",
     "User-Agent": "Git Simple Compare",
-  }, signal);
+  }, signal, context);
   throwIfAborted(signal);
   return read;
 }
@@ -215,13 +222,14 @@ async function readWithToken(
 async function readWithCookie(
   url: string,
   cookie: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  context?: GitHubWebReadContext
 ): Promise<{ ok: true; html: string } | { ok: false; reason: string }> {
   const read = await readGitHubWebHtmlWithFragments(url, {
     Accept: "text/html",
     Cookie: cookie,
     "User-Agent": "Git Simple Compare",
-  }, signal);
+  }, signal, context);
   throwIfAborted(signal);
   return read;
 }
@@ -333,235 +341,12 @@ function stripHash(url: URL): URL {
   return next;
 }
 
-/**
- * GitHub HTML 에서 comment id 별 suggested changeset 을 파싱한다.
- * @param html PR files 웹 HTML
- * @returns comment id 별 suggested changeset 배열
- */
-export function parsePullRequestSuggestedChangesets(html: string): Map<string, string[]> {
-  const result = new Map<string, string[]>();
-  mergeSuggestedChangesets(result, parseCopilotSuggestedChangesetPayloads(html));
-  const positions = Array.from(html.matchAll(/discussion_r(\d+)/g));
-  for (let index = 0; index < positions.length; index++) {
-    const id = positions[index][1];
-    const start = positions[index].index || 0;
-    const end = positions[index + 1]?.index || html.length;
-    const block = html.slice(start, end);
-    const suggestions = suggestedChangesetsFromBlock(block);
-    if (suggestions.length) {
-      result.set(id, unique([...(result.get(id) || []), ...suggestions]));
-    }
-  }
-  for (const item of suggestedChangesetElements(html)) {
-    const id = nearestCommentId(html, item.start, item.end);
-    if (!id) {
-      continue;
-    }
-    const suggestions = suggestedChangesetsFromBlock(item.html);
-    if (suggestions.length) {
-      result.set(id, unique([...(result.get(id) || []), ...suggestions]));
-    }
-  }
-  return result;
-}
-
-/**
- * suggested changeset map 을 다른 map 에 병합한다.
- * @param target 병합 대상
- * @param source 새로 읽은 comment id 별 suggested changeset
- */
-function mergeSuggestedChangesets(
-  target: Map<string, string[]>,
-  source: Map<string, string[]>
-): void {
-  for (const [id, suggestions] of source) {
-    target.set(id, unique([...(target.get(id) || []), ...suggestions]));
-  }
-}
-
-/**
- * comment HTML 조각 안의 suggested changeset 코드만 추출한다.
- * @param block comment 주변 HTML
- * @returns suggested changeset 코드 배열
- */
-function suggestedChangesetsFromBlock(block: string): string[] {
-  const suggestions: string[] = [];
-  for (const part of elementsByClass(block, "js-suggested-changes-blob").map((item) => item.html)) {
-    const rows = suggestedDiffRowsFromBlob(part);
-    if (rows.some((row) => row.kind !== "context")) {
-      suggestions.push(encodeSuggestedChangeRows(rows));
-      continue;
-    }
-    const additions = blobCodeLines(part, "blob-code-addition");
-    if (additions.length) {
-      suggestions.push(additions.join("\n"));
-      continue;
-    }
-    if (blobCodeLines(part, "blob-code-deletion").length) {
-      suggestions.push("");
-    }
-  }
-  return unique(suggestions);
-}
-
-/** class 로 찾은 HTML element 조각과 원문 위치 */
-interface HtmlElementRange {
-  /** element 시작 index */
-  start: number;
-  /** element 끝 index */
-  end: number;
-  /** element HTML */
-  html: string;
-}
-
-/**
- * 전체 HTML 에서 suggested changeset blob element 를 위치 정보와 함께 찾는다.
- * @param html 검색할 HTML
- * @returns suggested changeset blob element 목록
- */
-function suggestedChangesetElements(html: string): HtmlElementRange[] {
-  return elementsByClass(html, "js-suggested-changes-blob");
-}
-
-/**
- * 특정 class 를 가진 div element 들을 균형 잡힌 HTML 조각으로 잘라낸다.
- * @param html 검색할 HTML
- * @param className 찾을 class 이름
- * @returns 해당 element HTML 조각과 원문 위치 배열
- */
-function elementsByClass(html: string, className: string): HtmlElementRange[] {
-  const result: HtmlElementRange[] = [];
-  const pattern = new RegExp(`<div\\b[^>]*class=["'][^"']*\\b${escapeRegExp(className)}\\b[^"']*["'][^>]*>`, "gi");
-  for (const match of html.matchAll(pattern)) {
-    const start = match.index || 0;
-    const end = balancedDivEnd(html, start);
-    if (end > start) {
-      result.push({ start, end, html: html.slice(start, end) });
-    }
-  }
-  return result;
-}
-
-/**
- * suggested changeset blob 주변에서 가장 가까운 GitHub review comment id 를 찾는다.
- * - GitHub HTML fragment 는 comment anchor 가 blob 앞/뒤 어느 쪽에 놓일 수 있어 양방향을 확인한다.
- * @param html 전체 HTML
- * @param start blob 시작 index
- * @param end blob 끝 index
- * @returns review comment id 또는 undefined
- */
-function nearestCommentId(html: string, start: number, end: number): string | undefined {
-  const before = html.slice(Math.max(0, start - 120000), start);
-  const after = html.slice(end, Math.min(html.length, end + 20000));
-  const beforeIds = Array.from(before.matchAll(commentIdPattern()), (match) => matchedCommentId(match));
-  const afterId = commentIdPattern().exec(after);
-  return beforeIds.filter(Boolean).pop() || (afterId ? matchedCommentId(afterId) : undefined);
-}
-
-/**
- * GitHub HTML 에서 review comment id 로 쓰이는 대표 패턴을 만든다.
- * @returns comment id 추출 정규식
- */
-function commentIdPattern(): RegExp {
-  return /(?:discussion_r|pullrequestreviewcomment-|review-comment-|comment-)(\d+)/g;
-}
-
-/**
- * comment id 정규식 match 에서 id 문자열만 꺼낸다.
- * @param match RegExp match
- * @returns comment id
- */
-function matchedCommentId(match: RegExpMatchArray): string | undefined {
-  return match[1];
-}
-
-/**
- * div 시작 위치에서 대응되는 닫는 div 끝 위치를 찾는다.
- * @param html 전체 HTML
- * @param start div 시작 위치
- * @returns 닫는 div 뒤 위치. 찾지 못하면 html 끝
- */
-function balancedDivEnd(html: string, start: number): number {
-  const tagPattern = /<\/?div\b[^>]*>/gi;
-  tagPattern.lastIndex = start;
-  let depth = 0;
-  for (let match = tagPattern.exec(html); match; match = tagPattern.exec(html)) {
-    const tag = match[0];
-    if (tag.startsWith("</")) {
-      depth--;
-      if (depth === 0) {
-        return tagPattern.lastIndex;
-      }
-    } else if (!tag.endsWith("/>")) {
-      depth++;
-    }
-  }
-  return html.length;
-}
-
-/**
- * GitHub blob-code table cell 에서 코드 줄을 읽는다.
- * @param html suggested changeset HTML 조각
- * @param className addition/deletion cell class
- * @returns 디코딩된 코드 줄 배열
- */
-function blobCodeLines(html: string, className: string): string[] {
-  const result: string[] = [];
-  const pattern = new RegExp(`<td\\b[^>]*class=["'][^"']*\\b${escapeRegExp(className)}\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/td>`, "gi");
-  for (const match of html.matchAll(pattern)) {
-    result.push(htmlText(match[1]));
-  }
-  return result;
-}
-
-/**
- * HTML 조각을 코드 텍스트로 디코딩한다.
- * @param value HTML 조각
- * @returns 사람이 읽을 수 있는 코드 텍스트
- */
-function htmlText(value: string): string {
-  return decodeHtmlEntities(
-    value
-      .replace(/<br\s*\/?>/gi, "")
-      .replace(/<[^>]+>/g, "")
-  );
-}
-
-/** HTML entity 를 최소한의 코드 표시용 텍스트로 바꾼다. */
-function decodeHtmlEntities(value: string): string {
-  return value
-    .replace(/&#(\d+);/g, (match, code: string) => decodeCodePoint(match, Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (match, code: string) => decodeCodePoint(match, parseInt(code, 16)))
-    .replace(/&nbsp;/g, " ")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, "\"")
-    .replace(/&#39;/g, "'");
-}
-
-/** 숫자 HTML entity code point 를 안전하게 문자로 바꾼다. */
-function decodeCodePoint(fallback: string, codePoint: number): string {
-  try {
-    return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 /** 중복 문자열을 입력 순서대로 제거한다. */
-function unique(values: string[]): string[] {
-  return Array.from(new Set(values));
-}
-
-/** 정규식에 넣을 문자열을 escape 한다. */
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+function unique(values: string[]): string[] { return [...new Set(values)]; }
 
 /** unknown 오류를 짧은 로그 문자열로 바꾼다. */
 function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return error instanceof Error && error.name === "AbortError" ? "request cancelled" : "GitHub CLI web request failed";
 }
 
 /** HTML 파싱 결과를 진단 정보와 함께 반환한다. */

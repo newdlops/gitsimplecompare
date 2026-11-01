@@ -1,11 +1,9 @@
 // github.com 웹 페이지와 lazy-load fragment HTML 을 읽는 보조 모듈.
 // - REST/GraphQL API 에 없는 GitHub 웹 전용 데이터를 읽을 때만 사용한다.
-import * as https from "node:https";
+import { GitHubWebReadContext } from "./githubWebReadContext";
 
-const MAX_HTML_BYTES = 64 * 1024 * 1024;
 const MAX_FRAGMENT_URLS = 120;
 const MAX_FRAGMENT_DEPTH = 2;
-const MAX_REDIRECTS = 5;
 
 /** GitHub 웹 HTML 읽기 성공/실패 결과 */
 export type GitHubWebHtmlRead =
@@ -22,20 +20,15 @@ export type GitHubWebHtmlRead =
  * @returns base HTML 과 fragment HTML 을 합친 문자열 또는 실패 이유
  */
 export async function readGitHubWebHtmlWithFragments(
-  url: string,
-  headers: Record<string, string>,
-  signal?: AbortSignal
+  url: string, headers: Record<string, string>, signal?: AbortSignal, shared?: GitHubWebReadContext
 ): Promise<GitHubWebHtmlRead> {
-  const base = await readGitHubWebHtml(url, headers, signal);
-  if (!base.ok) {
-    return base;
-  }
-  const fragments = await readFragmentHtml(base.finalUrl, base.html, headers, signal);
-  return {
-    ok: true,
-    finalUrl: base.finalUrl,
-    html: [base.html, ...fragments].join("\n"),
-  };
+  const context = shared ?? new GitHubWebReadContext({ signal });
+  try {
+    const base = await context.read(url, headers, true);
+    if (!base.ok) return base;
+    const fragments = await readFragmentHtml(base.finalUrl, base.html, headers, context);
+    return { ok: true, finalUrl: base.finalUrl, html: [base.html, ...fragments].join("\n") };
+  } finally { if (!shared) await context.dispose(); }
 }
 
 /**
@@ -45,12 +38,12 @@ export async function readGitHubWebHtmlWithFragments(
  * @param headers 요청에 사용할 HTTP 헤더
  * @returns GitHub HTML 또는 실패 이유
  */
-export function readGitHubWebHtml(
-  url: string,
-  headers: Record<string, string>,
-  signal?: AbortSignal
+export async function readGitHubWebHtml(
+  url: string, headers: Record<string, string>, signal?: AbortSignal, shared?: GitHubWebReadContext
 ): Promise<GitHubWebHtmlRead> {
-  return readText(url, headers, true, 0, signal);
+  const context = shared ?? new GitHubWebReadContext({ signal });
+  try { return await context.read(url, headers, true); }
+  finally { if (!shared) await context.dispose(); }
 }
 
 /**
@@ -63,39 +56,24 @@ export function readGitHubWebHtml(
  * @returns 성공적으로 읽은 fragment HTML 목록
  */
 async function readFragmentHtml(
-  baseUrl: string,
-  baseHtml: string,
-  headers: Record<string, string>,
-  signal?: AbortSignal
+  baseUrl: string, baseHtml: string, headers: Record<string, string>, context: GitHubWebReadContext
 ): Promise<string[]> {
-  const queue = fragmentUrls(baseHtml, baseUrl).map((url) => ({ url, depth: 1 }));
-  const seen = new Set<string>([normalizeUrl(baseUrl)]);
-  const result: string[] = [];
-  while (queue.length && seen.size <= MAX_FRAGMENT_URLS) {
-    if (signal?.aborted) {
-      break;
+  let level = fragmentUrls(baseHtml, baseUrl);
+  const seen = new Set<string>([normalizeUrl(baseUrl)]), result: string[] = [];
+  for (let depth = 1; depth <= MAX_FRAGMENT_DEPTH && level.length && !context.signal.aborted; depth++) {
+    const reserved: string[] = [];
+    for (const url of level) {
+      const normalized = normalizeUrl(url);
+      if (seen.has(normalized) || seen.size > MAX_FRAGMENT_URLS) continue;
+      seen.add(normalized); reserved.push(normalized);
     }
-    const next = queue.shift();
-    if (!next) {
-      break;
-    }
-    const normalized = normalizeUrl(next.url);
-    if (seen.has(normalized)) {
-      continue;
-    }
-    seen.add(normalized);
-    const read = await readText(next.url, headers, false, 0, signal);
-    if (!read.ok) {
-      continue;
-    }
-    result.push(read.html);
-    if (next.depth >= MAX_FRAGMENT_DEPTH) {
-      continue;
-    }
-    for (const child of fragmentUrls(read.html, baseUrl)) {
-      if (!seen.has(normalizeUrl(child))) {
-        queue.push({ url: child, depth: next.depth + 1 });
-      }
+    // 예약 순서의 Promise 결과를 모아 완료 순서가 파싱 우선순위를 바꾸지 않게 한다.
+    const reads = await Promise.all(reserved.map(url => context.read(url, headers)));
+    level = [];
+    for (const read of reads) {
+      if (!read.ok) continue;
+      result.push(read.html);
+      if (depth < MAX_FRAGMENT_DEPTH) level.push(...fragmentUrls(read.html, baseUrl));
     }
   }
   return result;
@@ -148,7 +126,7 @@ function toSamePullRequestUrl(value: string, baseUrl: string): string | undefine
       return undefined;
     }
     const basePull = pullPathPrefix(base.pathname);
-    if (!basePull || !url.pathname.startsWith(basePull)) {
+    if (!basePull || !(url.pathname === basePull || url.pathname.startsWith(basePull + "/"))) {
       return undefined;
     }
     url.hash = "";
@@ -168,118 +146,9 @@ function pullPathPrefix(pathname: string): string | undefined {
   return match ? `/${match[1]}/${match[2]}/pull/${match[3]}` : undefined;
 }
 
-/**
- * HTTP GET 으로 텍스트 응답을 읽는다.
- * - 최상위 페이지는 GitHub HTML 여부를 확인하고, fragment 는 HTML 조각이면 그대로 허용한다.
- * @param url 읽을 URL
- * @param headers HTTP 요청 헤더
- * @param requireFullHtml 최상위 GitHub HTML 검증 여부
- * @returns 텍스트 응답 또는 실패 이유
- */
-function readText(
-  url: string,
-  headers: Record<string, string>,
-  requireFullHtml: boolean,
-  redirects = 0,
-  signal?: AbortSignal
-): Promise<GitHubWebHtmlRead> {
-  if (signal?.aborted) {
-    return Promise.resolve({ ok: false, reason: "request cancelled" });
-  }
-  return new Promise((resolve) => {
-    const request = https.get(url, { headers, signal }, (response) => {
-      if (isRedirect(response.statusCode) && response.headers.location) {
-        response.resume();
-        if (redirects >= MAX_REDIRECTS) {
-          resolve({ ok: false, reason: `too many redirects after status ${response.statusCode}` });
-          return;
-        }
-        const nextUrl = redirectedGitHubUrl(url, response.headers.location);
-        if (!nextUrl) {
-          resolve({ ok: false, reason: `unsafe redirect status ${response.statusCode}` });
-          return;
-        }
-        readText(nextUrl, headers, requireFullHtml, redirects + 1, signal).then(resolve);
-        return;
-      }
-      if (response.statusCode !== 200) {
-        response.resume();
-        resolve({ ok: false, reason: `status ${response.statusCode}` });
-        return;
-      }
-      const chunks: Buffer[] = [];
-      let size = 0;
-      response.on("data", (chunk: Buffer) => {
-        size += chunk.length;
-        if (size <= MAX_HTML_BYTES) {
-          chunks.push(chunk);
-        } else {
-          request.destroy(new Error("web html response is too large"));
-        }
-      });
-      response.on("end", () => {
-        const html = Buffer.concat(chunks).toString("utf8");
-        if (requireFullHtml && !isGitHubHtml(html)) {
-          resolve({ ok: false, reason: "response was not GitHub HTML" });
-          return;
-        }
-        if (!requireFullHtml && !looksLikeHtmlFragment(html)) {
-          resolve({ ok: false, reason: "response was not HTML fragment" });
-          return;
-        }
-        resolve({ ok: true, html, finalUrl: url });
-      });
-    });
-    request.on("error", (error) => resolve({ ok: false, reason: error.message }));
-    request.setTimeout(10000, () => request.destroy(new Error("web html request timed out")));
-  });
-}
-
-/**
- * HTTP status 가 follow 가능한 redirect 인지 확인한다.
- * @param statusCode 응답 status code
- * @returns redirect 로 처리할 status 면 true
- */
-function isRedirect(statusCode: number | undefined): boolean {
-  return typeof statusCode === "number" && statusCode >= 300 && statusCode < 400;
-}
-
-/**
- * GitHub 인증 헤더를 유지해도 되는 redirect URL 인지 검증한다.
- * - github.com 내부 이동만 허용해 Cookie/Authorization 헤더가 외부로 나가지 않게 한다.
- * @param currentUrl 현재 요청 URL
- * @param location 응답 Location 헤더
- * @returns 따라갈 absolute URL. 안전하지 않으면 undefined
- */
-function redirectedGitHubUrl(
-  currentUrl: string,
-  location: string
-): string | undefined {
-  try {
-    const current = new URL(currentUrl);
-    const next = new URL(location, current);
-    if (current.origin !== next.origin || next.hostname !== "github.com") {
-      return undefined;
-    }
-    next.hash = "";
-    return next.toString();
-  } catch {
-    return undefined;
-  }
-}
-
 /** HTML 응답이 GitHub 전체 페이지처럼 보이는지 확인한다. */
 export function isGitHubHtml(value: string): boolean {
   return /<html\b/i.test(value) && /github/i.test(value);
-}
-
-/**
- * fragment 응답이 HTML 조각처럼 보이는지 확인한다.
- * @param value 응답 본문
- * @returns HTML 조각으로 파싱해 볼 수 있으면 true
- */
-function looksLikeHtmlFragment(value: string): boolean {
-  return /<[^>]+>/.test(value);
 }
 
 /**
