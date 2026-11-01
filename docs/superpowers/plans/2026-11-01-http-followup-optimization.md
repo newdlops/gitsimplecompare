@@ -120,11 +120,11 @@
 **Files:** modify `nativeDiffOverlayInspector.ts`, `nativeOverlayConnection.ts`; create a small hint store if needed; extend `test/nativeInspectorDiscovery.test.ts`.
 **Interfaces:** optional profile identity on discovery; max16 lifetime hints keyed PID/profile/port set. Every hint hit still probes actual PID; discard failed hints and preserve existing discovery/cooldown/socket sharing.
 
-- [ ] Add RED probes for non-default reconnect, duplicate default/hint, PID mismatch, profile mismatch, closed port, configured-port changes, abort and dispose.
-- [ ] Run inspector/retry/blame preparation tests; expected RED.
-- [ ] Implement validated hints and lifecycle removal without permanent settings or skipped ownership checks.
-- [ ] Run same tests and types; expected green.
-- [ ] Commit `perf: reuse verified inspector port hints on reconnect`.
+- [x] Add RED probes for non-default reconnect, duplicate default/hint, PID mismatch, profile mismatch, closed port, configured-port changes, abort and dispose.
+- [x] Run inspector/retry/blame preparation tests; expected RED.
+- [x] Implement validated hints and lifecycle removal without permanent settings or skipped ownership checks.
+- [x] Run same tests and types; expected green.
+- [x] Commit `perf: reuse verified inspector port hints on reconnect`.
 
 ## Task 10: Optional full-history blobless clone
 

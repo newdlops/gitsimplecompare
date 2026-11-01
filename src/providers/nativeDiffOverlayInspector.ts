@@ -3,8 +3,11 @@
 import { execFile } from "node:child_process";
 import * as http from "node:http";
 import WebSocket = require("ws");
-import { logWarn } from "../ui/outputLog";
+import { NativeInspectorPortHints } from "./nativeInspectorPortHints";
+import { logWarn, logInfo } from "../ui/outputLog";
 import { deriveVscodeUserDataDir } from "../system/vscodeCacheService";
+
+const portHints = new NativeInspectorPortHints();
 
 interface ProcessRow {
   pid: number;
@@ -66,37 +69,60 @@ export function armInspector(pid: number): void {
 export async function findInspectorWebSocketUrlForPid(
   pid: number,
   signal?: AbortSignal,
-  ports: readonly number[] = Array.from({ length: 21 }, (_, index) => 9229 + index)
+  ports: readonly number[] = Array.from({ length: 21 }, (_, index) => 9229 + index),
+  profileIdentity = ""
 ): Promise<string | undefined> {
-  const delays = [0, 40, 120, 300, 700, 1400];
-  for (const delay of delays) {
-    if (signal?.aborted || (delay > 0 && !await sleep(delay, signal))) return undefined;
-    // 이미 열린 기본 포트는 다른 포트의 timeout이나 고정 500ms 대기를 기다리지 않고 사용한다.
-    const preferred = ports.length ? await inspectorUrlsForPort(ports[0], signal) : [];
-    for (const url of preferred) {
-      if (signal?.aborted) return undefined;
-      try { if (await probeProcessPid(url, signal) === pid) return url; } catch { /* 나머지 포트를 검사한다. */ }
+  const ordered = [...new Set(ports)].filter(port => Number.isSafeInteger(port) && port > 0 && port < 65536);
+  const started = Date.now(); let httpProbes = 0, pidProbes = 0;
+  if (!Number.isSafeInteger(pid) || pid <= 0 || !ordered.length) return undefined;
+  if (signal?.aborted) { portHints.forget(pid, profileIdentity, ordered); return undefined; }
+  const hinted = portHints.get(pid, profileIdentity, ordered);
+  try {
+    if (hinted !== undefined) {
+      for (const url of await urlsForPort(hinted)) if (await matches(url, hinted, true)) return url;
+      portHints.forget(pid, profileIdentity, ordered);
+      logInfo("native inspector port hint discarded", { reason: signal?.aborted ? "cancelled" : "ownership-or-port" });
     }
-    const targetGroups = await Promise.all(
-      ports.slice(1)
-        .map((port) => inspectorUrlsForPort(port, signal))
-    );
-    if (signal?.aborted) return undefined;
-    // HTTP port 탐색만 병렬화하고 실제 debugger target 연결은 순차 처리해 다른 Node inspector와의 경합을 줄인다.
-    const urls = [...new Set(targetGroups.flat())];
-    for (const url of urls) {
-      if (signal?.aborted) return undefined;
-      try {
-        if (await probeProcessPid(url, signal) === pid) return url;
-      } catch {
-        /* 다음 target 검사 */
+    const delays = [0, 40, 120, 300, 700, 1400];
+    for (let round = 0; round < delays.length; round++) {
+      if (signal?.aborted || (delays[round] > 0 && !await sleep(delays[round], signal))) return undefined;
+      // 실패한 힌트도 같은 첫 round에서는 반복하지 않고 다음 round의 기존 복구 탐색부터 포함한다.
+      if (round > 0 || ordered[0] !== hinted) {
+        for (const url of await urlsForPort(ordered[0])) if (await matches(url, ordered[0], false)) return url;
       }
+      const remaining = ordered.slice(1).filter(port => round > 0 || port !== hinted);
+      const groups = await Promise.all(remaining.map(urlsForPort));
+      if (signal?.aborted) return undefined;
+      for (let index = 0; index < groups.length; index++) {
+        for (const url of [...new Set(groups[index])]) if (await matches(url, remaining[index], false)) return url;
+      }
+      if (signal?.aborted) return undefined;
+      armInspector(pid);
     }
-    if (signal?.aborted) return undefined;
-    armInspector(pid);
+    return undefined;
+  } finally { if (signal?.aborted) portHints.forget(pid, profileIdentity, ordered); }
+
+  /** HTTP 시도만 집계하며 target URL과 profile 경로를 로그에 넣지 않는다. */
+  async function urlsForPort(port: number): Promise<string[]> {
+    if (signal?.aborted) return [];
+    httpProbes++; return inspectorUrlsForPort(port, signal);
   }
-  return undefined;
+
+  /** 모든 shortcut도 WebSocket의 실제 process.pid를 확인한 뒤에만 새 힌트로 저장한다. */
+  async function matches(url: string, port: number, hint: boolean): Promise<boolean> {
+    if (signal?.aborted) return false;
+    pidProbes++;
+    try {
+      if (await probeProcessPid(url, signal) !== pid || signal?.aborted) return false;
+      portHints.remember(pid, profileIdentity, ordered, port);
+      logInfo("native inspector discovery complete", { pid, port, hint, httpProbes, pidProbes, totalMs: Date.now() - started });
+      return true;
+    } catch { return false; }
+  }
 }
+
+/** 연결 폐기 때 해당 profile의 일시적인 성공 힌트를 해제한다. 정상 socket 재연결에는 유지한다. */
+export function clearInspectorPortHints(profileIdentity?: string): void { portHints.clear(profileIdentity); }
 
 /** 특정 PID 또는 전체 테이블을 읽되 긴 profile 인자가 잘려 다른 창을 선택하지 않도록 폭 제한을 해제한다. */
 async function listProcessRows(pid?: number): Promise<ProcessRow[]> {

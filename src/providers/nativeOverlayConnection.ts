@@ -6,6 +6,7 @@ import WebSocket = require("ws");
 import { logInfo, logWarn } from "../ui/outputLog";
 import {
   armInspector,
+  clearInspectorPortHints,
   findCurrentVSCodeMainPid,
   findInspectorWebSocketUrlForPid,
 } from "./nativeDiffOverlayInspector";
@@ -141,6 +142,7 @@ export class NativeOverlayConnection {
     }
     this.shuttingDown = true;
     this.discoveryAbort.abort();
+    clearInspectorPortHints(this.globalStorageUri.fsPath);
   }
 
   /**
@@ -200,7 +202,9 @@ export class NativeOverlayConnection {
     armInspector(pid);
     const wsUrl = await findInspectorWebSocketUrlForPid(
       pid,
-      this.discoveryAbort.signal
+      this.discoveryAbort.signal,
+      undefined,
+      this.globalStorageUri.fsPath
     );
     if (this.shuttingDown) {
       throw new Error("Native overlay connection is shutting down.");
