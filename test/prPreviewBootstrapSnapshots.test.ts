@@ -52,8 +52,8 @@ async function fixture(t: test.TestContext) {
   const execute: GhExecute = (args, cwd, options) => cache.read(args, cwd, { ...options, ttlMs: 0 });
   /** panel마다 새 wrapper로 힌트를 전달하되 결과는 새 세션에서 다시 인가한다. */
   const wrapped = () => { const runner: GhExecute = (...args) => execute(...args); inheritGitHubReadSession(execute, runner); return runner; };
-  const load = async () => { const runner = wrapped(), bootstrap = await fetchPreviewBootstrap(root, selected, runner);
-    return { bootstrap, commits: await fetchPreviewCommitSummaries(root, selected, runner, bootstrap.firstPage) }; };
+  const load = async (value = selected) => { const runner = wrapped(), bootstrap = await fetchPreviewBootstrap(root, value, runner);
+    return { bootstrap, commits: await fetchPreviewCommitSummaries(root, value, runner, bootstrap.firstPage) }; };
   t.after(async () => { await cache.dispose(); await runtime.dispose(); gitHubRepositoryScopes.clear();
     for (const key of keys) { if (before[key] === undefined) delete process.env[key]; else process.env[key] = before[key]; }
     await rm(root, { recursive: true, force: true });
@@ -106,4 +106,11 @@ test("default preview runner forwards only hint metadata before a new authorizat
   const runner = previewReadRunner(f.root, f.selected);
   assert.equal(gitHubRootCommitSnapshotHint(runner, f.root), true);
   assert.equal(gitHubReadSessionState(runner), undefined);
+});
+
+test("another cached PR cannot turn a new PR's cold bootstrap into an extra repair request", async t => {
+  const f = await fixture(t); await f.load(); f.calls.length = 0;
+  const value = await f.load({ ...f.selected, number: 8 });
+  assert.equal(value.commits.length, 201);
+  assert.equal(f.calls.length, 3); assert.equal(f.calls[0].projected, true);
 });

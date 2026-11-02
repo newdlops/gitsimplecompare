@@ -12,7 +12,9 @@ export class GitHubCommitSnapshots {
   private bytes = 0;
 
   /** 인증을 결정하지 않는 query-shape 힌트이며 실제 재사용에는 현재 페이지 identity가 필요하다. */
-  has(repository: string): boolean { return [...this.entries.values()].some(entry => entry.repository === repository.toLowerCase()); }
+  has(repository: string, number?: number): boolean {
+    return [...this.entries.values()].some(entry => entry.repository === repository.toLowerCase() && (number === undefined || entry.value.number === number));
+  }
 
   /** 최신 인증 응답이 보고한 PR 번호/head/base/대상 branch와 같은 완전한 값만 복사한다. */
   get(identity: GitHubSnapshotIdentity, number: number, head: string, base: string, baseRefName: string): StablePullRequestSnapshot | undefined {

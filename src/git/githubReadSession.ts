@@ -35,10 +35,10 @@ export function gitHubCommitSnapshotHint(execute: GhExecute, repository: string)
   return [...(snapshotHints.get(execute)?.values() ?? [])].some(hint => hint.snapshots.commits.has(repository));
 }
 
-/** cold root는 OID 조회도 생략하고, 같은 root의 검증된 commit 후보가 있을 때만 얕은 앵커를 요청한다. */
-export function gitHubRootCommitSnapshotHint(execute: GhExecute, root: string): boolean {
+/** 같은 root의 완료 후보가 있을 때만 얕은 앵커를 요청한다. PR 번호가 있으면 다른 PR의 힌트를 제외한다. */
+export function gitHubRootCommitSnapshotHint(execute: GhExecute, root: string, number?: number): boolean {
   const hint = snapshotHints.get(execute)?.get(root);
-  return !!hint?.repository && hint.snapshots.commits.has(hint.repository);
+  return !!hint?.repository && hint.snapshots.commits.has(hint.repository, number);
 }
 
 /** wrapper가 고정 세션과 bounded query-shape 힌트를 공유하되 새 인증 권한을 만들지 않는다. */

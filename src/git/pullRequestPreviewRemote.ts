@@ -64,7 +64,7 @@ const THIN_BOOTSTRAP_QUERY = `query($owner: String!, $name: String!, $number: In
  */
 export async function fetchPreviewBootstrap(root: string, pr: PullRequestInfo, runner: GhExecute): Promise<PreviewBootstrap> {
   const owns = !gitHubReadSessionState(runner);
-  const thin = gitHubRootCommitSnapshotHint(runner, root);
+  const thin = gitHubRootCommitSnapshotHint(runner, root, pr.number);
   const query = thin ? THIN_BOOTSTRAP_QUERY : BOOTSTRAP_QUERY;
   runner = createGitHubReadSession(root, runner);
   const out = await runner(["api", "graphql", "-F", "owner={owner}", "-F", "name={repo}",
