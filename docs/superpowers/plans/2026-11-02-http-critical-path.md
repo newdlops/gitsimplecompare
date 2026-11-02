@@ -73,19 +73,19 @@ only. P3–P6 below remain planned follow-up work and are not claimed as complet
 **Files:** `src/providers/nativeDiffOverlayInspector.ts`, inspector unit tests.
 **Interfaces:** Same verified target URL; return only after PID match and cleanup of owned losing probes.
 
-- [ ] RED: a verified target is selected before a deliberately delayed unrelated HTTP response.
-- [ ] Process completed probes incrementally while retaining hint preference, safe ports/profile/PID checks and existing request bounds.
-- [ ] Verify cancellation, wrong PID, stale hints, missing target and actual losing socket close; run inspector tests; commit.
+- [x] RED: a verified target is selected before a deliberately delayed unrelated HTTP response.
+- [x] Process completed probes incrementally while retaining hint preference, safe ports/profile/PID checks and existing request bounds.
+- [x] Verify cancellation, wrong PID, stale hints, missing target and actual losing socket close; run inspector tests; commit.
 
 ### Task 6: P6 OAuth catalog projection experiment and selection
 
 **Files:** OAuth catalog transport/query helper, `src/git/githubRepositoryCatalog.ts`, catalog tests and paired fixture evidence.
 **Interfaces:** Existing `listPage(token,page,signal)` contract and cached REST reauthorization remain valid. GraphQL projection must preserve complete owner/collaborator/org/team-visible result sets with the same OAuth identity.
 
-- [ ] Establish API/query and permission/page parity; add failing DTO/visibility/order/cursor/error tests before product changes.
-- [ ] Compare cold projected bytes/parse cost against REST and warm conditional 304, including scopes/rate limits.
-- [ ] Select and implement the measured beneficial route with safe compatibility fallback; if parity or benefit fails, document the actual failed experiment and retain the better REST route as the spec requires.
-- [ ] Run catalog/independent onboarding tests, preserve OAuth-only ownership/cancel and commit the verified outcome.
+- [x] Evaluate API/query and permission/page parity; require DTO/visibility/order/cursor/error tests before any product adoption. Live parity failed, so no GraphQL product path was adopted.
+- [x] Compare cold projected bytes/parse cost against REST and warm conditional 304, including scopes/rate limits.
+- [x] Select and implement the measured beneficial route with safe compatibility fallback; if parity or benefit fails, document the actual failed experiment and retain the better REST route as the spec requires.
+- [x] Run catalog/independent onboarding tests, preserve OAuth-only ownership/cancel and commit the verified outcome.
 
 ### Task 7: final evidence and review
 

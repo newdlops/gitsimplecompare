@@ -1,0 +1,281 @@
+{
+  "observedAtUtc": "2026-11-02T03:51:50.851Z",
+  "mode": "live read-only, one existing gh credential, controlled shared HTTPS/1.1 pool; no product OAuth session is substituted",
+  "apiVersion": "2022-11-28",
+  "query": "query($cursor: String) { viewer { repositories(first: 100, after: $cursor,\n  affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER], ownerAffiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER],\n  orderBy: {field: UPDATED_AT, direction: DESC}) {\n    totalCount nodes { nameWithOwner description isPrivate isArchived updatedAt isFork owner { __typename } }\n    pageInfo { hasNextPage endCursor }\n  } } rateLimit { cost remaining } }",
+  "minimalQuery": "query { viewer { repositories(first: 100,\n  affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER], ownerAffiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER],\n  orderBy: {field: UPDATED_AT, direction: DESC}) {\n    nodes { nameWithOwner description isPrivate isArchived } pageInfo { hasNextPage endCursor }\n  } } rateLimit { cost remaining } }",
+  "sources": [
+    "https://docs.github.com/en/graphql/reference/users#user",
+    "https://docs.github.com/en/graphql/reference/repos#repositoryaffiliation",
+    "https://docs.github.com/en/rest/repos/repos#list-repositories-for-the-authenticated-user"
+  ],
+  "limitations": [
+    "One credential/account cannot prove every OAuth app restriction or every organization/team access configuration.",
+    "No repository names, responses, credentials or ETags are persisted.",
+    "Live samples include variable network/server time; p95 of seven samples is the largest observed sample.",
+    "Live collection fits one page; cursor completeness beyond one page was not demonstrated on this account.",
+    "The live sample contains private and organization repositories and forks, but no archived repositories; team-only grants were not separately classified.",
+    "The follow-up verifies the extra private fork is directly readable with REST; the mismatch is list membership, not proven unauthorized disclosure."
+  ],
+  "rest": {
+    "pages": 1,
+    "repositories": 60,
+    "firstStatus": 200,
+    "firstWireBytes": 25974,
+    "firstDecodedBytes": 321100,
+    "hasETag": true,
+    "coverage": {
+      "private": 20,
+      "archived": 0,
+      "fork": 3,
+      "organization": 14,
+      "privateOrganization": 14
+    }
+  },
+  "graphql": {
+    "pages": 1,
+    "repositories": 61,
+    "firstStatus": 200,
+    "firstWireBytes": 12959,
+    "firstDecodedBytes": 12959,
+    "hasETag": false
+  },
+  "parity": {
+    "missing": 0,
+    "extra": 1,
+    "dtoFieldMismatches": {
+      "nameWithOwner": 0,
+      "cloneUrl": 0,
+      "description": 0,
+      "isPrivate": 0,
+      "archived": 0
+    },
+    "orderedNamesEqual": false,
+    "restDuplicates": 0,
+    "graphDuplicates": 0
+  },
+  "restRevalidationAfterGraphql": [
+    304
+  ],
+  "minimalGraphqlETagPresent": false,
+  "cold": {
+    "rest": {
+      "samples": 7,
+      "statuses": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "wireBytes": [
+        25974,
+        25974,
+        25974,
+        25974,
+        25974,
+        25974,
+        25974
+      ],
+      "decodedBytes": [
+        321100,
+        321100,
+        321100,
+        321100,
+        321100,
+        321100,
+        321100
+      ],
+      "latencyMs": {
+        "p50": 664.5521660000004,
+        "p95": 1227.734375
+      },
+      "jsonParseMs": {
+        "p50": 1.0756660000006377,
+        "p95": 1.53033300000061
+      }
+    },
+    "graphql": {
+      "samples": 7,
+      "statuses": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "wireBytes": [
+        7955,
+        7955,
+        7955,
+        7955,
+        7955,
+        7955,
+        7955
+      ],
+      "decodedBytes": [
+        7955,
+        7955,
+        7955,
+        7955,
+        7955,
+        7955,
+        7955
+      ],
+      "latencyMs": {
+        "p50": 1151.708166999997,
+        "p95": 1285.6870000000017
+      },
+      "jsonParseMs": {
+        "p50": 0.05595800000082818,
+        "p95": 0.08000000000174623
+      }
+    }
+  },
+  "warm": {
+    "rest": {
+      "samples": 7,
+      "statuses": [
+        304,
+        304,
+        304,
+        304,
+        304,
+        304,
+        304
+      ],
+      "wireBytes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "decodedBytes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "latencyMs": {
+        "p50": 657.721583999999,
+        "p95": 735.969291999998
+      },
+      "jsonParseMs": {
+        "p50": 0.0015410000014526304,
+        "p95": 0.007208000000900938
+      }
+    },
+    "graphql": {
+      "samples": 7,
+      "statuses": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "wireBytes": [
+        7955,
+        7955,
+        7955,
+        7955,
+        7955,
+        7955,
+        7955
+      ],
+      "decodedBytes": [
+        7955,
+        7955,
+        7955,
+        7955,
+        7955,
+        7955,
+        7955
+      ],
+      "latencyMs": {
+        "p50": 1053.476125000001,
+        "p95": 1217.8198750000001
+      },
+      "jsonParseMs": {
+        "p50": 0.04433400000016263,
+        "p95": 0.06349999999929423
+      }
+    }
+  },
+  "rateLimit": {
+    "restResource": "core",
+    "restRemaining": 4924,
+    "graphqlCost": 1,
+    "graphqlRemaining": 4992
+  },
+  "followup": {
+    "observedAtUtc": "2026-11-02T03:53:33.680Z",
+    "variants": [
+      {
+        "label": "allAffiliationsBoth",
+        "repositories": 61,
+        "missing": 0,
+        "extra": 1,
+        "orderedIntersectionEqual": true,
+        "restRevalidationStatus": 304
+      },
+      {
+        "label": "defaultOwnerAffiliations",
+        "repositories": 55,
+        "missing": 5,
+        "extra": 0,
+        "orderedIntersectionEqual": true,
+        "restRevalidationStatus": 304
+      },
+      {
+        "label": "defaultViewerAffiliations",
+        "repositories": 55,
+        "missing": 5,
+        "extra": 0,
+        "orderedIntersectionEqual": true,
+        "restRevalidationStatus": 304
+      }
+    ],
+    "extraDetails": [
+      {
+        "ownerType": "User",
+        "isFork": true,
+        "isPrivate": true,
+        "archived": false,
+        "viewerPermission": "WRITE",
+        "directRestStatus": 200,
+        "directRestPullAllowed": true,
+        "directRestDisabled": false
+      }
+    ],
+    "privateNamesPersisted": false
+  },
+  "selection": {
+    "selected": "existing REST + ETag catalog",
+    "candidateApplied": false,
+    "parityGate": "failed: all affiliations returns one extra repository; either default affiliation returns five fewer",
+    "benefitGate": "failed: smaller projected bodies and parsing, but longer observed cold and warm p50/p95 latency; no GraphQL ETag and no body-less warm response",
+    "productionChanged": false,
+    "tests": {
+      "catalogAndOnboarding": 28,
+      "passed": 28,
+      "failed": 0
+    },
+    "reproduction": [
+      "node scripts/benchmark-github-catalog.mjs --live --out /private/tmp/catalog-projection.json",
+      "node scripts/benchmark-github-catalog.mjs --live --affiliations --out /private/tmp/catalog-affiliations.json"
+    ]
+  }
+}
