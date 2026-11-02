@@ -157,14 +157,8 @@
     "liveNetworkScope": "P6 only, one credential/account,seven cold/warm samples",
     "positiveUniversalOAuthProjectionParityClaim": false
   },
-  "complete": false,
-  "remaining": [
-    "main push",
-    "Marketplace publication and validation",
-    "exact package download match",
-    "local installed runtime match",
-    "final evidence push"
-  ],
+  "complete": true,
+  "remaining": [],
   "observedAtUtc": "2026-11-02T04:21:52.618611+00:00",
   "verificationRecovery": {
     "group": 4,
@@ -180,5 +174,22 @@
     "frozenInputsUnchanged": true
   },
   "fullSuiteVerified": true,
-  "verificationEvidence": "http-critical-verification-20261102.json"
+  "verificationEvidence": "http-critical-verification-20261102.json",
+  "releaseEvidence": "release-artifact-0.1.72187.json",
+  "ownWorkspaceRemoved": true,
+  "completedAtUtc": "2026-11-02T05:38:32.810984+00:00",
+  "release": {
+    "version": "0.1.72187",
+    "publisher": "newdlops",
+    "extensionId": "newdlops.gitsimplecompare",
+    "url": "https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare",
+    "releaseCommit": "a21129149608febba1e6468443973dd9b9114eeb",
+    "remoteMainVerified": true,
+    "serverValidated": true,
+    "serverVersionFlags": 1,
+    "publicLatestVersion": "0.1.72187",
+    "downloadSha256": "ca1ad30451c8ee9e75adf8df2fe0aae61f403076d2da275f3223f25a27f46167",
+    "downloadExactPackageMatched": true,
+    "verifiedAtUtc": "2026-11-02T05:38:32.810984+00:00"
+  }
 }

@@ -103,7 +103,13 @@
     "fullSuiteTests": 2758,
     "fullSuitePassed": 2757,
     "fullSuiteFailed": 0,
-    "fullSuiteSkipped": 1
+    "fullSuiteSkipped": 1,
+    "marketplacePublishExitCode": 0,
+    "publicLatestVersionMatched": true,
+    "serverValidationPassed": true,
+    "downloadExactPackageMatched": true,
+    "localInstallExitCode": 0,
+    "installedRuntimeFilesMatched": 84
   },
   "verifiedAtUtc": "2026-11-02T04:17:32.218027+00:00",
   "review": {
@@ -124,5 +130,30 @@
     "fail": 0,
     "cancelled": 0,
     "skipped": 1
-  }
+  },
+  "publication": {
+    "version": "0.1.72187",
+    "publisher": "newdlops",
+    "extensionId": "newdlops.gitsimplecompare",
+    "url": "https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare",
+    "releaseCommit": "a21129149608febba1e6468443973dd9b9114eeb",
+    "remoteMainVerified": true,
+    "serverValidated": true,
+    "serverVersionFlags": 1,
+    "publicLatestVersion": "0.1.72187",
+    "downloadSha256": "ca1ad30451c8ee9e75adf8df2fe0aae61f403076d2da275f3223f25a27f46167",
+    "downloadExactPackageMatched": true,
+    "verifiedAtUtc": "2026-11-02T05:38:32.810984+00:00"
+  },
+  "installation": {
+    "registeredVersion": "0.1.72187",
+    "registeredEntries": 1,
+    "runtimeMatched": 84,
+    "localInstallExitCode": 0
+  },
+  "limitations": [
+    "Existing user windows were not reloaded; reload VS Code to activate the installed update.",
+    "Full unit coverage used six disjoint groups with the unchanged 3-worker/15-minute runner; no test file was omitted. Group4 completed with terminal TAP553/pass552/skip1/fail0; its process exit code was lost during the user pause and is recorded as null.",
+    "The complete manual publishing checklist was not repeated; the exact extracted VSIX passed isolated activation and command smoke."
+  ]
 }

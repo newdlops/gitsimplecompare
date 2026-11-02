@@ -4,8 +4,7 @@
 commit, push and deploy the current work. Version 0.1.72186 includes P1 and P2
 only. P3–P6 below remain planned follow-up work and are not claimed as complete.
 
-**Full-goal continuation:** P3–P5 and the reviewed P1 cleanup correction are being
-verified for 0.1.72187 under the existing version/commit/push/deploy authorization.
+**Delivered 0.1.72187 after full-goal continuation:** P3–P5 and the reviewed P1 cleanup correction were verified and deployed as 0.1.72187 under the existing version/commit/push/deploy authorization.
 P6 completed its experiment and retained REST+ETag after failed parity/latency gates.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -96,4 +95,4 @@ P6 completed its experiment and retained REST+ETag after failed parity/latency g
 - [x] Compare before/after payloads, requests, bytes, start/finish order and representative p50/p95 using controlled fixtures; label live versus simulated measurements.
 - [x] Obtain one fresh whole-change read-only review after focused checks; fix material findings by RED→GREEN.
 - [x] Freeze source and run `GSC_VERIFY_PR_RENDERER=1 npm test`, `npm run check-types`, `npm run package` with appropriate process/network permission.
-- [ ] Audit all six requirements, commit final evidence, keep the feature branch, remove only this plan's generated scratch and complete the goal.
+- [x] Audit all six requirements, commit final evidence, keep the feature branch, remove only this plan's generated scratch and complete the goal.
