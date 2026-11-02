@@ -1,0 +1,80 @@
+{
+  "sourceHead": "590c8fc75217c7839aefe04c45d0439d1e698a99",
+  "scope": "read-only actual production functions with controlled external boundaries; no implementation change",
+  "searchTails": {
+    "events": [
+      "review:start",
+      "review:end",
+      "commits:start",
+      "commits:end"
+    ],
+    "resultComments": 2,
+    "resultCommits": 2,
+    "controlledReviewDelayMs": 60,
+    "controlledCommitDelayMs": 20
+  },
+  "fragmentBarrier": {
+    "events": [
+      ":start",
+      ":end",
+      "/a:start",
+      "/b:start",
+      "/a:end",
+      "/b:end",
+      "/c:start",
+      "/c:end"
+    ],
+    "maximumActive": 2,
+    "controlledFastParentMs": 15,
+    "controlledSlowParentMs": 80
+  },
+  "inspectorBarrier": {
+    "events": [
+      "target-http",
+      "unrelated-http:end",
+      "target-pid"
+    ],
+    "elapsedMs": 109.60345799999999,
+    "controlledUnrelatedDelayMs": 100
+  },
+  "version": "0.1.72185",
+  "probeSourceSha256": "3dc79b430470640ebd3dad8741cc438e4e9c1efad240a3a5350be46d0442f479",
+  "candidates": [
+    {
+      "id": "P1",
+      "type": "parallelize search completion tails",
+      "evidence": "controlled actual function trace",
+      "source": "src/git/pullRequestSearchReads.ts:73"
+    },
+    {
+      "id": "P2",
+      "type": "reuse complete non-rename file snapshots for Explorer",
+      "evidence": "static live call chain; conditional design",
+      "source": "src/git/pullRequestPreviewFiles.ts:135"
+    },
+    {
+      "id": "P3",
+      "type": "omit warm preview bootstrap commit page",
+      "evidence": "static query plus prior controlled benchmark body size",
+      "source": "src/git/pullRequestPreviewRemote.ts:50"
+    },
+    {
+      "id": "P4",
+      "type": "pipeline nested HTML fragments",
+      "evidence": "controlled actual function trace",
+      "source": "src/git/githubWebHtml.ts:71"
+    },
+    {
+      "id": "P5",
+      "type": "consume inspector HTTP targets as they finish",
+      "evidence": "controlled actual local HTTP/WebSocket trace",
+      "source": "src/providers/nativeDiffOverlayInspector.ts:94"
+    },
+    {
+      "id": "P6",
+      "type": "skinny OAuth catalog GraphQL projection",
+      "evidence": "static fields and official schema; experiment only",
+      "source": "src/git/githubRepositoryCatalog.ts:140"
+    }
+  ]
+}
