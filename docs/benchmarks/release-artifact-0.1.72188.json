@@ -100,12 +100,19 @@
     "vsixPackageExitCode": 0,
     "hostSmokeExitCode": 0,
     "hostTestedRuntimeMatched": true,
-    "publisherAuthExitCode": 0
+    "publisherAuthExitCode": 0,
+    "marketplacePublishExitCode": 0,
+    "publicLatestVersionMatched": true,
+    "serverValidationPassed": true,
+    "downloadExactPackageMatched": true,
+    "localInstallExitCode": 0,
+    "installedRuntimeFilesMatched": 84
   },
   "baselineFullSuite": "http-critical-verification-20261102.json",
   "limitations": [
     "The full unit suite was not repeated for this focused link fix; related tests and extracted-VSIX host smoke are recorded separately.",
-    "The complete manual publishing checklist was not repeated."
+    "The complete manual publishing checklist was not repeated.",
+    "Existing user windows were not reloaded; reload VS Code to activate the installed update."
   ],
   "verifiedAtUtc": "2026-11-02T11:43:57.953765+00:00",
   "verification": {
@@ -123,5 +130,25 @@
   },
   "runtimeChanged": [
     "dist/extension.js"
-  ]
+  ],
+  "publication": {
+    "publisher": "newdlops",
+    "extensionId": "newdlops.gitsimplecompare",
+    "version": "0.1.72188",
+    "url": "https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare",
+    "releaseCommit": "f42f05cabc2a62c509527a5d6db68c5b55bc6468",
+    "remoteMainVerified": true,
+    "serverValidated": true,
+    "serverVersionFlags": 1,
+    "publicLatestVersion": "0.1.72188",
+    "downloadSha256": "de609d0d91942b2f1b079727d5624c72bdf9feb8e7956139382ab496612ac481",
+    "downloadExactPackageMatched": true,
+    "verifiedAtUtc": "2026-11-02T11:54:18.296551+00:00"
+  },
+  "installation": {
+    "registeredVersion": "0.1.72188",
+    "registeredEntries": 1,
+    "runtimeMatched": 84,
+    "localInstallExitCode": 0
+  }
 }
