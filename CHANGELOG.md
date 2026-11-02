@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+## [0.1.72187] - 2026-11-02
+
+### Performance
+
+- Omit the first commit page from warm pull request previews after fresh anchor
+  checks. Keep cold requests combined and repair stale hints with complete pages.
+- Pipeline nested GitHub HTML fragments while preserving breadth-first output,
+  URL admission order and the existing two-request concurrency limit.
+- Verify native inspector candidates as HTTP probes complete, preserving preferred
+  ports and valid reconnect hints. Close owned losing probes before returning.
+
+### Fixes
+
+- Wait for all started search commit workers and owned cached executions to close
+  after failure, while preserving immediate ordinary UI cancellation and other
+  consumers of a shared request.
+- Restrict preview snapshot hints to the selected pull request so unrelated cached
+  pull requests do not add an extra cold request.
+
+### Maintenance
+
+- Retain OAuth repository catalogs on REST with ETag revalidation after live
+  GraphQL projection experiments found different result sets and higher latency.
+
 ## [0.1.72186] - 2026-11-02
 
 ### Performance

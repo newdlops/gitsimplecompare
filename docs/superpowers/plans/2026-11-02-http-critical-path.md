@@ -4,6 +4,10 @@
 commit, push and deploy the current work. Version 0.1.72186 includes P1 and P2
 only. P3–P6 below remain planned follow-up work and are not claimed as complete.
 
+**Full-goal continuation:** P3–P5 and the reviewed P1 cleanup correction are being
+verified for 0.1.72187 under the existing version/commit/push/deploy authorization.
+P6 completed its experiment and retained REST+ETag after failed parity/latency gates.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Complete P1–P6 from the approved remaining HTTP opportunities, retaining authorized complete data and proving reduced work or critical-path time.
