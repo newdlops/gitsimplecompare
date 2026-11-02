@@ -83,14 +83,18 @@ export async function searchPullRequests(
   signal?.throwIfAborted();
   signal?.addEventListener("abort", cancel, { once: true });
   const read = createGitHubReadSession(repoRoot, execute), queue = new PriorityReadQueue(4);
+  const active = new Set<Promise<string>>();
+  let branches: readonly Promise<unknown>[] = [];
   /** 검색과 모든 후속 페이지가 같은 취소 신호를 쓰도록 실행기를 결합한다. */
   const runner: GhExecute = async (args, root, options) => {
     controller.signal.throwIfAborted();
     const local = new AbortController(), abort = () => local.abort();
     const signals = [controller.signal, ...(options.signal ? [options.signal] : [])];
     for (const signal of signals) { signal.addEventListener("abort", abort, { once: true }); if (signal.aborted) abort(); }
-    try { return await queue.run(() => read(args, root, { ...options, signal: local.signal }), local.signal); }
-    finally { for (const signal of signals) signal.removeEventListener("abort", abort); }
+    const request = queue.run(() => read(args, root, { ...options, signal: local.signal, waitForReadClose: true }), local.signal);
+    active.add(request);
+    try { return await request; }
+    finally { active.delete(request); for (const signal of signals) signal.removeEventListener("abort", abort); }
   };
   inheritGitHubReadSession(read, runner);
   try {
@@ -100,11 +104,13 @@ export async function searchPullRequests(
     const [owner, name] = splitRepositoryName(repository);
     const reuseStable = gitHubCommitSnapshotHint(execute, repository);
     const scope = new SearchPullRequestReadScope();
-    const [search, exact, associated] = await Promise.all([
+    const pending = [
       searchByText(repoRoot, owner, name, trimmed, cursor, runner, reuseStable, scope),
       cursor ? Promise.resolve(undefined) : searchByNumber(repoRoot, owner, name, trimmed, runner, reuseStable, scope),
       cursor ? Promise.resolve([]) : searchByCommitHash(repoRoot, owner, name, trimmed, runner, reuseStable, scope),
-    ]);
+    ] as const;
+    branches = pending;
+    const [search, exact, associated] = await Promise.all(pending);
     const pullRequests = mergeByNumber([...(exact ? [exact] : []), ...associated, ...search.pullRequests]);
     controller.signal.throwIfAborted();
     await completeGitHubReadSession(read, controller.signal);
@@ -112,6 +118,11 @@ export async function searchPullRequests(
     if (identity) for (const pr of pullRequests) snapshots?.commits.put(identity, pr);
     return { query, pullRequests, hasMore: search.hasMore, nextCursor: search.nextCursor,
       totalCount: Math.max(search.totalCount, pullRequests.length) };
+  } catch (error) {
+    controller.abort();
+    // branch 내부의 fail-fast worker aggregate가 먼저 실패했어도 소유한 마지막 전송까지 정리한다.
+    await Promise.allSettled([...branches, ...active]);
+    throw error;
   } finally { signal?.removeEventListener("abort", cancel); controller.abort(); }
 }
 

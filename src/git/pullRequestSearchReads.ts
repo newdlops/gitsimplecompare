@@ -72,23 +72,28 @@ export async function completeSearchPullRequests(root: string, owner: string, na
   const fresh = nodes.filter(node => !reused.has(node.number!));
   const pending = (async () => {
     const controller = new AbortController();
-    const read: GhExecute = (args, cwd, options) => runner(args, cwd, { ...options, signal: controller.signal });
+    const read: GhExecute = (args, cwd, options) => runner(args, cwd, { ...options, signal: controller.signal, waitForReadClose: true });
     inheritGitHubReadSession(runner, read);
     let failure: unknown;
     /** 먼저 실패한 원인을 보존하고 같은 검색 결과를 구성하는 나머지 페이지를 중단한다. */
     const guard = <T>(promise: Promise<T>) => promise.catch(error => { failure ??= error; controller.abort(); throw error; });
     const counts = guard(fetchRemainingReviewThreadCommentCounts(root, owner, name, fresh, controller.signal, read));
-    const commits = guard(mapPullRequestReads(fresh, async node => {
-      const pr = pullRequestInfoFromGraphQl(node, 0);
-      await completePullRequestCommits(root, owner, name, node, pr, controller.signal, read);
-      return pr;
+    const workers: Promise<PullRequestInfo>[] = [];
+    const commits = guard(mapPullRequestReads(fresh, node => {
+      // worker 하나의 실패가 즉시 형제를 취소하고, fail-fast aggregate와 별개로 종료를 추적한다.
+      const worker = guard((async () => {
+        const pr = pullRequestInfoFromGraphQl(node, 0);
+        await completePullRequestCommits(root, owner, name, node, pr, controller.signal, read);
+        return pr;
+      })());
+      workers.push(worker); return worker;
     }, controller.signal));
     try {
       const [completeCounts, completeCommits] = await Promise.all([counts, commits]);
       return fresh.map((node, index) => ({ ...pullRequestInfoFromGraphQl(node, completeCounts.get(Number(node.number)) || 0),
         commitHashes: completeCommits[index].commitHashes, commitSummaries: completeCommits[index].commitSummaries,
         commitHashesComplete: completeCommits[index].commitHashesComplete }));
-    } catch (error) { await Promise.allSettled([counts, commits]); throw failure ?? error; }
+    } catch (error) { controller.abort(); await Promise.allSettled([counts, commits, ...workers]); throw failure ?? error; }
     finally { controller.abort(); }
   })();
   const values = new Map(fresh.map((node, index) => [node.number!, pending.then(results => results[index])]));

@@ -16,6 +16,8 @@ export interface GhRunnerOptions extends RunGhOptions {
   deadline?: number;
   /** 실제 read 실행 슬롯을 기다린 시간. 전송기에서 가상의 0으로 채우지 않는다. */
   queueMs?: number;
+  /** 마지막 소비자인 검색 scope만 취소·오류 뒤 실제 실행 close까지 기다린다. 기본 UI 취소는 즉시 반환한다. */
+  waitForReadClose?: boolean;
 }
 
 /** 실제 gh 실행을 대체할 수 있는 작은 함수 타입. */

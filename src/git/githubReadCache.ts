@@ -8,7 +8,7 @@ import { GitHubReadRuntime } from "./githubReadRuntime";
 import { beginGitHubWebAgentLifetime } from "./githubWebAgentPool";
 
 interface Entry { value: string; at: number; expires: number; bytes: number; }
-interface Pending { controller: AbortController; promise: Promise<string>; users: number; }
+interface Pending { controller: AbortController; promise: Promise<string>; closed: Promise<void>; users: number; }
 export interface GitHubReadOptions extends GhRunnerOptions {
   /** immutable OID 또는 mutable 데이터의 세대를 cache key에 포함한다. */
   version?: string;
@@ -56,9 +56,11 @@ export class GitHubReadCache {
     let entry = this.pending.get(key);
     if (!entry || entry.controller.signal.aborted) {
       const controller = new AbortController();
-      entry = { controller, users: 0, promise: Promise.resolve("") };
+      entry = { controller, users: 0, promise: Promise.resolve(""), closed: Promise.resolve() };
       const owned = entry;
-      entry.promise = this.run(args, root, { ...options, env, signal: controller.signal }, context).then(value => {
+      const execution = this.run(args, root, { ...options, env, signal: controller.signal }, context);
+      entry.closed = execution.closed;
+      entry.promise = execution.result.then(value => {
         if (!this.disposed && !controller.signal.aborted && this.pending.get(key) === owned && ttl > 0) {
           const bytes = Buffer.byteLength(value);
           if (bytes <= 4 * 1024 * 1024) {
@@ -71,7 +73,7 @@ export class GitHubReadCache {
       }).finally(() => { if (this.pending.get(key) === owned) this.pending.delete(key); });
       this.pending.set(key, entry);
     } else logInfo("GitHub read coalesced", { repoRoot: root, operation: options.operation });
-    return this.subscribe(entry, options.signal);
+    return this.subscribe(entry, options.signal, options.waitForReadClose);
   }
 
   /** 모든 소비자·대기 요청을 취소하고 실제 실행 종료 뒤 캐시 수명을 마친다. */
@@ -84,7 +86,7 @@ export class GitHubReadCache {
   }
 
   /** 한 소비자만 취소하며 다른 활성 소비자가 공유 중인 CLI는 유지한다. */
-  private subscribe(entry: Pending, signal?: AbortSignal): Promise<string> {
+  private subscribe(entry: Pending, signal?: AbortSignal, waitForReadClose = false): Promise<string> {
     entry.users++;
     return new Promise((resolve, reject) => {
       let finished = false;
@@ -92,8 +94,11 @@ export class GitHubReadCache {
       const done = (error?: unknown, value?: string) => {
         if (finished) return;
         finished = true; signal?.removeEventListener("abort", abort);
-        if (--entry.users === 0) entry.controller.abort();
-        if (error) reject(error); else resolve(value!);
+        const last = --entry.users === 0;
+        if (last) entry.controller.abort();
+        const settle = () => { if (error) reject(error); else resolve(value!); };
+        // 다른 소비자가 소유권을 유지하면 기다리거나 전송을 취소하지 않고 자기 참조만 해제한다.
+        if (last && waitForReadClose) void entry.closed.then(settle); else settle();
       };
       const abort = () => done(cancelled());
       signal?.addEventListener("abort", abort, { once: true });
@@ -118,7 +123,7 @@ export class GitHubReadCache {
    * @param options 실행 환경과 부모 취소 신호. 실행기는 종료를 확인한 뒤 settle해야 한다.
    * @returns 성공 출력 또는 큐 대기를 포함한 제한 시간/취소 오류
    */
-  private async run(args: readonly string[], root: string, options: GhRunnerOptions, context: string | undefined): Promise<string> {
+  private run(args: readonly string[], root: string, options: GhRunnerOptions, context: string | undefined): { result: Promise<string>; closed: Promise<void> } {
     const controller = new AbortController();
     const started = Date.now();
     let acquired = false;
@@ -158,12 +163,12 @@ export class GitHubReadCache {
     });
     this.executions.set(controller, execution);
     if (options.signal?.aborted || this.disposed) abort();
-    try { return await Promise.race([interrupted, execution]); }
-    finally {
+    const result = Promise.race([interrupted, execution]).finally(() => {
       clearTimeout(timer); options.signal?.removeEventListener("abort", abort);
       controller.signal.removeEventListener("abort", onStopped);
       logInfo("GitHub read finished", { repoRoot: root, operation: options.operation, elapsedMs: Date.now() - started });
-    }
+    });
+    return { result, closed: execution.then(() => undefined, () => undefined) };
   }
 
   /** 항목과 메모리 사용량을 함께 제거해 덮어쓰기·만료 후에도 상한 계산을 유지한다. */
