@@ -24,10 +24,10 @@ const sessions = new WeakMap<GhExecute, GitHubReadSessionState>();
 const snapshotHints = new WeakMap<GhExecute, Map<string, { snapshots: GitHubPullRequestSnapshots; repository?: string }>>();
 
 /** body 접근 없이 다음 상세의 앵커 전용 query가 유용한지 판단한다. 인증 권한으로 사용하지 않는다. */
-export function gitHubFileSnapshotHint(execute: GhExecute, root: string, repository: string, number: number): boolean {
+export function gitHubFileSnapshotHint(execute: GhExecute, root: string, repository: string, number: number, comparisonOnly = false): boolean {
   const hint = snapshotHints.get(execute)?.get(root);
   const canonical = repository === "{owner}/{repo}" ? hint?.repository : repository;
-  return !!canonical && !!hint?.snapshots.hasFiles(canonical, number);
+  return !!canonical && !!hint?.snapshots.hasFiles(canonical, number, comparisonOnly);
 }
 
 /** 같은 canonical 저장소의 완전한 commit 후보가 있으면 검색에서 stable connection을 생략할 수 있다. */

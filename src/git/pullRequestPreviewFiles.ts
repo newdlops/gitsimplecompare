@@ -6,10 +6,12 @@ import type { GhExecute } from "./ghRunner";
 import { FileChangeStatus } from "./gitTypes";
 import { splitRepositoryName } from "./githubRepository";
 import { inheritReplyCommentLocations } from "./pullRequestCommentLocations";
-import { createGitHubReadSession, completeGitHubReadSession, gitHubReadSessionState } from "./githubReadSession";
+import { createGitHubReadSession, completeGitHubReadSession, gitHubReadSessionState, gitHubFileSnapshotHint, gitHubSnapshotIdentity } from "./githubReadSession";
 import { decodeRestPage, nextRestPage, GitHubRestPageError } from "./githubRestPages";
-import { readSessionRestApiBase } from "./githubRestSession";
-import { restRead } from "./githubReadRequest";
+import { readSessionRestApiBase, readSessionRestPath } from "./githubRestSession";
+import { restRead, graphQLRequest } from "./githubReadRequest";
+import { canReuseComparisonFiles } from "./githubPullRequestSnapshots";
+import { logInfo } from "../ui/outputLog";
 
 /** 댓글이나 patch 본문 없이 PR changed-files 목록에 필요한 파일 정보 */
 export interface PullRequestChangedFile extends CommitFileChange {}
@@ -130,14 +132,44 @@ export async function fetchPullRequestChangedFiles(
   execute: GhExecute = readGitHubInteractive
 ): Promise<PullRequestChangedFilesResult> {
   const owns = !gitHubReadSessionState(execute);
+  const hint = gitHubFileSnapshotHint(execute, cwd, repository, number, true);
   const runner = createGitHubReadSession(cwd, execute);
   const [owner, name] = splitRepositoryName(repository);
+  const known = hint ? await readComparableSnapshot(cwd, repository, owner, name, number, runner) : undefined;
+  if (known) { if (owns) await completeGitHubReadSession(runner); return known; }
   const page = await readPullFiles(cwd, owner, name, number, runner);
   if (owns) await completeGitHubReadSession(runner);
   return {
     files: page.items.map(normalizeChangedFile),
     truncated: page.truncated,
   };
+}
+
+/**
+ * 최신 인가된 앵커·합계를 읽은 뒤에만 같은 identity의 완전한 비교 파일을 재사용한다.
+ * @param repository canonical 이름 또는 gh placeholder, runner 현재 논리 조회의 고정 세션
+ * @returns oldPath 손실 없이 정규화할 수 있는 snapshot. miss는 기존 REST 전체 읽기로 보완한다.
+ */
+async function readComparableSnapshot(cwd: string, repository: string, owner: string, name: string, number: number,
+  runner: GhExecute): Promise<PullRequestChangedFilesResult | undefined> {
+  const query = `query($owner: String!, $name: String!, $number: Int!) {
+    repository(owner: $owner, name: $name) { nameWithOwner url pullRequest(number: $number) {
+      number headRefOid baseRefOid files { totalCount }
+    } }
+  }`;
+  const out = await runner(["api", "graphql", "-F", `owner=${owner}`, "-F", `name=${name}`, "-F", `number=${number}`, "-f", `query=${query}`], cwd,
+    { operation: "pr-comparison-anchor", request: graphQLRequest(query, { owner, name, number }) });
+  const response = JSON.parse(out), pr = response.data?.repository?.pullRequest;
+  if (response.errors?.length || pr?.number !== number || typeof pr.headRefOid !== "string" || !pr.headRefOid
+    || typeof pr.baseRefOid !== "string" || !pr.baseRefOid || !Number.isSafeInteger(pr.files?.totalCount) || pr.files.totalCount < 0) {
+    throw new Error("GitHub pull request comparison snapshot is incomplete.");
+  }
+  const identity = gitHubSnapshotIdentity(runner, repository);
+  const files = identity ? gitHubReadSessionState(runner)?.snapshots?.getFiles(identity, number, pr.headRefOid, pr.baseRefOid, pr.files.totalCount) : undefined;
+  logInfo("pull request comparison file snapshot", { operation: "pr-comparison-anchor", hit: Boolean(files && canReuseComparisonFiles(files)) });
+  if (!files || !canReuseComparisonFiles(files)) return undefined;
+  return { files: files.map(file => ({ status: file.changeType === "ADDED" ? "A" : file.changeType === "DELETED" ? "D" : "M",
+    path: file.path, oldPath: undefined, additions: file.additions, deletions: file.deletions })), truncated: false };
 }
 
 /**
@@ -220,7 +252,8 @@ async function readPagedResult<T>(
     const items = result.data;
     if (!Array.isArray(items)) throw new GitHubRestPageError("invalid-json");
     all.push(...items);
-    if (nextRestPage(result, `/${path}`, page, PAGE_SIZE, readSessionRestApiBase(runner)) === undefined) {
+    const canonical = readSessionRestPath(runner, `/${path}`);
+    if (nextRestPage(canonical ? result : { data: items }, canonical ?? `/${path}`, page, PAGE_SIZE, readSessionRestApiBase(runner)) === undefined) {
       // API 파일 상한은 Link의 부재로 완전성을 증명할 수 없다. 댓글의 독립 상한과는 구분한다.
       return { items: all, truncated: route.endsWith("/files") && all.length >= MAX_PAGES * PAGE_SIZE };
     }

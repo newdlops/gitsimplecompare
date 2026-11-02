@@ -2,7 +2,7 @@
 import { GitHubCommitSnapshots } from "./githubCommitSnapshots";
 export interface RawPullRequestFile { path: string; additions: number; deletions: number; changeType: string; }
 export interface GitHubSnapshotIdentity { host: string; repository: string; credentialKey: string; }
-interface FileEntry { repository: string; number: number; credentialKey: string; files: RawPullRequestFile[]; bytes: number; }
+interface FileEntry { repository: string; number: number; credentialKey: string; files: RawPullRequestFile[]; bytes: number; comparable: boolean; }
 interface Limits { maxEntries?: number; maxBytes?: number; maxEntryBytes?: number; }
 
 /** 활성화별 bounded immutable snapshot 저장소. 각 반환값은 새 객체여서 소비자 변경을 격리한다. */
@@ -13,8 +13,8 @@ export class GitHubPullRequestSnapshots {
   constructor(private readonly limits: Limits = {}) {}
 
   /** 인증을 결정하지 않는 query-shape 힌트다. 실제 body 재사용은 성공한 앵커와 인증 key를 다시 요구한다. */
-  hasFiles(repository: string, number: number): boolean {
-    return [...this.files.values()].some(entry => entry.repository === repository.toLowerCase() && entry.number === number);
+  hasFiles(repository: string, number: number, comparisonOnly = false): boolean {
+    return [...this.files.values()].some(entry => entry.repository === repository.toLowerCase() && entry.number === number && (!comparisonOnly || entry.comparable));
   }
 
   /** 현재 인증의 성공한 head/base·파일 합계와 정확히 일치하는 완전한 raw 파일만 복사한다. */
@@ -32,7 +32,7 @@ export class GitHubPullRequestSnapshots {
     if (bytes > (this.limits.maxEntryBytes ?? 4 * 1024 * 1024) || new Set(files.map(file => file.path)).size !== files.length) return;
     this.remove(key);
     this.files.set(key, { repository: identity.repository.toLowerCase(), number, credentialKey: identity.credentialKey,
-      files: files.map(file => ({ ...file })), bytes });
+      files: files.map(file => ({ ...file })), bytes, comparable: canReuseComparisonFiles(files) });
     this.bytes += bytes;
     while (this.files.size > (this.limits.maxEntries ?? 128) || this.bytes > (this.limits.maxBytes ?? 16 * 1024 * 1024)) {
       this.remove(this.files.keys().next().value!);
@@ -53,4 +53,11 @@ export class GitHubPullRequestSnapshots {
   }
   /** 항목 제거와 byte 계산을 묶어 덮어쓰기/정리 후에도 메모리 상한을 지킨다. */
   private remove(key: string): void { const entry = this.files.get(key); if (entry) { this.bytes -= entry.bytes; this.files.delete(key); } }
+}
+
+/** oldPath가 필요 없고 REST 정규화와 동등한 완전한 파일 배열만 비교용 힌트로 허용한다. */
+export function canReuseComparisonFiles(files: readonly RawPullRequestFile[]): boolean {
+  return files.length < 3000 && files.every(file => typeof file.path === "string" && file.path.length > 0
+    && ["ADDED", "DELETED", "MODIFIED"].includes(file.changeType)
+    && Number.isSafeInteger(file.additions) && file.additions >= 0 && Number.isSafeInteger(file.deletions) && file.deletions >= 0);
 }

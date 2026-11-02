@@ -29,3 +29,16 @@ export function readSessionRestApiBase(execute: GhExecute): string {
   if (!/^[a-z0-9][a-z0-9.-]*$/.test(host)) throw new GitHubRestPageError("metadata");
   return host === "github.com" || host.endsWith(".ghe.com") ? `https://api.${host}` : `https://${host}/api/v3`;
 }
+
+/**
+ * CLI placeholder 경로를 검증된 세션 저장소로 정규화해 실제 Link 경로와 비교한다.
+ * @param execute 현재 페이지의 세션, path 원래 REST 경로
+ * @returns canonical 경로. 아직 scope가 없는 cold CLI는 undefined여서 길이 기반 pagination을 유지한다.
+ */
+export function readSessionRestPath(execute: GhExecute, path: string): string | undefined {
+  if (!path.includes("{owner}") && !path.includes("{repo}")) return path;
+  const state = gitHubReadSessionState(execute);
+  if (!state?.candidate && !state?.scope) return undefined;
+  const scope = readSessionRepository(execute);
+  return path.replaceAll("{owner}", encodeURIComponent(scope.owner)).replaceAll("{repo}", encodeURIComponent(scope.repository));
+}

@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [0.1.72186] - 2026-11-02
+
+### Performance
+
+- Read remaining search review and commit pages concurrently while cancelling
+  sibling reads when either continuation fails.
+- Reuse complete pull request file lists in Explorer after fresh authorization
+  and head, base and file-count checks. Keep REST reads for renamed, copied,
+  unsupported and API-limited file lists.
+
+### Fixes
+
+- Validate REST pagination links against the canonical repository when GitHub
+  CLI placeholder paths are used.
+
 ## [0.1.72185] - 2026-11-02
 
 ### Performance

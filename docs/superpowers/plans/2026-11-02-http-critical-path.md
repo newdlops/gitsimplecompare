@@ -1,5 +1,9 @@
 # HTTP Critical Path Implementation Plan
 
+**Release scope update (2026-11-02):** The user's latest instruction is to version,
+commit, push and deploy the current work. Version 0.1.72186 includes P1 and P2
+only. P3–P6 below remain planned follow-up work and are not claimed as complete.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Complete P1–P6 from the approved remaining HTTP opportunities, retaining authorized complete data and proving reduced work or critical-path time.
@@ -28,22 +32,22 @@
 
 ### Task 1: P1 search continuations
 
-**Files:** `src/git/pullRequestSearchReads.ts`, `src/git/pullRequestSearchService.ts`, `test/pullRequestSearchEfficiency.test.ts`.
+**Files:** `src/git/pullRequestSearchReads.ts`, `src/git/pullRequestSearchService.ts`, `test/searchContinuationPipeline.test.ts`.
 **Interfaces:** `completeSearchPullRequests` keeps the DTO and same-search scope. Its owned continuation runner combines cancellation with the outer search runner and inherits session identity.
 
-- [ ] Add failing tests for commit/review start overlap, complete results, sibling cancellation on either error, and existing 4-request cap.
-- [ ] Observe RED, run continuations together, await actual cleanup and preserve first failure.
-- [ ] Run focused search/session tests; expect no failures; commit.
+- [x] Add failing tests for commit/review start overlap, complete results, sibling cancellation on either error, and existing 4-request cap.
+- [x] Observe RED, run continuations together, await actual cleanup and preserve first failure.
+- [x] Run focused search/session tests; expect no failures; commit.
 
 ### Task 2: P2 Explorer file snapshots
 
-**Files:** `src/git/pullRequestPreviewFiles.ts`, `src/git/githubPullRequestSnapshots.ts` as needed, `test/githubReadIntegration.test.ts` or new focused snapshot file.
+**Files:** `src/git/pullRequestPreviewFiles.ts`, `src/git/githubPullRequestSnapshots.ts` as needed, `test/githubReadIntegration.test.ts` and `test/prComparisonSnapshots.test.ts`.
 **Interfaces:** Existing changed-files reader and DTO; reuse `gitHubFileSnapshotHint`, fresh GraphQL anchor and current session identity.
 
-- [ ] Add RED: previously cached 1000 non-rename files use one fresh anchor instead of REST pages.
-- [ ] Add rename/copy/unknown-state, partial count, changed auth/head/base, empty cache and file-cap fallback tests.
-- [ ] Implement guarded conversion only when all required REST DTO fields are represented; otherwise retain REST.
-- [ ] Run focused detail/changed-files/session tests; expect complete identical DTOs; commit.
+- [x] Add RED: previously cached 1000 non-rename files use one fresh anchor instead of REST pages.
+- [x] Add rename/copy/unknown-state, partial count, changed auth/head/base, empty cache and file-cap fallback tests.
+- [x] Implement guarded conversion only when all required REST DTO fields are represented; otherwise retain REST.
+- [x] Run focused detail/changed-files/session tests; expect complete identical DTOs; commit.
 
 ### Task 3: P3 warm preview bootstrap
 
