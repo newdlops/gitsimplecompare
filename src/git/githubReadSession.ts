@@ -41,9 +41,11 @@ export function gitHubRootCommitSnapshotHint(execute: GhExecute, root: string): 
   return !!hint?.repository && hint.snapshots.commits.has(hint.repository);
 }
 
-/** 큐 wrapper가 이미 고정된 세션 identity를 공유하게 하며 환경·인증을 다시 해석하지 않는다. */
+/** wrapper가 고정 세션과 bounded query-shape 힌트를 공유하되 새 인증 권한을 만들지 않는다. */
 export function inheritGitHubReadSession(source: GhExecute, wrapper: GhExecute): void {
   const state = sessions.get(source); if (state) sessions.set(wrapper, state);
+  const hints = snapshotHints.get(source) ?? new Map();
+  snapshotHints.set(source, hints); snapshotHints.set(wrapper, hints);
 }
 
 /** 성공한 현재 페이지가 고정한 canonical 저장소·실제 인증만 불변 캐시의 identity로 반환한다. */
@@ -156,6 +158,7 @@ export function createGitHubReadSession(root: string, execute: GhExecute): GhExe
     } catch { /* 응답 JSON·완전성 검사는 원래 서비스가 소유하며 scope는 추측하지 않는다. */ }
     return value;
   };
+  inheritGitHubReadSession(execute, session);
   sessions.set(session, state);
   return session;
 }

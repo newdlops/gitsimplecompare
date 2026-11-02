@@ -171,14 +171,14 @@ test("preview reuses 201 complete commit summaries only after a fresh matching a
   await load(); assert.equal(http, 3);
   const warm = await load(); assert.equal(http, 4); assert.equal(warm.title, "Fresh title 4");
   token = "account-two";
-  await load(); assert.equal(http, 7, "a new credential cannot consume another account's summaries");
+  await load(); assert.equal(http, 8, "a new credential repairs all pages after the thin hint misses");
   base = "new-base";
-  await load(); assert.equal(http, 10, "a changed base cannot reuse the old commit connection");
+  await load(); assert.equal(http, 12, "a changed base cannot reuse the old commit connection");
   base = "base"; token = "account-three"; incomplete = true;
-  await load(); assert.equal(http, 13);
-  await load(); assert.equal(http, 16, "fallback SHA titles are not complete reusable summaries");
+  await load(); assert.equal(http, 16);
+  await load(); assert.equal(http, 20, "fallback SHA titles are not complete reusable summaries");
   head = "new-head";
-  await assert.rejects(load(), /head changed/i); assert.equal(http, 17);
+  await assert.rejects(load(), /head changed/i); assert.equal(http, 21);
 });
 
 test("preview applies its original empty-title fallback to authorized list snapshots", async t => {

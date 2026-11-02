@@ -4,11 +4,12 @@ import { readGitHub } from "./githubReadCache";
 import type { PullRequestInfo } from "./pullRequestInfo";
 import type { PullRequestPreviewCommit } from "./pullRequestPreviewCommits";
 import { normalizePreviewStatus } from "./pullRequestPreviewFiles";
-import { createGitHubReadSession, completeGitHubReadSession, gitHubReadSessionState, gitHubSnapshotIdentity } from "./githubReadSession";
+import { createGitHubReadSession, completeGitHubReadSession, gitHubReadSessionState, gitHubSnapshotIdentity, gitHubRootCommitSnapshotHint, inheritGitHubReadSession } from "./githubReadSession";
 import type { StablePullRequestSnapshot } from "./githubCommitSnapshots";
 import { graphQLRequest, restRead } from "./githubReadRequest";
 import { decodeRestPage, nextRestPage } from "./githubRestPages";
 import { readSessionRestApiBase } from "./githubRestSession";
+import { logInfo } from "../ui/outputLog";
 
 const generations = new Map<string, number>();
 /**
@@ -23,13 +24,15 @@ export function invalidatePreviewRemote(root: string): void { generations.set(ro
 /** 같은 PR head·갱신 시각의 조회를 공유하면서 모든 CLI에 panel의 취소 신호를 전달한다. */
 export function previewReadRunner(root: string, pr?: PullRequestInfo, signal?: AbortSignal): GhExecute {
   const version = JSON.stringify([pr?.number, pr?.headHash, pr?.updatedAt, generations.get(root) ?? 0]);
-  return async (args, cwd, options) => {
+  const runner: GhExecute = async (args, cwd, options) => {
     const controller = new AbortController(), signals = [...new Set([signal, options.signal].filter((value): value is AbortSignal => !!value))];
     const abort = () => controller.abort();
     for (const value of signals) { value.addEventListener("abort", abort, { once: true }); if (value.aborted) abort(); }
     try { return await readGitHub(args, cwd, { ...options, signal: controller.signal, version, ttlMs: 30_000 }); }
     finally { for (const value of signals) value.removeEventListener("abort", abort); }
   };
+  inheritGitHubReadSession(readGitHub, runner);
+  return runner;
 }
 
 const QUERY = `query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
@@ -46,8 +49,13 @@ interface SummaryPage { headRefOid?: string; baseRefOid?: string; baseRefName?: 
   commits?: { nodes?: Array<{ commit?: CommitNode }>; pageInfo?: { hasNextPage?: boolean; endCursor?: string } }; }
 /** 미리보기 첫 요청으로 함께 얻는 저장소·본문·첫 커밋 페이지다. */
 export interface PreviewBootstrap { repository: string; title: string; body: string; firstPage: SummaryPage; }
-const bootstrapSessions = new WeakMap<SummaryPage, { root: string; session: GhExecute; owns: boolean; repository: string; known?: StablePullRequestSnapshot }>();
+const bootstrapSessions = new WeakMap<SummaryPage, { root: string; session: GhExecute; owns: boolean; repository: string; thin: boolean; known?: StablePullRequestSnapshot }>();
 const BOOTSTRAP_QUERY = QUERY.replace("{ pullRequest(number: $number) {", "{ nameWithOwner url pullRequest(number: $number) { title body");
+const THIN_BOOTSTRAP_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) { nameWithOwner url pullRequest(number: $number) {
+    title body headRefOid baseRefOid baseRefName
+  } }
+}`;
 
 /**
  * 저장소 문맥·제목·본문·첫 커밋 페이지를 한 요청으로 읽어 초기 네트워크 왕복을 줄인다.
@@ -56,20 +64,24 @@ const BOOTSTRAP_QUERY = QUERY.replace("{ pullRequest(number: $number) {", "{ nam
  */
 export async function fetchPreviewBootstrap(root: string, pr: PullRequestInfo, runner: GhExecute): Promise<PreviewBootstrap> {
   const owns = !gitHubReadSessionState(runner);
+  const thin = gitHubRootCommitSnapshotHint(runner, root);
+  const query = thin ? THIN_BOOTSTRAP_QUERY : BOOTSTRAP_QUERY;
   runner = createGitHubReadSession(root, runner);
   const out = await runner(["api", "graphql", "-F", "owner={owner}", "-F", "name={repo}",
-    "-F", `number=${pr.number}`, "-f", `query=${BOOTSTRAP_QUERY}`], root, { operation: "pr-preview-bootstrap",
-    request: graphQLRequest(BOOTSTRAP_QUERY, { owner: "{owner}", name: "{repo}", number: pr.number }) });
+    "-F", `number=${pr.number}`, "-f", `query=${query}`], root, { operation: "pr-preview-bootstrap",
+    request: graphQLRequest(query, { owner: "{owner}", name: "{repo}", number: pr.number }) });
   const response = JSON.parse(out) as { errors?: unknown[]; data?: { repository?: { nameWithOwner?: string; pullRequest?: SummaryPage } } };
   if (response.errors?.length) throw new Error("GitHub pull request preview is incomplete.");
   const repository = response.data?.repository;
   if (!repository?.nameWithOwner || !repository.pullRequest) throw new Error("GitHub pull request preview is not available.");
   const value = repository.pullRequest;
   if (!pr.headHash || value.headRefOid !== pr.headHash) throw new Error("The pull request head changed. Refresh pull requests before opening its preview.");
+  if (thin && (!value.baseRefOid || !value.baseRefName)) throw new Error("GitHub pull request preview is incomplete.");
   const identity = gitHubSnapshotIdentity(runner, repository.nameWithOwner);
   const known = identity && value.baseRefOid && value.baseRefName
     ? gitHubReadSessionState(runner)?.snapshots?.commits.get(identity, pr.number, value.headRefOid, value.baseRefOid, value.baseRefName) : undefined;
-  bootstrapSessions.set(value, { root, session: runner, owns, repository: repository.nameWithOwner, known });
+  logInfo("pull request preview commit snapshot", { operation: "pr-preview-bootstrap", thin, hit: Boolean(known) });
+  bootstrapSessions.set(value, { root, session: runner, owns, repository: repository.nameWithOwner, thin, known });
   return { repository: repository.nameWithOwner, title: value.title || pr.title, body: value.body ?? "", firstPage: value };
 }
 
@@ -92,7 +104,8 @@ export async function fetchPreviewCommitSummaries(root: string, pr: PullRequestI
       shortHash: hash.slice(0, 7), files: [], filesLoaded: false }));
   }
   let cursor: string | undefined;
-  let anchor: SummaryPage | undefined;
+  let anchor: SummaryPage | undefined = bootstrap?.thin ? initial : undefined;
+  if (bootstrap?.thin) initial = undefined;
   let completeTitles = true;
   const seen = new Set<string>();
   const commits = new Map<string, PullRequestPreviewCommit>();

@@ -4,7 +4,7 @@ import { CommitFileChange, LocalBranchStatus } from "../graph/graphTypes";
 import { parseRawNumstatZ } from "./diffParse";
 import { readGitHubInteractive } from "./githubReadCache";
 import { readGitHubRepositoryName } from "./githubRepositoryName";
-import { createGitHubReadSession, completeGitHubReadSession } from "./githubReadSession";
+import { createGitHubReadSession, completeGitHubReadSession, inheritGitHubReadSession } from "./githubReadSession";
 import type { GhExecute } from "./ghRunner";
 import { fetchPullRequestRefs } from "./pullRequestRefLookup";
 import { fetchPreviewBootstrap, fetchPreviewCommitSummaries, fetchRemotePreviewCommit, previewReadRunner } from "./pullRequestPreviewRemote";
@@ -313,7 +313,9 @@ export class PullRequestService {
     const controller = new AbortController(), abort = () => controller.abort();
     signal?.addEventListener("abort", abort, { once: true }); if (signal?.aborted) abort();
     const execute = runner;
-    runner = createGitHubReadSession(this.repoRoot, (args, root, options) => execute(args, root, { ...options, signal: controller.signal }));
+    const scoped: GhExecute = (args, root, options) => execute(args, root, { ...options, signal: controller.signal });
+    inheritGitHubReadSession(execute, scoped);
+    runner = createGitHubReadSession(this.repoRoot, scoped);
     try {
     const existingPreview = pr ? await fetchPreviewBootstrap(this.repoRoot, pr, runner) : undefined;
     const repository = existingPreview?.repository
