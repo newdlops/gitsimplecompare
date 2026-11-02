@@ -6,6 +6,7 @@ import WebSocket = require("ws");
 import { NativeInspectorPortHints } from "./nativeInspectorPortHints";
 import { logWarn, logInfo } from "../ui/outputLog";
 import { deriveVscodeUserDataDir } from "../system/vscodeCacheService";
+import { PriorityReadQueue } from "../utils/priorityReadQueue";
 
 const portHints = new NativeInspectorPortHints();
 
@@ -79,7 +80,7 @@ export async function findInspectorWebSocketUrlForPid(
   const hinted = portHints.get(pid, profileIdentity, ordered);
   try {
     if (hinted !== undefined) {
-      for (const url of await urlsForPort(hinted)) if (await matches(url, hinted, true)) return url;
+      for (const url of await urlsForPort(hinted)) if (await matches(url)) return remember(url, hinted, true);
       portHints.forget(pid, profileIdentity, ordered);
       logInfo("native inspector port hint discarded", { reason: signal?.aborted ? "cancelled" : "ownership-or-port" });
     }
@@ -88,14 +89,11 @@ export async function findInspectorWebSocketUrlForPid(
       if (signal?.aborted || (delays[round] > 0 && !await sleep(delays[round], signal))) return undefined;
       // 실패한 힌트도 같은 첫 round에서는 반복하지 않고 다음 round의 기존 복구 탐색부터 포함한다.
       if (round > 0 || ordered[0] !== hinted) {
-        for (const url of await urlsForPort(ordered[0])) if (await matches(url, ordered[0], false)) return url;
+        for (const url of await urlsForPort(ordered[0])) if (await matches(url)) return remember(url, ordered[0], false);
       }
       const remaining = ordered.slice(1).filter(port => round > 0 || port !== hinted);
-      const groups = await Promise.all(remaining.map(urlsForPort));
-      if (signal?.aborted) return undefined;
-      for (let index = 0; index < groups.length; index++) {
-        for (const url of [...new Set(groups[index])]) if (await matches(url, remaining[index], false)) return url;
-      }
+      const selected = await scanRemaining(remaining);
+      if (selected && !signal?.aborted) return remember(selected.url, selected.port, false);
       if (signal?.aborted) return undefined;
       armInspector(pid);
     }
@@ -103,21 +101,45 @@ export async function findInspectorWebSocketUrlForPid(
   } finally { if (signal?.aborted) portHints.forget(pid, profileIdentity, ordered); }
 
   /** HTTP 시도만 집계하며 target URL과 profile 경로를 로그에 넣지 않는다. */
-  async function urlsForPort(port: number): Promise<string[]> {
-    if (signal?.aborted) return [];
-    httpProbes++; return inspectorUrlsForPort(port, signal);
+  async function urlsForPort(port: number, probeSignal = signal): Promise<string[]> {
+    if (probeSignal?.aborted) return [];
+    httpProbes++; return inspectorUrlsForPort(port, probeSignal);
   }
 
-  /** 모든 shortcut도 WebSocket의 실제 process.pid를 확인한 뒤에만 새 힌트로 저장한다. */
-  async function matches(url: string, port: number, hint: boolean): Promise<boolean> {
-    if (signal?.aborted) return false;
+  /** 후보마다 WebSocket의 실제 process.pid를 확인하고 소유 socket이 닫힌 뒤 결과를 반환한다. */
+  async function matches(url: string, probeSignal = signal): Promise<boolean> {
+    if (probeSignal?.aborted) return false;
     pidProbes++;
-    try {
-      if (await probeProcessPid(url, signal) !== pid || signal?.aborted) return false;
-      portHints.remember(pid, profileIdentity, ordered, port);
-      logInfo("native inspector discovery complete", { pid, port, hint, httpProbes, pidProbes, totalMs: Date.now() - started });
-      return true;
-    } catch { return false; }
+    try { return await probeProcessPid(url, probeSignal) === pid && !probeSignal?.aborted; }
+    catch { return false; }
+  }
+
+  /** 최종 소유 후보 하나만 힌트로 게시하며 profile 경로나 target URL은 로그에 남기지 않는다. */
+  function remember(url: string, port: number, hint: boolean): string {
+    portHints.remember(pid, profileIdentity, ordered, port);
+    logInfo("native inspector discovery complete", { pid, port, hint, httpProbes, pidProbes, totalMs: Date.now() - started });
+    return url;
+  }
+
+  /**
+   * HTTP 도착 순서로 후보를 검증하되 PID probe는 한 개로 제한한다.
+   * @param ports 첫 포트·힌트 처리를 마친 나머지 포트
+   * @returns 소유 PID가 검증된 후보. 나머지 소유 HTTP/WS 종료까지 기다리고 반환한다.
+   */
+  async function scanRemaining(ports: readonly number[]): Promise<{ url: string; port: number } | undefined> {
+    const controller = new AbortController(), abort = () => controller.abort(), queue = new PriorityReadQueue(1);
+    signal?.addEventListener("abort", abort, { once: true }); if (signal?.aborted) abort();
+    let selected: { url: string; port: number } | undefined;
+    const tasks = ports.map(async port => {
+      for (const url of [...new Set(await urlsForPort(port, controller.signal))]) {
+        if (controller.signal.aborted) return;
+        if (await queue.run(() => matches(url, controller.signal), controller.signal) && !selected && !signal?.aborted) {
+          selected = { url, port }; controller.abort(); return;
+        }
+      }
+    });
+    try { await Promise.allSettled(tasks); return signal?.aborted ? undefined : selected; }
+    finally { controller.abort(); signal?.removeEventListener("abort", abort); }
   }
 }
 
@@ -201,27 +223,27 @@ function safeInspectorWebSocketUrl(value: string, expectedPort: number): string 
   }
 }
 
-/** HTTP GET을 absolute timeout, abort, 응답 크기 제한과 함께 실행한다. */
+/** 소유 HTTP GET을 500ms·256KiB로 제한하고 성공·실패 모두 실제 연결 close 뒤에 완료한다. */
 function httpGet(url: string, signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
       reject(new Error("inspector HTTP probe cancelled"));
       return;
     }
-    let settled = false;
+    let closing = false, settled = false, failure: Error | undefined, result = "";
     let req: http.ClientRequest | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    /** request close 이후에만 결과를 전달해 취소된 연결이 다음 scan에 남지 않게 한다. */
+    const complete = (): void => {
+      if (settled) return; settled = true;
+      if (failure) reject(failure); else resolve(result);
+    };
     const finish = (error?: Error, body?: string): void => {
-      if (settled) return;
-      settled = true;
+      if (closing) return;
+      closing = true; failure = error; result = body ?? "";
       if (timer) clearTimeout(timer);
       signal?.removeEventListener("abort", onAbort);
-      if (error) {
-        try { req?.destroy(); } catch { /* 무시 */ }
-        reject(error);
-      } else {
-        resolve(body ?? "");
-      }
+      if (req) req.destroy(); else complete();
     };
     const onAbort = (): void =>
       finish(new Error("inspector HTTP probe cancelled"));
@@ -230,51 +252,53 @@ function httpGet(url: string, signal?: AbortSignal): Promise<string> {
       500
     );
     signal?.addEventListener("abort", onAbort, { once: true });
-    req = http.get(url, (res) => {
-      let body = "";
-      res.on("data", (chunk) => {
-        body += String(chunk);
-        if (Buffer.byteLength(body, "utf8") > 256 * 1024) {
-          finish(new Error("inspector HTTP response was too large"));
-        }
+    try {
+      // 일회용 localhost probe만 소유하므로 전역 Agent의 유휴 socket에 연결을 남기지 않는다.
+      req = http.get(url, { agent: false }, (res) => {
+        let body = "";
+        res.on("data", (chunk) => {
+          body += String(chunk);
+          if (Buffer.byteLength(body, "utf8") > 256 * 1024) finish(new Error("inspector HTTP response was too large"));
+        });
+        res.on("end", () => finish(undefined, body));
+        res.on("error", error => finish(error));
       });
-      res.on("end", () => finish(undefined, body));
-    });
-    req.on("error", (error) =>
-      finish(error instanceof Error ? error : new Error(String(error)))
-    );
+      req.on("error", error => finish(error));
+      req.once("close", () => { if (!closing) finish(new Error("inspector HTTP probe closed")); complete(); });
+      if (signal?.aborted) onAbort();
+    } catch (error) { finish(error instanceof Error ? error : new Error(String(error))); }
   });
 }
 
-/** inspector target의 process.pid 값을 읽고 shutdown signal이 오면 즉시 연결을 끝낸다. */
+/** inspector의 process.pid만 읽고 600ms·취소·성공 모두 소유 WebSocket close까지 기다린다. */
 function probeProcessPid(wsUrl: string, signal?: AbortSignal): Promise<number> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) { reject(new Error("pid probe cancelled")); return; }
     const ws = new WebSocket(wsUrl);
     const id = 1;
-    let settled = false;
+    let closing = false, settled = false, failure: Error | undefined, result = 0;
+    /** close 이벤트 또는 이미 CLOSED인 socket만 호출자의 완료 조건으로 허용한다. */
+    const complete = (): void => {
+      if (settled) return; settled = true;
+      if (failure) reject(failure); else resolve(result);
+    };
     const finish = (error?: Error, pid?: number): void => {
-      if (settled) return;
-      settled = true;
+      if (closing) return;
+      closing = true; failure = error; result = pid ?? 0;
       clearTimeout(timer);
       signal?.removeEventListener("abort", onAbort);
-      try { ws.close(); } catch { /* 무시 */ }
-      if (error) reject(error);
-      else resolve(pid ?? 0);
+      if (ws.readyState === WebSocket.CLOSED) complete(); else ws.terminate();
     };
     const onAbort = (): void => finish(new Error("pid probe cancelled"));
     const timer = setTimeout(() => {
       finish(new Error("pid probe timed out"));
     }, 600);
-    if (signal?.aborted) {
-      finish(new Error("pid probe cancelled"));
-      return;
-    }
     signal?.addEventListener("abort", onAbort, { once: true });
-    ws.once("open", () => ws.send(JSON.stringify({
+    ws.once("open", () => { if (!closing) ws.send(JSON.stringify({
       id,
       method: "Runtime.evaluate",
       params: { expression: "process.pid", returnByValue: true },
-    })));
+    }), error => { if (error) finish(error); }); });
     ws.on("message", (data) => {
       let message: any;
       try {
@@ -286,9 +310,11 @@ function probeProcessPid(wsUrl: string, signal?: AbortSignal): Promise<number> {
       if (message.id !== id) return;
       finish(undefined, Number(message.result?.result?.value));
     });
-    ws.once("error", (error) => {
+    ws.on("error", (error) => {
       finish(error instanceof Error ? error : new Error(String(error)));
     });
+    ws.once("close", () => { if (!closing) finish(new Error("pid probe closed")); complete(); });
+    if (signal?.aborted) onAbort();
   });
 }
 

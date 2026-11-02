@@ -64,9 +64,9 @@ only. P3–P6 below remain planned follow-up work and are not claimed as complet
 **Files:** `src/git/githubWebHtml.ts`, `test/githubWebReadContext.test.ts`.
 **Interfaces:** Same HTML read DTO and deterministic breadth-first output ordering, URL safety, depth and total admission limits.
 
-- [ ] RED: a fast parent's child starts while an unrelated sibling remains pending.
-- [ ] Implement dynamic bounded discovery with stable output/admission ordering, deduplication and owned cancellation.
-- [ ] Test cycles, overlapping child URLs, depth/URL cap, errors and reordered completion; run HTML suites; commit.
+- [x] RED: a fast parent's child starts while an unrelated sibling remains pending.
+- [x] Implement dynamic bounded discovery with stable output/admission ordering, deduplication and owned cancellation.
+- [x] Test cycles, overlapping child URLs, depth/URL cap, errors and reordered completion; run HTML suites; commit.
 
 ### Task 5: P5 inspector discovery
 

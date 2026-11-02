@@ -90,7 +90,9 @@ test("closed hinted ports fall back while different profiles and changed port se
   await findInspectorWebSocketUrlForPid(456789, undefined, ports, "hint-one");
   assert.equal(await findInspectorWebSocketUrlForPid(456789, undefined, ports, "hint-two"), target.url);
   assert.equal(preferred.requests(), 2);
-  assert.equal(await findInspectorWebSocketUrlForPid(456789, undefined, [preferred.port, replacement.port, target.port], "hint-one"), replacement.url);
+  const rediscovered = await findInspectorWebSocketUrlForPid(456789, undefined, [preferred.port, replacement.port, target.port], "hint-one");
+  assert([replacement.url, target.url].includes(rediscovered!));
+  assert.equal(preferred.requests(), 3, "a changed port set must not reuse the prior shortcut");
   await target.close(); preferred.setPid(456789);
   assert.equal(await findInspectorWebSocketUrlForPid(456789, undefined, ports, "hint-one"), preferred.url);
 });
