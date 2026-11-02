@@ -84,3 +84,81 @@ test("disposing a context cancels active readers and waits for their actual clos
   const pending = f.context.read(base, {}); await wait(0);
   await f.context.dispose(); await pending; finish(); assert(f.closed());
 });
+
+test("a fast parent's child starts before a slow sibling finishes without changing breadth-first output", async () => {
+  let release!: () => void, child!: () => void;
+  const slow = new Promise<void>(resolve => { release = resolve; });
+  const startedChild = new Promise<void>(resolve => { child = resolve; });
+  const events: string[] = [];
+  const f = fixture(async url => {
+    const tail = new URL(url).pathname.split("/").at(-1)!; events.push(`${tail}:start`);
+    if (tail === "files") return { ok: true, finalUrl: url, html: '<html>GitHub<include-fragment src="fragment/a"></include-fragment><include-fragment src="fragment/b"></include-fragment></html>' };
+    if (tail === "b") await slow;
+    if (tail === "c") child();
+    events.push(`${tail}:end`);
+    return { ok: true, finalUrl: url, html: `<div>${tail}${tail === "a" || tail === "b" ? '<include-fragment src="fragment/c"></include-fragment>' : '<include-fragment src="fragment/deeper"></include-fragment>'}</div>` };
+  });
+  const pending = readGitHubWebHtmlWithFragments(base + "/files", {}, undefined, f.context);
+  try {
+    const overlapped = await Promise.race([startedChild.then(() => true), wait(100).then(() => false)]);
+    release(); const result = await pending; assert(result.ok);
+    assert.equal(overlapped, true); assert(events.indexOf("c:start") < events.indexOf("b:end"));
+    assert.deepEqual(result.html.match(/<div>([abc])/g), ["<div>a", "<div>b", "<div>c"]);
+    assert.equal(f.maximum(), 2); assert.equal(f.reads.length, 4);
+  } finally { release(); await pending; await f.context.dispose(); }
+});
+
+test("a later fast parent cannot take an earlier parent's last URL admission slot", async () => {
+  let release!: () => void, second!: () => void;
+  const first = new Promise<void>(resolve => { release = resolve; });
+  const secondDone = new Promise<void>(resolve => { second = resolve; });
+  const f = fixture(async url => {
+    const tail = new URL(url).pathname.split("/").at(-1)!;
+    if (tail === "files") return { ok: true, finalUrl: url, html: '<html>GitHub' + Array.from({ length: 119 }, (_, i) => `<include-fragment src="fragment/root-${i}"></include-fragment>`).join("") + '</html>' };
+    if (tail === "root-0") await first;
+    if (tail === "root-1") second();
+    return { ok: true, finalUrl: url, html: `<div>${tail}${tail.startsWith("root-") ? `<include-fragment src="fragment/child-${tail}"></include-fragment>` : ""}</div>` };
+  });
+  const pending = readGitHubWebHtmlWithFragments(base + "/files", {}, undefined, f.context);
+  try {
+    await secondDone; release(); const result = await pending; assert(result.ok);
+    assert.equal(f.reads.length, 121);
+    assert(f.reads.includes(base + "/fragment/child-root-0"));
+    assert(!f.reads.includes(base + "/fragment/child-root-1"));
+    assert(result.html.endsWith('<div>child-root-0</div>')); assert.equal(f.maximum(), 2);
+  } finally { release(); await pending; await f.context.dispose(); }
+});
+
+test("cancelling a pipelined traversal joins an already-started child before returning", async () => {
+  let child!: () => void, childClosed = false;
+  const childStarted = new Promise<void>(resolve => { child = resolve; });
+  const f = fixture(async (url, _headers, signal) => {
+    const tail = new URL(url).pathname.split("/").at(-1)!;
+    if (tail === "files") return { ok: true, finalUrl: url, html: '<html>GitHub<include-fragment src="fragment/a"></include-fragment><include-fragment src="fragment/b"></include-fragment></html>' };
+    if (tail === "a") return { ok: true, finalUrl: url, html: '<div>a<include-fragment src="fragment/c"></include-fragment></div>' };
+    if (tail === "c") child();
+    await new Promise<void>(resolve => signal.addEventListener("abort", () => setTimeout(() => {
+      if (tail === "c") childClosed = true; resolve();
+    }, tail === "c" ? 30 : 1), { once: true }));
+    return { ok: false, reason: "request cancelled" };
+  });
+  const pending = readGitHubWebHtmlWithFragments(base + "/files", {}, undefined, f.context);
+  try {
+    const started = await Promise.race([childStarted.then(() => true), wait(100).then(() => false)]);
+    const disposal = f.context.dispose(); await pending;
+    assert.equal(started, true); assert.equal(childClosed, true); await disposal;
+  } finally { await f.context.dispose(); await pending; }
+});
+
+test("a failed parent does not hide its sibling's child and cycles never reserve another read", async () => {
+  const f = fixture(async url => {
+    const tail = new URL(url).pathname.split("/").at(-1)!;
+    if (tail === "files") return { ok: true, finalUrl: url, html: '<html>GitHub<include-fragment src="fragment/a"></include-fragment><include-fragment src="fragment/b"></include-fragment></html>' };
+    if (tail === "a") return { ok: false, reason: "status 403" };
+    return { ok: true, finalUrl: url, html: `<div>${tail}<include-fragment src="${base}/files#cycle"></include-fragment><include-fragment src="fragment/${tail === "b" ? "c" : "b"}"></include-fragment></div>` };
+  });
+  try {
+    const result = await readGitHubWebHtmlWithFragments(base + "/files", {}, undefined, f.context); assert(result.ok);
+    assert.deepEqual(result.html.match(/<div>([bc])/g), ["<div>b", "<div>c"]); assert.equal(f.reads.length, 4);
+  } finally { await f.context.dispose(); }
+});

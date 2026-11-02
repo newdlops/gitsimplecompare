@@ -53,27 +53,35 @@ export async function readGitHubWebHtml(
  * @param baseUrl 기준 GitHub 웹 URL
  * @param baseHtml 이미 읽은 base HTML
  * @param headers 인증 헤더
+ * @param context 동시성·메모·취소와 실제 연결 수명을 소유하는 공유 reader
  * @returns 성공적으로 읽은 fragment HTML 목록
  */
 async function readFragmentHtml(
   baseUrl: string, baseHtml: string, headers: Record<string, string>, context: GitHubWebReadContext
 ): Promise<string[]> {
-  let level = fragmentUrls(baseHtml, baseUrl);
   const seen = new Set<string>([normalizeUrl(baseUrl)]), result: string[] = [];
-  for (let depth = 1; depth <= MAX_FRAGMENT_DEPTH && level.length && !context.signal.aborted; depth++) {
-    const reserved: string[] = [];
-    for (const url of level) {
+  /** 후보를 기존 BFS 우선순위로 예약하고, 실행은 context의 두 슬롯에 맡긴다. */
+  const start = (urls: string[]): Promise<GitHubWebHtmlRead>[] => {
+    if (context.signal.aborted) return [];
+    const reads: Promise<GitHubWebHtmlRead>[] = [];
+    for (const url of urls) {
       const normalized = normalizeUrl(url);
       if (seen.has(normalized) || seen.size > MAX_FRAGMENT_URLS) continue;
-      seen.add(normalized); reserved.push(normalized);
+      seen.add(normalized); reads.push(context.read(normalized, headers));
     }
-    // 예약 순서의 Promise 결과를 모아 완료 순서가 파싱 우선순위를 바꾸지 않게 한다.
-    const reads = await Promise.all(reserved.map(url => context.read(url, headers)));
-    level = [];
-    for (const read of reads) {
+    return reads;
+  };
+  const levels = [start(fragmentUrls(baseHtml, baseUrl))];
+  for (let depth = 1; depth <= MAX_FRAGMENT_DEPTH; depth++) {
+    const reads = levels[depth - 1] ?? [];
+    // 앞 단계에서 미리 시작한 자식도 취소 후 실제 종료까지 기다리고 결과는 게시하지 않는다.
+    if (context.signal.aborted) { await Promise.all(reads); break; }
+    for (const pending of reads) {
+      const read = await pending;
       if (!read.ok) continue;
       result.push(read.html);
-      if (depth < MAX_FRAGMENT_DEPTH) level.push(...fragmentUrls(read.html, baseUrl));
+      // 부모를 예약 순서대로 처리해 중복·상한 우선순위를 유지하면서 다음 깊이를 미리 실행한다.
+      if (depth < MAX_FRAGMENT_DEPTH) (levels[depth] ??= []).push(...start(fragmentUrls(read.html, baseUrl)));
     }
   }
   return result;

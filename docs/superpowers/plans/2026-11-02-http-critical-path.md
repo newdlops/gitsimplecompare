@@ -54,10 +54,10 @@ only. P3–P6 below remain planned follow-up work and are not claimed as complet
 **Files:** `src/git/pullRequestPreviewRemote.ts`, `src/git/githubReadSession.ts`, `src/git/pullRequestService.ts`, preview integration tests.
 **Interfaces:** Bootstrap retains fresh title/body/head/base and its bound session. Query-shape hints never return snapshot bodies before current authorization.
 
-- [ ] RED: warm bootstrap omits `commits(first:100)` while cold bootstrap remains one combined request.
-- [ ] Verify stale hints/auth changes repair a missing snapshot and changed head/base cannot mix results.
-- [ ] Propagate bounded hint metadata through existing wrappers; implement thin query plus complete-cache miss repair.
-- [ ] Run focused preview/session tests and verify body bytes reduction; commit.
+- [x] RED: warm bootstrap omits `commits(first:100)` while cold bootstrap remains one combined request.
+- [x] Verify stale hints/auth changes repair a missing snapshot and changed head/base cannot mix results.
+- [x] Propagate bounded hint metadata through existing wrappers; implement thin query plus complete-cache miss repair.
+- [x] Run focused preview/session tests and verify body bytes reduction; commit.
 
 ### Task 4: P4 fragment pipeline
 
