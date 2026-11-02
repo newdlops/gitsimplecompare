@@ -1,0 +1,984 @@
+{
+  "sourceBefore": "590c8fc",
+  "sourceAfter": "f066650d6b14c68c23ccafd5e5febbc5d0c1d1b7",
+  "node": "v22.22.2",
+  "pairs": 5,
+  "scope": "controlled actual service functions; simulated API delay or owned localhost HTTP/WS; not live GitHub latency",
+  "fixtureDelaysMs": {
+    "API": 8,
+    "searchReview": 60,
+    "searchCommit": 20,
+    "fragmentA": 15,
+    "fragmentB": 80,
+    "fragmentC": 15,
+    "unrelatedInspector": 100
+  },
+  "bodyMetric": "decoded response body bytes, excluding REST envelopes, request documents, HTTP/WS framing and TLS; no wire-byte claim",
+  "mutableApiCacheTtlMs": 0,
+  "results": {
+    "P1": {
+      "payloadEqual": true,
+      "before": {
+        "p50Ms": 82.722084,
+        "p95Ms": 86.25300000000001,
+        "samples": [
+          {
+            "wallMs": 85.508667,
+            "counts": {
+              "api": 2,
+              "bodyBytes": 359,
+              "credentials": 0,
+              "maximum": 1
+            },
+            "events": [
+              "review:start",
+              "review:end",
+              "commit:start",
+              "commit:end"
+            ]
+          },
+          {
+            "wallMs": 86.25300000000001,
+            "counts": {
+              "api": 2,
+              "bodyBytes": 359,
+              "credentials": 0,
+              "maximum": 1
+            },
+            "events": [
+              "review:start",
+              "review:end",
+              "commit:start",
+              "commit:end"
+            ]
+          },
+          {
+            "wallMs": 82.722084,
+            "counts": {
+              "api": 2,
+              "bodyBytes": 359,
+              "credentials": 0,
+              "maximum": 1
+            },
+            "events": [
+              "review:start",
+              "review:end",
+              "commit:start",
+              "commit:end"
+            ]
+          },
+          {
+            "wallMs": 81.92708400000004,
+            "counts": {
+              "api": 2,
+              "bodyBytes": 359,
+              "credentials": 0,
+              "maximum": 1
+            },
+            "events": [
+              "review:start",
+              "review:end",
+              "commit:start",
+              "commit:end"
+            ]
+          },
+          {
+            "wallMs": 82.31200000000001,
+            "counts": {
+              "api": 2,
+              "bodyBytes": 359,
+              "credentials": 0,
+              "maximum": 1
+            },
+            "events": [
+              "review:start",
+              "review:end",
+              "commit:start",
+              "commit:end"
+            ]
+          }
+        ],
+        "payloadSha256": "b5659dd68ed96ac8e99c8b35711f58d37fb2dd42f3ae42eb6335df52576e35fb"
+      },
+      "after": {
+        "p50Ms": 61.62824999999998,
+        "p95Ms": 62.85558399999999,
+        "samples": [
+          {
+            "wallMs": 62.85558399999999,
+            "counts": {
+              "api": 2,
+              "bodyBytes": 359,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "review:start",
+              "commit:start",
+              "commit:end",
+              "review:end"
+            ]
+          },
+          {
+            "wallMs": 61.20625000000001,
+            "counts": {
+              "api": 2,
+              "bodyBytes": 359,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "review:start",
+              "commit:start",
+              "commit:end",
+              "review:end"
+            ]
+          },
+          {
+            "wallMs": 61.158000000000015,
+            "counts": {
+              "api": 2,
+              "bodyBytes": 359,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "review:start",
+              "commit:start",
+              "commit:end",
+              "review:end"
+            ]
+          },
+          {
+            "wallMs": 61.877583999999956,
+            "counts": {
+              "api": 2,
+              "bodyBytes": 359,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "review:start",
+              "commit:start",
+              "commit:end",
+              "review:end"
+            ]
+          },
+          {
+            "wallMs": 61.62824999999998,
+            "counts": {
+              "api": 2,
+              "bodyBytes": 359,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "review:start",
+              "commit:start",
+              "commit:end",
+              "review:end"
+            ]
+          }
+        ],
+        "payloadSha256": "b5659dd68ed96ac8e99c8b35711f58d37fb2dd42f3ae42eb6335df52576e35fb"
+      }
+    },
+    "P2": {
+      "payloadEqual": true,
+      "before": {
+        "p50Ms": 104.64100000000008,
+        "p95Ms": 114.4134170000001,
+        "samples": [
+          {
+            "wallMs": 114.4134170000001,
+            "counts": {
+              "api": 10,
+              "bodyBytes": 74900,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 101.9984159999999,
+            "counts": {
+              "api": 10,
+              "bodyBytes": 74900,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 103.41154199999983,
+            "counts": {
+              "api": 10,
+              "bodyBytes": 74900,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 110.82625000000007,
+            "counts": {
+              "api": 10,
+              "bodyBytes": 74900,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 104.64100000000008,
+            "counts": {
+              "api": 10,
+              "bodyBytes": 74900,
+              "credentials": 1,
+              "maximum": 1
+            }
+          }
+        ],
+        "payloadSha256": "d0020ac62c340fe8da68a513f1173ccfe8fa27cba228253d389e6836e392f205"
+      },
+      "after": {
+        "p50Ms": 11.219958000000133,
+        "p95Ms": 12.619457999999668,
+        "samples": [
+          {
+            "wallMs": 11.864291999999978,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 187,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 10.358874999999898,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 187,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 11.219958000000133,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 187,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 12.619457999999668,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 187,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 10.927624999999807,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 187,
+              "credentials": 1,
+              "maximum": 1
+            }
+          }
+        ],
+        "payloadSha256": "d0020ac62c340fe8da68a513f1173ccfe8fa27cba228253d389e6836e392f205"
+      }
+    },
+    "P3cold": {
+      "payloadEqual": true,
+      "before": {
+        "p50Ms": 34.871916000000056,
+        "p95Ms": 45.89212499999985,
+        "samples": [
+          {
+            "wallMs": 34.871916000000056,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 42.43162499999971,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 45.89212499999985,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 34.34362499999952,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 32.76008300000012,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          }
+        ],
+        "payloadSha256": "9c871fdbb73cf3d9cce80b8ba0fa6cfe9dc37372ffae77fbc3c2a08eba53a0bc"
+      },
+      "after": {
+        "p50Ms": 36.52591600000051,
+        "p95Ms": 105.8249579999997,
+        "samples": [
+          {
+            "wallMs": 36.34850000000006,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 105.8249579999997,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 59.8078330000003,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 35.627915999999914,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 36.52591600000051,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          }
+        ],
+        "payloadSha256": "9c871fdbb73cf3d9cce80b8ba0fa6cfe9dc37372ffae77fbc3c2a08eba53a0bc"
+      }
+    },
+    "P3warm": {
+      "payloadEqual": true,
+      "before": {
+        "p50Ms": 12.512625000000298,
+        "p95Ms": 17.48316700000032,
+        "samples": [
+          {
+            "wallMs": 12.512625000000298,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 13563,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 12.505291999999827,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 13563,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 11.238875000000007,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 13563,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 13.130833999999595,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 13563,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 17.48316700000032,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 13563,
+              "credentials": 1,
+              "maximum": 1
+            }
+          }
+        ],
+        "payloadSha256": "9c871fdbb73cf3d9cce80b8ba0fa6cfe9dc37372ffae77fbc3c2a08eba53a0bc"
+      },
+      "after": {
+        "p50Ms": 12.306208999999399,
+        "p95Ms": 12.441290999999183,
+        "samples": [
+          {
+            "wallMs": 12.27337500000067,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 211,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 12.358167000000321,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 211,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 12.441290999999183,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 211,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 11.780041999999412,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 211,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 12.306208999999399,
+            "counts": {
+              "api": 1,
+              "bodyBytes": 211,
+              "credentials": 1,
+              "maximum": 1
+            }
+          }
+        ],
+        "payloadSha256": "9c871fdbb73cf3d9cce80b8ba0fa6cfe9dc37372ffae77fbc3c2a08eba53a0bc"
+      }
+    },
+    "P3staleHint": {
+      "payloadEqual": true,
+      "before": {
+        "p50Ms": 33.833458000000064,
+        "p95Ms": 37.811791999999514,
+        "samples": [
+          {
+            "wallMs": 37.811791999999514,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 33.833458000000064,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 31.087875000000167,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 33.112082999999984,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 34.06420799999978,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 27669,
+              "credentials": 1,
+              "maximum": 1
+            }
+          }
+        ],
+        "payloadSha256": "9c871fdbb73cf3d9cce80b8ba0fa6cfe9dc37372ffae77fbc3c2a08eba53a0bc"
+      },
+      "after": {
+        "p50Ms": 44.78137500000048,
+        "p95Ms": 48.188584000000446,
+        "samples": [
+          {
+            "wallMs": 44.35425000000032,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 27838,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 44.78137500000048,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 27838,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 44.88116699999955,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 27838,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 43.792958,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 27838,
+              "credentials": 1,
+              "maximum": 1
+            }
+          },
+          {
+            "wallMs": 48.188584000000446,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 27838,
+              "credentials": 1,
+              "maximum": 1
+            }
+          }
+        ],
+        "payloadSha256": "9c871fdbb73cf3d9cce80b8ba0fa6cfe9dc37372ffae77fbc3c2a08eba53a0bc"
+      }
+    },
+    "P4": {
+      "payloadEqual": true,
+      "before": {
+        "p50Ms": 97.33912500000042,
+        "p95Ms": 99.52345800000057,
+        "samples": [
+          {
+            "wallMs": 99.52345800000057,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 217,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "files:start",
+              "files:end",
+              "a:start",
+              "b:start",
+              "a:end",
+              "b:end",
+              "c:start",
+              "c:end"
+            ]
+          },
+          {
+            "wallMs": 98.14050000000043,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 217,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "files:start",
+              "files:end",
+              "a:start",
+              "b:start",
+              "a:end",
+              "b:end",
+              "c:start",
+              "c:end"
+            ]
+          },
+          {
+            "wallMs": 96.9644589999998,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 217,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "files:start",
+              "files:end",
+              "a:start",
+              "b:start",
+              "a:end",
+              "b:end",
+              "c:start",
+              "c:end"
+            ]
+          },
+          {
+            "wallMs": 97.14420799999971,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 217,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "files:start",
+              "files:end",
+              "a:start",
+              "b:start",
+              "a:end",
+              "b:end",
+              "c:start",
+              "c:end"
+            ]
+          },
+          {
+            "wallMs": 97.33912500000042,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 217,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "files:start",
+              "files:end",
+              "a:start",
+              "b:start",
+              "a:end",
+              "b:end",
+              "c:start",
+              "c:end"
+            ]
+          }
+        ],
+        "payloadSha256": "e7f2faef8f577ff52d7eec14496753939c557a842833dbb1a0d36e4b6aba70e8"
+      },
+      "after": {
+        "p50Ms": 82.01745799999935,
+        "p95Ms": 82.1949169999998,
+        "samples": [
+          {
+            "wallMs": 82.1949169999998,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 217,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "files:start",
+              "files:end",
+              "a:start",
+              "b:start",
+              "a:end",
+              "c:start",
+              "c:end",
+              "b:end"
+            ]
+          },
+          {
+            "wallMs": 82.05762500000037,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 217,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "files:start",
+              "files:end",
+              "a:start",
+              "b:start",
+              "a:end",
+              "c:start",
+              "c:end",
+              "b:end"
+            ]
+          },
+          {
+            "wallMs": 82.01745799999935,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 217,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "files:start",
+              "files:end",
+              "a:start",
+              "b:start",
+              "a:end",
+              "c:start",
+              "c:end",
+              "b:end"
+            ]
+          },
+          {
+            "wallMs": 80.91112499999963,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 217,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "files:start",
+              "files:end",
+              "a:start",
+              "b:start",
+              "a:end",
+              "c:start",
+              "c:end",
+              "b:end"
+            ]
+          },
+          {
+            "wallMs": 80.49620899999991,
+            "counts": {
+              "api": 4,
+              "bodyBytes": 217,
+              "credentials": 0,
+              "maximum": 2
+            },
+            "events": [
+              "files:start",
+              "files:end",
+              "a:start",
+              "b:start",
+              "a:end",
+              "c:start",
+              "c:end",
+              "b:end"
+            ]
+          }
+        ],
+        "payloadSha256": "e7f2faef8f577ff52d7eec14496753939c557a842833dbb1a0d36e4b6aba70e8"
+      }
+    },
+    "P5": {
+      "payloadEqual": true,
+      "before": {
+        "p50Ms": 110.9950000000008,
+        "p95Ms": 125.64574999999968,
+        "samples": [
+          {
+            "wallMs": 119.78529200000048,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 59,
+              "credentials": 0,
+              "maximum": null
+            },
+            "events": [
+              "target:http",
+              "unrelated:start",
+              "unrelated:end",
+              "target:pid"
+            ]
+          },
+          {
+            "wallMs": 106.87370799999917,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 59,
+              "credentials": 0,
+              "maximum": null
+            },
+            "events": [
+              "target:http",
+              "unrelated:start",
+              "unrelated:end",
+              "target:pid"
+            ]
+          },
+          {
+            "wallMs": 109.13104100000055,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 59,
+              "credentials": 0,
+              "maximum": null
+            },
+            "events": [
+              "target:http",
+              "unrelated:start",
+              "unrelated:end",
+              "target:pid"
+            ]
+          },
+          {
+            "wallMs": 125.64574999999968,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 59,
+              "credentials": 0,
+              "maximum": null
+            },
+            "events": [
+              "target:http",
+              "unrelated:start",
+              "unrelated:end",
+              "target:pid"
+            ]
+          },
+          {
+            "wallMs": 110.9950000000008,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 59,
+              "credentials": 0,
+              "maximum": null
+            },
+            "events": [
+              "target:http",
+              "unrelated:start",
+              "unrelated:end",
+              "target:pid"
+            ]
+          }
+        ],
+        "payloadSha256": "2c1b539d3d6f39d928c93b5e96765c2a38a1b3edfe26f5de4d45052e05a0ed44"
+      },
+      "after": {
+        "p50Ms": 14.164582999999766,
+        "p95Ms": 17.056625000001077,
+        "samples": [
+          {
+            "wallMs": 15.95325000000048,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 57,
+              "credentials": 0,
+              "maximum": null
+            },
+            "events": [
+              "target:http",
+              "unrelated:start",
+              "target:pid"
+            ]
+          },
+          {
+            "wallMs": 6.64679199999955,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 57,
+              "credentials": 0,
+              "maximum": null
+            },
+            "events": [
+              "target:http",
+              "unrelated:start",
+              "target:pid"
+            ]
+          },
+          {
+            "wallMs": 14.164582999999766,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 57,
+              "credentials": 0,
+              "maximum": null
+            },
+            "events": [
+              "target:http",
+              "unrelated:start",
+              "target:pid"
+            ]
+          },
+          {
+            "wallMs": 17.056625000001077,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 57,
+              "credentials": 0,
+              "maximum": null
+            },
+            "events": [
+              "target:http",
+              "unrelated:start",
+              "target:pid"
+            ]
+          },
+          {
+            "wallMs": 5.065499999998792,
+            "counts": {
+              "api": 3,
+              "bodyBytes": 57,
+              "credentials": 0,
+              "maximum": null
+            },
+            "events": [
+              "target:http",
+              "unrelated:start",
+              "target:pid"
+            ]
+          }
+        ],
+        "payloadSha256": "2c1b539d3d6f39d928c93b5e96765c2a38a1b3edfe26f5de4d45052e05a0ed44"
+      }
+    }
+  }
+}
