@@ -1,0 +1,184 @@
+{
+  "objective": "Complete all P1\u2013P6 from http-opportunities-20261102.md, including the explicit P6 experiment/selection gate, and deliver the authorized version/commit/push/deploy.",
+  "baseline": "590c8fc75217c7839aefe04c45d0439d1e698a99",
+  "version": "0.1.72187",
+  "requirements": [
+    {
+      "id": "P1",
+      "contract": "search review/commit continuation overlap; full DTOs; first error; four-slot cap; owned worker and transport cleanup",
+      "sources": [
+        "src/git/pullRequestSearchReads.ts",
+        "src/git/pullRequestSearchService.ts",
+        "src/git/githubReadCache.ts",
+        "test/searchContinuationPipeline.test.ts",
+        "test/searchReadCleanup.test.ts",
+        "test/githubReadCloseJoin.test.ts"
+      ],
+      "focusedStatus": "verified",
+      "benchmark": "docs/benchmarks/http-critical-performance-20261102.json",
+      "fullSuiteVerified": true,
+      "specificPassedBehaviors": [
+        "ok 509 - search starts commit pagination while review pagination is still pending",
+        "ok 375 - a failed commit worker joins another worker's delayed close and keeps the first failure",
+        "ok 376 - a review-tail failure joins the actual cached commit execution, not only its cancelled subscriber",
+        "ok 377 - an exact-number failure joins the independent text search's actual cached execution"
+      ]
+    },
+    {
+      "id": "P2",
+      "contract": "freshly authorized complete Explorer snapshots; exact head/base/count; REST oldPath, unsupported statuses and cap preserved",
+      "sources": [
+        "src/git/pullRequestPreviewFiles.ts",
+        "src/git/githubPullRequestSnapshots.ts",
+        "src/git/githubRestSession.ts",
+        "test/prComparisonSnapshots.test.ts"
+      ],
+      "focusedStatus": "verified",
+      "benchmark": "docs/benchmarks/http-critical-performance-20261102.json",
+      "fullSuiteVerified": true,
+      "specificPassedBehaviors": [
+        "ok 276 - Explorer reuses 1000 complete files after one freshly authorized anchor",
+        "ok 277 - Explorer preserves REST semantics for RENAMED snapshots",
+        "ok 278 - Explorer preserves REST semantics for COPIED snapshots",
+        "ok 281 - Explorer does not reuse a file snapshot after token changes",
+        "ok 285 - an exact 3000-file snapshot retains the conservative REST limit marker"
+      ]
+    },
+    {
+      "id": "P3",
+      "contract": "thin warm bootstrap; cold combined; PR-scoped hints; fresh identity; complete cache-miss repair without mixed anchors",
+      "sources": [
+        "src/git/pullRequestPreviewRemote.ts",
+        "src/git/githubReadSession.ts",
+        "src/git/githubCommitSnapshots.ts",
+        "src/git/pullRequestService.ts",
+        "test/prPreviewBootstrapSnapshots.test.ts"
+      ],
+      "focusedStatus": "verified",
+      "benchmark": "docs/benchmarks/http-critical-performance-20261102.json",
+      "fullSuiteVerified": true,
+      "specificPassedBehaviors": [
+        "ok 286 - warm preview omits commit bodies while cold preview combines bootstrap and first page",
+        "ok 287 - a stale preview hint after token change repairs every commit page",
+        "ok 289 - a base change between thin bootstrap and cache-miss repair rejects mixed commits",
+        "ok 293 - another cached PR cannot turn a new PR's cold bootstrap into an extra repair request"
+      ]
+    },
+    {
+      "id": "P4",
+      "contract": "early child dispatch; deterministic BFS merge and admission; two slots,120 URLs,depth2; cycles/errors/cancel closure",
+      "sources": [
+        "src/git/githubWebHtml.ts",
+        "test/githubWebReadContext.test.ts"
+      ],
+      "focusedStatus": "verified",
+      "benchmark": "docs/benchmarks/http-critical-performance-20261102.json",
+      "fullSuiteVerified": true,
+      "specificPassedBehaviors": [
+        "ok 144 - a fast parent's child starts before a slow sibling finishes without changing breadth-first output",
+        "ok 145 - a later fast parent cannot take an earlier parent's last URL admission slot",
+        "ok 146 - cancelling a pipelined traversal joins an already-started child before returning",
+        "ok 141 - fragment traversal keeps 120 URL and depth-two limits and rejects neighboring PR paths"
+      ]
+    },
+    {
+      "id": "P5",
+      "contract": "completion-driven cold inspector scan; preferred and warm hints; actual PID/profile/ports; one PID probe; owned HTTP/WS closure",
+      "sources": [
+        "src/providers/nativeDiffOverlayInspector.ts",
+        "test/nativeInspectorPipeline.test.ts",
+        "test/nativeInspectorDiscovery.test.ts",
+        "test/nativeInspectorProcesses.test.ts"
+      ],
+      "focusedStatus": "verified",
+      "benchmark": "docs/benchmarks/http-critical-performance-20261102.json",
+      "fullSuiteVerified": true,
+      "specificPassedBehaviors": [
+        "ok 266 - cold discovery verifies a ready target before an unrelated HTTP response and closes that owned request",
+        "ok 267 - successful discovery returns only after its PID WebSocket has actually closed",
+        "ok 268 - parallel HTTP completions retain one PID probe at a time and reject fast wrong owners",
+        "ok 269 - parent cancellation joins an active PID socket and all owned HTTP probes"
+      ]
+    },
+    {
+      "id": "P6",
+      "contract": "evaluate projection parity,visibility,order,pages,cold/warm cost and retain REST when gates fail",
+      "sources": [
+        "src/git/githubRepositoryCatalog.ts",
+        "scripts/benchmark-github-catalog.mjs",
+        "docs/benchmarks/oauth-catalog-projection-20261102.json",
+        "test/githubRepositoryCatalog.test.ts",
+        "test/githubRepositoryCatalogCache.test.ts",
+        "test/repositoryOnboardingProtocol.test.ts"
+      ],
+      "focusedStatus": "experiment-complete; rejected projection and retained REST",
+      "benchmark": "docs/benchmarks/oauth-catalog-projection-20261102.json",
+      "fullSuiteVerified": true,
+      "specificPassedBehaviors": [
+        "Existing OAuth catalog/cache/onboarding full-suite file coverage; live projection rejected by measured parity and latency gates."
+      ]
+    }
+  ],
+  "review": {
+    "mode": "fresh whole-change read-only reviewer, gpt-6-astra/xhigh",
+    "range": "590c8fc..a9c942b",
+    "critical": 0,
+    "important": 1,
+    "importantFocusedFixVerified": true,
+    "fixCommit": "bfa4820",
+    "rootRed": {
+      "tests": 6,
+      "failed": 5,
+      "passed": 1
+    },
+    "rootGreen": {
+      "tests": 58,
+      "passed": 58,
+      "failed": 0
+    },
+    "reviewerProbes": "Two attempts exited137; no reviewer runtime success claim. Root reproduced and verified the material finding.",
+    "importantFullSuiteFixVerified": true
+  },
+  "rulings": [
+    "Task 5: Ruling: keep preferred-port and valid warm-hint priority, but select the first verified owner among remaining ports by response arrival, as P5 specifies \u2014 the old changed-port-set test assumed ordered selection between two fixtures serving the same PID. Its replacement asserts both valid owner URLs and proves preferred probing after invalidation; PID/profile safety stays tested. Cost if wrong: configurations exposing one owned PID through several nonpreferred servers can select a different equally owned URL.",
+    "Task 6: Ruling: reject the GraphQL projection and retain REST+ETag, the negative selection outcome explicitly required by P6 when parity/benefit fail \u2014 live all-affiliation query returns61 vs REST60, either default affiliation returns55/misses5; REST remains304 after each query. Cold p50 REST664.55ms vs GraphQL1151.71ms; warm REST657.72ms/body0 vs GraphQL1053.48ms/body7955. All28 unchanged OAuth catalog/onboarding tests pass. No production GraphQL path/parser is introduced, so its proposed mock DTO/cursor tests are inapplicable; real failed parity is the gate evidence. Cost if wrong: a future, different projection may offer cold-body savings but is not enabled now.",
+    "Task 7: Ruling: verify the frozen full suite in six disjoint sequential manifests through the unchanged 3-worker/15-minute Node runner with renderer enabled \u2014 the prior release single full run exceeded900000ms. Assert complete367-file coverage, exact aggregate count and identical source/asset inputs before/after. Cost if wrong: an inter-file ordering dependency could escape despite Node file isolation; no test file is omitted.",
+    "Final: Ruling: declined universal OAuth team/archive/cursor parity is not an adoption claim \u2014 no GraphQL product catalog is shipped; the existing OAuth-only REST contract remains. Cost if wrong: potential cold projection savings remain unavailable until a distinct compatible route is proven.",
+    "Final: Ruling: controlled service measurements prove payload and scheduling/response-size changes, not universal live GitHub latency or UI paint \u2014 only P6 is a live network experiment, with seven samples. Cost if wrong: users may not observe a visible speed change in their environment; no broad latency guarantee is made.",
+    "Final: Ruling: reviewer declined future0.1.72187/full-suite results; acceptance will use actual frozen suite, exact VSIX host smoke and Marketplace verification rather than review approval. Cost if wrong: release/goal must remain incomplete until those gates pass."
+  ],
+  "deferredMinors": [
+    "Final: minor (deferred): inspector regression uses a100ms scheduling race; can falsely fail on a heavily loaded host. Product ownership behavior is unaffected. Retain as reviewer Minor per executing-plans; if it actually blocks the mandatory suite, investigate and regrade using that evidence."
+  ],
+  "measurementScope": {
+    "controlledPairsPerScenario": 5,
+    "allPayloadsEqual": true,
+    "actualUIPaintMeasured": false,
+    "liveNetworkScope": "P6 only, one credential/account,seven cold/warm samples",
+    "positiveUniversalOAuthProjectionParityClaim": false
+  },
+  "complete": false,
+  "remaining": [
+    "main push",
+    "Marketplace publication and validation",
+    "exact package download match",
+    "local installed runtime match",
+    "final evidence push"
+  ],
+  "observedAtUtc": "2026-11-02T04:21:52.618611+00:00",
+  "verificationRecovery": {
+    "group": 4,
+    "processExitCode": null,
+    "terminalTAP": {
+      "tests": 553,
+      "pass": 552,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 1
+    },
+    "reason": "Controller session lost during user pause; full terminal TAP summary was verified before resuming only unexecuted groups5/6.",
+    "frozenInputsUnchanged": true
+  },
+  "fullSuiteVerified": true,
+  "verificationEvidence": "http-critical-verification-20261102.json"
+}

@@ -93,7 +93,7 @@ P6 completed its experiment and retained REST+ETag after failed parity/latency g
 
 ### Task 7: final evidence and review
 
-- [ ] Compare before/after payloads, requests, bytes, start/finish order and representative p50/p95 using controlled fixtures; label live versus simulated measurements.
-- [ ] Obtain one fresh whole-change read-only review after focused checks; fix material findings by RED→GREEN.
-- [ ] Freeze source and run `GSC_VERIFY_PR_RENDERER=1 npm test`, `npm run check-types`, `npm run package` with appropriate process/network permission.
+- [x] Compare before/after payloads, requests, bytes, start/finish order and representative p50/p95 using controlled fixtures; label live versus simulated measurements.
+- [x] Obtain one fresh whole-change read-only review after focused checks; fix material findings by RED→GREEN.
+- [x] Freeze source and run `GSC_VERIFY_PR_RENDERER=1 npm test`, `npm run check-types`, `npm run package` with appropriate process/network permission.
 - [ ] Audit all six requirements, commit final evidence, keep the feature branch, remove only this plan's generated scratch and complete the goal.
