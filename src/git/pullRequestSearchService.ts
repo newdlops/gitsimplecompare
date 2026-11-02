@@ -84,9 +84,13 @@ export async function searchPullRequests(
   signal?.addEventListener("abort", cancel, { once: true });
   const read = createGitHubReadSession(repoRoot, execute), queue = new PriorityReadQueue(4);
   /** 검색과 모든 후속 페이지가 같은 취소 신호를 쓰도록 실행기를 결합한다. */
-  const runner: GhExecute = (args, root, options) => {
+  const runner: GhExecute = async (args, root, options) => {
     controller.signal.throwIfAborted();
-    return queue.run(() => read(args, root, { ...options, signal: controller.signal }), controller.signal);
+    const local = new AbortController(), abort = () => local.abort();
+    const signals = [controller.signal, ...(options.signal ? [options.signal] : [])];
+    for (const signal of signals) { signal.addEventListener("abort", abort, { once: true }); if (signal.aborted) abort(); }
+    try { return await queue.run(() => read(args, root, { ...options, signal: local.signal }), local.signal); }
+    finally { for (const signal of signals) signal.removeEventListener("abort", abort); }
   };
   inheritGitHubReadSession(read, runner);
   try {

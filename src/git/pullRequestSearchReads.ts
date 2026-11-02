@@ -8,6 +8,7 @@ import { fetchRemainingReviewThreadCommentCounts } from "./pullRequestCommentCou
 import { buildPullRequestInfoQuery, pullRequestInfoFromGraphQl, type GhPullRequestNode, type PullRequestInfo } from "./pullRequestInfo";
 import { gitHubSnapshotIdentity, gitHubReadSessionState } from "./githubReadSession";
 import { withStableConnections, sameAnchor } from "./pullRequestListReads";
+import { inheritGitHubReadSession } from "./githubReadSession";
 
 const BATCH_SIZE = 20;
 
@@ -70,12 +71,25 @@ export async function completeSearchPullRequests(root: string, owner: string, na
   }));
   const fresh = nodes.filter(node => !reused.has(node.number!));
   const pending = (async () => {
-    const counts = await fetchRemainingReviewThreadCommentCounts(root, owner, name, fresh, undefined, runner);
-    return mapPullRequestReads(fresh, async node => {
-      const pr = pullRequestInfoFromGraphQl(node, counts.get(Number(node.number)) || 0);
-      await completePullRequestCommits(root, owner, name, node, pr, undefined, runner);
+    const controller = new AbortController();
+    const read: GhExecute = (args, cwd, options) => runner(args, cwd, { ...options, signal: controller.signal });
+    inheritGitHubReadSession(runner, read);
+    let failure: unknown;
+    /** 먼저 실패한 원인을 보존하고 같은 검색 결과를 구성하는 나머지 페이지를 중단한다. */
+    const guard = <T>(promise: Promise<T>) => promise.catch(error => { failure ??= error; controller.abort(); throw error; });
+    const counts = guard(fetchRemainingReviewThreadCommentCounts(root, owner, name, fresh, controller.signal, read));
+    const commits = guard(mapPullRequestReads(fresh, async node => {
+      const pr = pullRequestInfoFromGraphQl(node, 0);
+      await completePullRequestCommits(root, owner, name, node, pr, controller.signal, read);
       return pr;
-    });
+    }, controller.signal));
+    try {
+      const [completeCounts, completeCommits] = await Promise.all([counts, commits]);
+      return fresh.map((node, index) => ({ ...pullRequestInfoFromGraphQl(node, completeCounts.get(Number(node.number)) || 0),
+        commitHashes: completeCommits[index].commitHashes, commitSummaries: completeCommits[index].commitSummaries,
+        commitHashesComplete: completeCommits[index].commitHashesComplete }));
+    } catch (error) { await Promise.allSettled([counts, commits]); throw failure ?? error; }
+    finally { controller.abort(); }
   })();
   const values = new Map(fresh.map((node, index) => [node.number!, pending.then(results => results[index])]));
   for (const node of fresh) scope?.set(node, values.get(node.number!)!);
