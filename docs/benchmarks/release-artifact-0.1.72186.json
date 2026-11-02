@@ -4,7 +4,7 @@
   "artifact": "gitsimplecompare-0.1.72186.vsix",
   "bytes": 982233,
   "sha256": "08063a764283195d35f9c36bf13f50d04f5224c86d8b0e886983e5948f6a8037",
-  "packageFiles": 89,
+  "packageFiles": 91,
   "runtimeCount": 84,
   "sourceRuntimeMatched": true,
   "developmentMetadataExcluded": true,
@@ -126,7 +126,14 @@
     "typecheckExitCode": 0,
     "vsixPackageExitCode": 0,
     "hostSmokeExitCode": 0,
-    "sourceRuntimeMatched": true
+    "sourceRuntimeMatched": true,
+    "marketplacePublishExitCode": 0,
+    "downloadExactPackageMatched": true,
+    "publicLatestVersionMatched": true,
+    "serverValidationPassed": true,
+    "publisherAuthExitCode": 0,
+    "localInstallExitCode": 0,
+    "installedRuntimeFilesMatched": 84
   },
   "verification": {
     "rendererEnabled": true,
@@ -171,6 +178,28 @@
   "verifiedAtUtc": "2026-11-02T03:29:47.296151+00:00",
   "limitations": [
     "The single full-suite attempt hit its 15-minute execution deadline with no assertion failures. All 363 files were covered by its completed prefix plus a successful bounded continuation.",
-    "The complete manual publishing checklist was not repeated; isolated extracted-VSIX activation and command smoke passed."
-  ]
+    "The complete manual publishing checklist was not repeated; isolated extracted-VSIX activation and command smoke passed.",
+    "Existing user windows were not reloaded; reload VS Code to activate the locally installed update."
+  ],
+  "extensionFiles": 89,
+  "publication": {
+    "publisher": "newdlops",
+    "extensionId": "newdlops.gitsimplecompare",
+    "version": "0.1.72186",
+    "url": "https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare",
+    "releaseCommit": "bebb14368d4ab8163d8619a44eebda0132a21c9c",
+    "remoteMainVerified": true,
+    "downloadSha256": "08063a764283195d35f9c36bf13f50d04f5224c86d8b0e886983e5948f6a8037",
+    "downloadExactPackageMatched": true,
+    "serverVersionFlags": 1,
+    "serverValidated": true,
+    "publicLatestVersion": "0.1.72186",
+    "verifiedAtUtc": "2026-11-02T03:36:54.704235+00:00"
+  },
+  "installation": {
+    "registeredVersion": "0.1.72186",
+    "registeredEntries": 1,
+    "runtimeMatched": 84,
+    "localInstallExitCode": 0
+  }
 }
