@@ -10,6 +10,7 @@ import {
 import { pullRequestCommitHashQuery } from "../src/git/pullRequestSearchService";
 import { openGraphPullRequest, openStagedPullRequestPreview } from "../src/webview/graphPullRequests";
 import { PullRequestPreviewPanel } from "../src/webview/pullRequestPreviewPanel";
+import { PullRequestService } from "../src/git/pullRequestService";
 import * as vscodeMock from "./helpers/vscodeMock";
 
 interface GraphPrMatchingApi {
@@ -87,7 +88,8 @@ test("Graph PR 매칭은 merged commit을 포함하고 대표 이동 대상으�
   assert.deepEqual(Array.from(matching.rowHashes(pr)), [merged, head, first]);
 });
 
-test("Graph PR은 검증된 외부 URL만 열고 실패에는 성공 로그를 남기지 않는다", async () => {
+test("Graph PR은 검증된 외부 URL만 열고 실패에는 성공 로그를 남기지 않는다", async t => {
+  t.mock.method(PullRequestService.prototype, "getPullRequestRefs", async () => undefined);
   vscodeMock.__resetOutputLines();
   vscodeMock.__resetWindowMessages();
   await openGraphPullRequest("/repo", [{ number: 7, url: "https://example.test/pr/7" } as any], 7);

@@ -376,15 +376,31 @@ export async function sendGraphPullRequestDetail(
 /**
  * Graph의 PR 행에 연결된 외부 GitHub URL을 연다.
  * - Graph는 commit 관계 탐색을 유지하고, 기존 Pull Request는 기본 브라우저에서 확인한다.
- * @param pullRequests 마지막으로 조회한 PR 목록
+ * @param pullRequests 현재 저장소에서 조회한 목록·검색의 PR 후보
  * @param number       열 PR 번호
+ * @param isCurrent    비동기 단건 조회 뒤에도 같은 저장소·패널 수명인지 확인한다.
  */
 export async function openGraphPullRequest(
   repoRoot: string,
   pullRequests: PullRequestInfo[],
-  number: number
+  number: number,
+  isCurrent: () => boolean = () => true
 ): Promise<void> {
-  const pullRequest = pullRequests.find((item) => item.number === number);
+  if (!isCurrent()) return;
+  if (!Number.isSafeInteger(number) || number <= 0) {
+    logWarn("graph pull request open skipped: invalid number", { repoRoot });
+    return;
+  }
+  let pullRequest = pullRequests.find((item) => item.number === number);
+  if (!pullRequest) {
+    logInfo("graph pull request browser metadata lookup", { repoRoot, number });
+    pullRequest = await new PullRequestService(repoRoot).getPullRequestRefs(number);
+    if (!isCurrent()) {
+      logInfo("graph pull request browser lookup discarded: context changed", { repoRoot, number });
+      return;
+    }
+    if (pullRequest?.number !== number) pullRequest = undefined;
+  }
   if (!pullRequest) {
     vscode.window.showWarningMessage(vscode.l10n.t("Pull request #{0} is not loaded.", number));
     logWarn("graph pull request open skipped: not loaded", { repoRoot, number });

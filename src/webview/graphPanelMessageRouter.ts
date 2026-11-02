@@ -395,7 +395,10 @@ export class GraphPanelMessageRouter {
       try { await sendGraphPullRequestDetail(this.repoRoot, message.number, this.deps.post, request.controller.signal, message.requestId); }
       finally { if (this.pullRequestDetail === request) this.pullRequestDetail = undefined; }
     } else if (message.type === "openPullRequest") {
-      await openGraphPullRequest(this.repoRoot, this.pullRequestPager.items, message.number);
+      const repoRoot = this.repoRoot, epoch = this.repositoryEpoch;
+      const target = this.pullRequestPager.findGraphTarget(message.number);
+      await openGraphPullRequest(repoRoot, target ? [target] : [], message.number,
+        () => this.repositoryEpoch === epoch && this.repoRoot === repoRoot);
     } else if (message.type === "previewStagedPullRequest") {
       openStagedPullRequestPreview(
         this.deps.extensionUri,

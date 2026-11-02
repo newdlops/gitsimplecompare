@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [0.1.72188] - 2026-11-02
+
+### Fixes
+
+- Open GitHub links for pull requests retained in search results after the main
+  list refreshes, instead of reporting that the pull request is not loaded.
+- Fetch only the selected pull request's metadata when it is outside the loaded
+  lists, and discard late link lookups after the repository or panel changes.
+
 ## [0.1.72187] - 2026-11-02
 
 ### Performance
