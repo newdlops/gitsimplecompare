@@ -96,9 +96,12 @@
     "media/stale-branches/staleBranches.js": "a6dc78b1050838a3bdf66e5c6dfb0208595929ba56f6a7a471807f4ba298c189"
   },
   "installation": {
-    "isolatedProfile": true,
+    "isolatedProfile": false,
     "registeredVersion": "0.1.72190",
-    "runtimeMatched": 85
+    "registeredEntries": 1,
+    "runtimeMatched": 85,
+    "localInstallExitCode": 0,
+    "userWindowsReloaded": false
   },
   "verifiedAtUtc": "2026-11-03T12:51:14.807Z",
   "runtimeChanged": [
@@ -170,5 +173,21 @@
     "Performance comparison keeps optional warmup unavailable; existing host load is uncontrolled. This is not a whole-machine or active VS Code speedup guarantee.",
     "Native Graph test uses real Git and production HTML/JS in headless Chromium; it does not drive the current user window.",
     "Existing user windows are not forcibly reloaded."
-  ]
+  ],
+  "isolatedInstallation": {
+    "isolatedProfile": true,
+    "registeredVersion": "0.1.72190",
+    "runtimeMatched": 85
+  },
+  "publication": {
+    "publisher": "newdlops",
+    "extensionId": "newdlops.gitsimplecompare",
+    "version": "0.1.72190",
+    "releaseCommit": "2b1d768dc282647e5e386b000ba266371826154e",
+    "publishExitCode": 0,
+    "url": "https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare",
+    "downloadSha256": "4edcae066a856c242be22f2e928274d187e1df22a4046cee029084db05f38fea",
+    "downloadExactPackageMatched": true,
+    "verifiedAtUtc": "2026-11-03T12:52:25.648Z"
+  }
 }
