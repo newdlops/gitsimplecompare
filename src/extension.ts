@@ -4,6 +4,7 @@
 import * as vscode from "vscode";
 import { GitServiceRegistry } from "./git/serviceRegistry";
 import { clearUntrackedStatsCache } from "./git/untrackedStats";
+import { clearStashReadCache } from "./git/stashReadCache";
 import {
   BranchContentProvider, clearBranchContentCache, disposeBranchContentCache, releaseBranchContentDocument,
 } from "./providers/branchContentProvider";
@@ -76,7 +77,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(new vscode.Disposable(disposeOutputLog), registerGitExecutableConfiguration(), registerBuiltinGitControl(context));
   context.subscriptions.push(new vscode.Disposable(disposePullRequestDiffComments));
   context.subscriptions.push(new vscode.Disposable(disposePullRequestQuickEdit));
-  context.subscriptions.push(new vscode.Disposable(() => { disposeBranchContentCache(); clearUntrackedStatsCache(); }));
+  context.subscriptions.push(new vscode.Disposable(() => { disposeBranchContentCache(); clearUntrackedStatsCache(); clearStashReadCache(); }));
   // 1) 저장소별 GitService 를 공유하는 레지스트리
   const registry = new GitServiceRegistry(undefined, fields => logInfo("repository discovery shared", fields));
   const comparison = new ComparisonController();

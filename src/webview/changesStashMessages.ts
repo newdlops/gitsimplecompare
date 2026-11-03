@@ -16,6 +16,9 @@ export function routeChangesStashMessage(
   webview: vscode.Webview | undefined
 ): boolean {
   const target = { ref: msg.ref ?? "", hash: msg.hash ?? "", repoRoot: msg.repoRoot ?? "", message: msg.message };
+  if (msg.type === "loadMoreStashes" && msg.repoRoot) {
+    void vscode.commands.executeCommand("gitSimpleCompare.loadMoreStashes", msg.repoRoot); return true;
+  }
   if (msg.type === "stashSelected") {
     void vscode.commands.executeCommand("gitSimpleCompare.stashSelected", msg.paths);
     return true;

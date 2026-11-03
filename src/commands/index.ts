@@ -357,6 +357,7 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     vscode.commands.registerCommand("gitSimpleCompare.refreshStashes", () =>
       refreshStashes(deps)
     ),
+    vscode.commands.registerCommand("gitSimpleCompare.loadMoreStashes", (root: string) => refreshStashes(deps, true, root)),
     vscode.commands.registerCommand(
       "gitSimpleCompare.loadStashFiles",
       (selection: StashCommandSelection) => loadStashFilesForView(deps, selection)

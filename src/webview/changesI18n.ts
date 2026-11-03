@@ -236,6 +236,8 @@ export function changesWebviewI18n(): Record<string, string> {
     viewStashContents: vscode.l10n.t("View Stash Contents"),
     viewStagedStashContents: vscode.l10n.t("View Staged Stash Changes"),
     loadingStashContents: vscode.l10n.t("Loading stash contents..."),
+    loadMoreStashes: vscode.l10n.t("Load more stashes"),
+    loadingMoreStashes: vscode.l10n.t("Loading more stashes..."),
     noSavedWorkingTreeChanges: vscode.l10n.t("No saved working tree changes. View staged changes from the menu."),
     stashContentsLoadFailed: vscode.l10n.t("Could not load stash contents. Collapse and expand to retry."),
     openStashFile: vscode.l10n.t("View saved changes for {0}"),

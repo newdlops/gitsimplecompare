@@ -22,7 +22,7 @@ import { logGraphWebviewPaint } from "./graphPerformance";
 import { generateGraphRebaseAiPlan } from "./graphRebaseAiActions";
 import { handleGraphRebaseMessage, isGraphRebaseMessage } from "./graphRebaseRouter";
 import { GraphRebaseSessionSync, restoreGraphRebaseSession } from "./graphRebaseSession";
-import { sendGraphReflog } from "./graphReflog";
+import { GraphReflogSender } from "./graphReflog";
 import type {
   FromWebviewMessage,
   GraphLoadDirection,
@@ -102,6 +102,7 @@ export class GraphPanelMessageRouter {
   private readonly pullRequestPager = new GraphPullRequestPager();
   private readonly stackPublication = new GraphPullRequestStackPublication();
   private readonly commitDetails = new GraphCommitDetailSender();
+  private readonly reflog = new GraphReflogSender();
   private pullRequestRequest: AbortController | undefined;
   private pullRequestDetail?: { number: number; requestId?: string; controller: AbortController };
   private detailPaused = false;
@@ -182,6 +183,7 @@ export class GraphPanelMessageRouter {
 
   /** 패널 수명주기 경계에서 pager와 stack snapshot의 원격 조회를 함께 취소한다. */
   cancelPullRequestLoading(reason: string): void {
+    this.reflog.cancel(reason);
     if (reason === "repositoryChanged" || reason === "dispose") { this.repositoryEpoch++; this.actionNotices.cancel(); }
     if (["repositoryChanged", "dispose", "hidden", "windowUnfocused"].includes(reason)) this.cancelDetailLoading(reason);
     if (reason === "dispose") { this.rebaseSessionSync.dispose(); this.actionRefresh.dispose(); }
@@ -201,6 +203,7 @@ export class GraphPanelMessageRouter {
    * @param reason OUTPUT 로그에 남길 lifecycle 원인
    */
   pausePullRequestLifecycle(reason: string): void {
+    this.reflog.cancel(reason);
     this.detailPaused = true;
     this.cancelDetailLoading(reason);
     this.rebaseSessionSync.invalidate();
@@ -274,10 +277,12 @@ export class GraphPanelMessageRouter {
       } else if (await this.handlePullRequestMessage(message)) {
         return;
       } else if (message.type === "refreshReflog") {
-        await sendGraphReflog(
+        await this.reflog.send(
           { repoRoot: this.repoRoot, post: this.deps.post },
-          { includeUnreachable: message.includeUnreachable }
+          { includeUnreachable: message.includeUnreachable, requestId: message.requestId }
         );
+      } else if (message.type === "cancelReflog") {
+        this.reflog.cancel("closed", message.requestId);
       } else if (message.type === "cancelCommitFocus") {
         this.deps.cancelCommitFocus?.(message.requestId);
       } else if (message.type === "ensureCommitVisible") {

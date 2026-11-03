@@ -1,0 +1,433 @@
+{
+  "repositoryHead": "7a130b007012d768f644822a990f44d116351a2c",
+  "baselineKind": "pre-fix worktree snapshot",
+  "baselineSourceSha256": "200245acebdf8198b177c498b240e8fae4e110e0fcb0e395f3c9c2f6e532cc69",
+  "currentSourceSha256": "f193f7df27429c20986be8b0634b1c943923179a239e8b2f50ac4324cb73b597",
+  "generatedAt": "2026-11-03T09:33:31.191Z",
+  "repetitions": 3,
+  "environment": {
+    "node": "v22.22.2",
+    "git": "git version 2.50.1 (Apple Git-155)",
+    "platform": "darwin",
+    "release": "25.4.0",
+    "cpu": "Apple M5 Pro",
+    "cpuCount": 15,
+    "memoryGiB": 48
+  },
+  "fixture": {
+    "binaryHead": "37a6bae68005737fa0c5db6d34aaba25a9451325",
+    "stashHash": "3c286f4dd66d66acb8d1522ed22b0794a431cf8a",
+    "syntheticFiles": 12,
+    "syntheticSourceBytes": 50330880,
+    "recoveryObjects": 2400,
+    "stashMetadataEntries": 500
+  },
+  "method": "serial isolated workers; alternating AB/BA; OS cache not flushed; power/background load uncontrolled; setup excluded; RSS is Node only; synthetic fixtures; fs observer enabled equally",
+  "cases": {
+    "synthetic-expanded": {
+      "baseline": {
+        "elapsedMs": 1961.686167,
+        "cpuMs": 490.703,
+        "rssStartMiB": 47.28125,
+        "sampledPeakRssMiB": 444.90625,
+        "maxRssMiB": 444.921875,
+        "wallRangeMs": [
+          1928.20975,
+          2876.9660830000003
+        ]
+      },
+      "current": {
+        "elapsedMs": 1376.3065829999998,
+        "cpuMs": 462.222,
+        "rssStartMiB": 47.234375,
+        "sampledPeakRssMiB": 438.890625,
+        "maxRssMiB": 443.078125,
+        "wallRangeMs": [
+          1083.563291,
+          2272.353958
+        ]
+      },
+      "wallReductionPercent": 29.840633728646782,
+      "samples": {
+        "baseline": [
+          {
+            "elapsedMs": 2876.9660830000003,
+            "cpuMs": 436.088,
+            "rssStartMiB": 47.28125,
+            "sampledPeakRssMiB": 445.15625,
+            "maxRssMiB": 445.171875,
+            "io": {
+              "stat": 16,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 780,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 10,
+              "ls-files": 5
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 1961.686167,
+            "cpuMs": 490.703,
+            "rssStartMiB": 47,
+            "sampledPeakRssMiB": 444.90625,
+            "maxRssMiB": 444.921875,
+            "io": {
+              "stat": 16,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 780,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 10,
+              "ls-files": 5
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 1928.20975,
+            "cpuMs": 567.536,
+            "rssStartMiB": 47.296875,
+            "sampledPeakRssMiB": 421.21875,
+            "maxRssMiB": 421.234375,
+            "io": {
+              "stat": 16,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 780,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 10,
+              "ls-files": 5
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          }
+        ],
+        "current": [
+          {
+            "elapsedMs": 1376.3065829999998,
+            "cpuMs": 375.225,
+            "rssStartMiB": 47.125,
+            "sampledPeakRssMiB": 438.890625,
+            "maxRssMiB": 443.078125,
+            "io": {
+              "stat": 26,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 108,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 5
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 1083.563291,
+            "cpuMs": 462.222,
+            "rssStartMiB": 47.296875,
+            "sampledPeakRssMiB": 451.40625,
+            "maxRssMiB": 451.421875,
+            "io": {
+              "stat": 26,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 108,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 5
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 2272.353958,
+            "cpuMs": 597.062,
+            "rssStartMiB": 47.234375,
+            "sampledPeakRssMiB": 431.03125,
+            "maxRssMiB": 431.046875,
+            "io": {
+              "stat": 26,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 108,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 5
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          }
+        ]
+      }
+    },
+    "stash-list-expanded": {
+      "baseline": {
+        "elapsedMs": 4833.3297919999995,
+        "cpuMs": 221.627,
+        "rssStartMiB": 47.203125,
+        "sampledPeakRssMiB": 57.734375,
+        "maxRssMiB": 57.78125,
+        "wallRangeMs": [
+          3816.358458,
+          5926.960542
+        ]
+      },
+      "current": {
+        "elapsedMs": 652.750542,
+        "cpuMs": 71.459,
+        "rssStartMiB": 47.515625,
+        "sampledPeakRssMiB": 58.296875,
+        "maxRssMiB": 58.3125,
+        "wallRangeMs": [
+          588.974958,
+          916.377375
+        ]
+      },
+      "wallReductionPercent": 86.49480647729821,
+      "samples": {
+        "baseline": [
+          {
+            "elapsedMs": 3816.358458,
+            "cpuMs": 184.532,
+            "rssStartMiB": 47.09375,
+            "sampledPeakRssMiB": 57.953125,
+            "maxRssMiB": 57.984375,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 10,
+              "reflog": 10
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          },
+          {
+            "elapsedMs": 5926.960542,
+            "cpuMs": 326.132,
+            "rssStartMiB": 47.203125,
+            "sampledPeakRssMiB": 57.6875,
+            "maxRssMiB": 57.703125,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 10,
+              "reflog": 10
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          },
+          {
+            "elapsedMs": 4833.3297919999995,
+            "cpuMs": 221.627,
+            "rssStartMiB": 47.40625,
+            "sampledPeakRssMiB": 57.734375,
+            "maxRssMiB": 57.78125,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 10,
+              "reflog": 10
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          }
+        ],
+        "current": [
+          {
+            "elapsedMs": 652.750542,
+            "cpuMs": 61.753,
+            "rssStartMiB": 47.546875,
+            "sampledPeakRssMiB": 58.453125,
+            "maxRssMiB": 58.484375,
+            "io": {
+              "stat": 10,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 2,
+              "reflog": 2
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          },
+          {
+            "elapsedMs": 588.974958,
+            "cpuMs": 71.459,
+            "rssStartMiB": 47.515625,
+            "sampledPeakRssMiB": 58.296875,
+            "maxRssMiB": 58.3125,
+            "io": {
+              "stat": 10,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 2,
+              "reflog": 2
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          },
+          {
+            "elapsedMs": 916.377375,
+            "cpuMs": 94.455,
+            "rssStartMiB": 47.03125,
+            "sampledPeakRssMiB": 57.46875,
+            "maxRssMiB": 57.5,
+            "io": {
+              "stat": 10,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 2,
+              "reflog": 2
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "runs": [
+    {
+      "generatedAt": "2026-11-03T09:33:31.265Z",
+      "cases": [
+        "synthetic-expanded",
+        "stash-list-expanded"
+      ],
+      "fixture": {
+        "binaryHead": "37a6bae68005737fa0c5db6d34aaba25a9451325",
+        "stashHash": "3c286f4dd66d66acb8d1522ed22b0794a431cf8a",
+        "syntheticFiles": 12,
+        "syntheticSourceBytes": 50330880,
+        "recoveryObjects": 2400,
+        "stashMetadataEntries": 500
+      }
+    }
+  ],
+  "limitations": [
+    "3 worker pairs per case: descriptive medians, not statistical significance or production latency guarantees.",
+    "CPU cases use two warmups and fifteen timed operations per worker; innerMedianMs is the median of three worker medians.",
+    "Peak RSS is the isolated Node worker, includes bundle and inputs, and excludes VS Code, webview and child Git memory.",
+    "Initial synthetic loading and stash pagination return less detail; expanded cases complete the same requested work.",
+    "remote-queue, worktree-map and selection-map inject external boundaries and do not measure real network or branch deletion.",
+    "Digests compare serialized values (object keys canonicalized in later runs); filesystem observers may affect microbenchmarks."
+  ]
+}

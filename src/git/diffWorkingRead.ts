@@ -6,8 +6,12 @@ import { runGitLiteralPaths as runGit } from "./gitExec";
 import { argvChunks } from "./pathspecExec";
 import type { DiffFile, DiffStage } from "./diffHunkService";
 import { mapWithConcurrency } from "../utils/mapWithConcurrency";
+import { readBoundedHandle } from "../utils/boundedFileRead";
 
 const MAX_SYNTHETIC_UNTRACKED_DIFF_BYTES = 5 * 1024 * 1024;
+/** 한 전체 조회에서 읽을 synthetic 원본 크기. 나머지 파일은 명시적인 지연 상세 항목으로 유지한다. */
+const SYNTHETIC_REQUEST_BYTES = 32 * 1024 * 1024;
+export interface WorkingDiffReadOptions { syntheticByteBudget?: number }
 
 /**
  * 선택 범위의 최신 hunk를 읽되 파일 수에 비례한 Git 프로세스 실행을 피한다.
@@ -17,10 +21,12 @@ const MAX_SYNTHETIC_UNTRACKED_DIFF_BYTES = 5 * 1024 * 1024;
  * @param signal 더 이상 필요 없는 Git·파일 읽기를 중단할 소비자 신호
  * @returns 기존 Git header와 파일별 hunk ID를 보존한 최신 diff 목록. 완료 결과는 캐시하지 않는다.
  */
-export async function readWorkingDiff(repoRoot: string, paths?: readonly string[], signal?: AbortSignal): Promise<DiffFile[]> {
+export async function readWorkingDiff(repoRoot: string, paths?: readonly string[], signal?: AbortSignal,
+  options: WorkingDiffReadOptions = {}): Promise<DiffFile[]> {
   signal?.throwIfAborted();
   const batches = paths === undefined ? [undefined] : argvChunks([...new Set(paths)]);
   const files = new Map<string, DiffFile[]>();
+  const budget = { remaining: options.syntheticByteBudget ?? (paths === undefined ? SYNTHETIC_REQUEST_BYTES : Infinity) };
   for (const batch of batches) {
     signal?.throwIfAborted();
     const scope = batch ? ["--", ...batch] : [];
@@ -33,7 +39,7 @@ export async function readWorkingDiff(repoRoot: string, paths?: readonly string[
     signal?.throwIfAborted();
     const unstagedFiles = parseDiff(unstaged, "unstaged");
     const untrackedFiles = await parseUntrackedFiles(repoRoot, untracked,
-      new Set(unstagedFiles.map(file => file.path)), signal);
+      new Set(unstagedFiles.map(file => file.path)), signal, budget);
     const batchFiles = new Map<string, DiffFile[]>();
     for (const file of [...parseDiff(staged, "staged"), ...unstagedFiles, ...untrackedFiles]) {
       const key = `${file.stage}\0${file.path}`;
@@ -48,7 +54,7 @@ export async function readWorkingDiff(repoRoot: string, paths?: readonly string[
 }
 
 /** `git diff` 원문을 기존 header·본문·파일별 hunk ID를 보존하는 DiffFile 배열로 파싱한다. */
-function parseDiff(raw: string, stage: DiffStage): DiffFile[] {
+export function parseDiff(raw: string, stage: DiffStage): DiffFile[] {
   const files: DiffFile[] = [];
   let current: DiffFile | undefined;
   let headerLines: string[] = [];
@@ -72,7 +78,11 @@ function parseDiff(raw: string, stage: DiffStage): DiffFile[] {
       files.push(current);
     }
   };
-  for (const line of raw.split("\n")) {
+  // 전체 출력의 줄 배열을 만들지 않고 현재 줄만 잘라 파싱한다. 마지막 빈 줄도 기존 split과 같다.
+  for (let cursor = 0; cursor <= raw.length;) {
+    const newline = raw.indexOf("\n", cursor);
+    const line = raw.slice(cursor, newline < 0 ? raw.length : newline);
+    cursor = newline < 0 ? raw.length + 1 : newline + 1;
     if (line.startsWith("diff --git ")) {
       flushFile();
       const match = /^diff --git a\/(.+) b\/(.+)$/.exec(line);
@@ -92,9 +102,15 @@ function parseDiff(raw: string, stage: DiffStage): DiffFile[] {
 }
 
 /** 미추적 파일의 순서를 유지하며 최대 4개 I/O로 new-file diff를 만든다. 취소 뒤 새 읽기는 시작하지 않는다. */
-async function parseUntrackedFiles(repoRoot: string, raw: string, skipPaths: Set<string>, signal?: AbortSignal): Promise<DiffFile[]> {
+async function parseUntrackedFiles(repoRoot: string, raw: string, skipPaths: Set<string>, signal: AbortSignal | undefined,
+  budget: { remaining: number }): Promise<DiffFile[]> {
   const paths = raw.split("\0").filter(item => item.length > 0 && !skipPaths.has(item));
-  return mapWithConcurrency(paths, 4, relPath => untrackedFileToDiff(repoRoot, relPath, signal), signal);
+  return mapWithConcurrency(paths, 4, relPath => untrackedFileToDiff(repoRoot, relPath, signal, budget), signal);
+}
+
+/** 표시 snapshot에서 이미 확인한 미추적 파일의 본문만 읽는다. 쓰기 전 Git 검증용 API로 사용하지 않는다. */
+export async function readUntrackedFileDiff(repoRoot: string, relativePath: string, signal?: AbortSignal): Promise<DiffFile[]> {
+  return [await untrackedFileToDiff(repoRoot, relativePath, signal, { remaining: Infinity })];
 }
 
 /**
@@ -103,15 +119,22 @@ async function parseUntrackedFiles(repoRoot: string, raw: string, skipPaths: Set
  * @param repoRoot 저장소 루트 @param relPath 상대 파일 경로 @param signal 파일 I/O 취소 신호
  * @returns 파일 mode·마지막 개행 여부를 보존한 새로운 DiffFile
  */
-async function untrackedFileToDiff(repoRoot: string, relPath: string, signal?: AbortSignal): Promise<DiffFile> {
+async function untrackedFileToDiff(repoRoot: string, relPath: string, signal: AbortSignal | undefined,
+  budget: { remaining: number }): Promise<DiffFile> {
   signal?.throwIfAborted();
   const fullPath = path.join(repoRoot, relPath);
-  const header = newFileHeader(relPath, await fileMode(fullPath));
+  let header = newFileHeader(relPath, "100644");
   try {
     const stats = await fs.promises.stat(fullPath);
+    header = newFileHeader(relPath, stats.mode & 0o111 ? "100755" : "100644");
     signal?.throwIfAborted();
     if (stats.size > MAX_SYNTHETIC_UNTRACKED_DIFF_BYTES) return { stage: "unstaged", path: relPath, header, hunks: [], binary: true };
-    const buffer = await fs.promises.readFile(fullPath, { signal });
+    if (stats.size > budget.remaining) return { stage: "unstaged", path: relPath, header, hunks: [], binary: false, deferred: true };
+    budget.remaining -= stats.size;
+    const handle = await fs.promises.open(fullPath, "r");
+    let buffer: Buffer;
+    try { buffer = await readBoundedHandle(handle, stats.size, signal, stats.size); }
+    finally { await handle.close(); }
     signal?.throwIfAborted();
     if (buffer.includes(0)) return { stage: "unstaged", path: relPath, header, hunks: [], binary: true };
     const hunk = newFileHunk(buffer.toString("utf8"));
@@ -125,12 +148,6 @@ async function untrackedFileToDiff(repoRoot: string, relPath: string, signal?: A
 /** @param relPath 상대 파일 경로 @param mode Git 파일 mode @returns 새 파일 apply에 필요한 diff header */
 function newFileHeader(relPath: string, mode: string): string {
   return [`diff --git a/${relPath} b/${relPath}`, `new file mode ${mode}`, "index 0000000..0000000", "--- /dev/null", `+++ b/${relPath}`].join("\n");
-}
-
-/** @param fullPath 작업 파일 절대 경로 @returns 실행 비트가 있으면 100755, 없거나 읽기 실패면 기존 기본값 100644 */
-async function fileMode(fullPath: string): Promise<string> {
-  try { return (await fs.promises.stat(fullPath)).mode & 0o111 ? "100755" : "100644"; }
-  catch { return "100644"; }
 }
 
 /** @param content 새 파일 UTF-8 본문 @returns 마지막 개행·줄 수를 보존한 추가 hunk, 빈 파일이면 undefined */

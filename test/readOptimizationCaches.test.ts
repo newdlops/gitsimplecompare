@@ -115,9 +115,19 @@ test("virtual commit detail retains every untracked file and exact additions und
   assert.ok(detail.files.every(file => file.additions === 2 && file.deletions === 0));
   assert.equal(reads, names.length); assert.ok(peak <= 4); assert.equal(active, 0);
   reads = 0; peak = 0;
+  let opens = 0; const originalOpen = fileIO.open;
+  t.mock.method(fileIO, "open", async (...args: Parameters<typeof fileIO.open>) => {
+    const handle = await originalOpen(...args); opens++;
+    const original = handle.read.bind(handle);
+    handle.read = (async (...parameters: any[]) => {
+      peak = Math.max(peak, ++active);
+      try { return await (original as any)(...parameters); } finally { active--; }
+    }) as typeof handle.read;
+    return handle;
+  });
   const hunks = await new DiffHunkService(root).getWorkingDiff();
   assert.deepEqual(hunks.map(file => file.path), names);
-  assert.equal(reads, names.length); assert.ok(peak <= 4);
+  assert.equal(opens, names.length); assert.ok(peak > 0 && peak <= 4); assert.equal(active, 0);
   assert.ok(hunks.every(file => file.hunks.length === 1 && !file.binary));
   assert.ok(untrackedStatsCacheStats().bytes <= 1024 * 1024); clearUntrackedStatsCache();
 });

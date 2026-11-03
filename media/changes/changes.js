@@ -183,6 +183,7 @@
         (p.stashes || []).length,
         window.__gscStashes?.body?.(p.stashes || [], {
           repoRoot: p.commit?.repoRoot,
+          pagination: p.stashPagination,
           expandedByKey: state.stashExpanded,
           fileIconHtml,
         }) || "",

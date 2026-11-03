@@ -13,7 +13,7 @@ body {
 body {
   display: grid;
   grid-template-rows: auto 1fr auto;
-  min-width: 640px;
+  min-width: 0;
   height: 100vh;
   overflow: hidden;
 }
@@ -75,7 +75,7 @@ body {
 
 .split-shell {
   display: grid;
-  grid-template-columns: minmax(220px, 30%) 1fr;
+  grid-template-columns: minmax(220px, 30%) minmax(0, 1fr);
   min-height: 0;
 }
 
@@ -91,6 +91,7 @@ body {
 
 .file-pane,
 .hunk-pane {
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
@@ -552,3 +553,25 @@ button:not(:disabled):hover {
 #notice.operation-status--running { color: var(--vscode-textLink-foreground); }
 #notice.operation-status--success { color: var(--vscode-testing-iconPassed); }
 #notice.operation-status--error { color: var(--vscode-errorForeground); }
+
+/* 좁은 editor group에서도 지연 상세·재시도·선택 액션이 화면 밖으로 밀리지 않게 한다. */
+@media (max-width: 900px) {
+  .hunk-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .hunk-actions { flex-wrap: wrap; }
+  .edit-diff-head, .edit-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-width: 0; }
+  .edit-cell { grid-template-columns: 18px 28px 12px minmax(0, 1fr); column-gap: 3px; padding: 0 4px; }
+  .edit-diff-head span { padding-left: 8px; }
+  .edit-cell .line-text, .edit-cell .right-edit { white-space: pre-wrap; overflow-wrap: anywhere; }
+}
+
+@media (max-width: 640px) {
+  .topbar, .commitbar { flex-wrap: wrap; gap: 6px; }
+  .title { min-width: 0; flex-basis: 100%; }
+  .tools { min-width: 0; width: 100%; flex-wrap: wrap; }
+  .search { min-width: 0; flex: 1 1 160px; }
+  .split-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(80px, 25%) minmax(0, 1fr); }
+  .single-file-scope .split-shell { grid-template-rows: minmax(0, 1fr); }
+  .file-pane { border-right: 0; border-bottom: 1px solid var(--vscode-panel-border); }
+  #selection-summary { flex: 1 1 100%; }
+  #notice { max-width: 100%; }
+}

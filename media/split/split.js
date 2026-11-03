@@ -28,6 +28,8 @@
       clear: "Clear",
       changed: "Changed",
       emptyFile: "Select a file.",
+      loadingFileChanges: "Loading file changes...",
+      loadFileChanges: "Load file changes",
       discardSelected: "Discard Selected",
       discardedSelected: "Selected hunks discarded.",
       filter: "Filter",
@@ -76,6 +78,7 @@
   let workingDirty = false;
   let operationBusy = false;
   const editableDiff = window.__gscSplitEditableDiff({ T, esc, hunksEl });
+  const deferredFiles = window.__gscSplitDeferredFiles.create({ T, esc, post: message => vscode.postMessage(message) });
 
   /** HTML 특수문자를 이스케이프한다. */
   function esc(text) {
@@ -242,7 +245,7 @@
     noticeEl.setAttribute("aria-busy", String(operationBusy));
     refreshBtn.disabled = operationBusy;
     selectedOnlyBtn.disabled = operationBusy;
-    selectFileBtn.disabled = operationBusy;
+    selectFileBtn.disabled = operationBusy || !!activeFile()?.deferred;
     clearFileBtn.disabled = operationBusy;
     openFileBtn.disabled = operationBusy;
     updateEditorState();
@@ -274,7 +277,7 @@
     row.dataset.path = file.path;
     row.title = file.path;
     row.setAttribute("aria-label", file.path);
-    const count = file.binary ? T.binary : `${file.hunks.length} ${T.hunks}`;
+    const count = file.deferred ? T.loadFileChanges : file.binary ? T.binary : `${file.hunks.length} ${T.hunks}`;
     const picked = selectedCount(file);
     row.innerHTML =
       `<span class="codicon codicon-file-code"></span>` +
@@ -301,6 +304,8 @@
       return;
     }
     activePathEl.textContent = file.path;
+    selectFileBtn.disabled = operationBusy || !!file.deferred;
+    if (deferredFiles.render(file, hunksEl)) { activeMetaEl.textContent = T.loadFileChanges; return; }
     const compareLabel =
       file.stage === "unstaged" ? T.headWorkingTree : stageLabel(file.stage);
     activeMetaEl.textContent = file.binary
@@ -538,7 +543,16 @@
   window.addEventListener("message", (event) => {
     const msg = event.data;
     if (msg.type === "changes") {
+      deferredFiles.reset(msg.generation);
       render(msg.files, msg.focus, msg.singleFile, msg.workingFile);
+    } else if (msg.type === "fileDetails" || msg.type === "fileDetailsError") {
+      if (!deferredFiles.receive(msg)) return;
+      if (msg.type === "fileDetails") {
+        const first = currentFiles.findIndex(file => file.path === msg.path);
+        const next = currentFiles.filter(file => file.path !== msg.path);
+        next.splice(Math.max(0, first), 0, ...msg.files);
+        render(next, undefined, singleFile, activeFile()?.path === msg.path ? msg.workingFile : currentWorkingFile);
+      } else renderActiveFile();
     } else if (msg.type === "operation") {
       renderOperation(msg.state, msg.message);
     } else if (msg.type === "staged") {

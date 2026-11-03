@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { GitError, runGit, type RunGitOptions } from "./gitExec";
 import { invalidateGitBranchListCaches } from "./gitBranchListCache";
 import { parseWorktreePorcelain } from "./worktreeService";
+import { mapWithConcurrency } from "../utils/mapWithConcurrency";
 
 /** 선택창과 삭제 재검증이 공유하는 로컬 브랜치의 정확한 tip 스냅샷이다. */
 export interface StaleBranch {
@@ -82,8 +83,7 @@ export class StaleBranchService {
     const inspection: StaleBranchInspection = { repoRoot: this.repoRoot, ...before, localBranches: [], branches: [] };
     const remoteNames = new Map<string, string[]>();
     // 원격 수가 많아도 Git/SSH 프로세스는 한 번에 최대 네 개만 만든다.
-    for (let index = 0; index < before.remotes.length; index += 4) {
-      const results = await Promise.allSettled(before.remotes.slice(index, index + 4).map(async remote => {
+    await mapWithConcurrency(before.remotes, 4, async remote => {
         const output = await this.readRemote(remote, signal);
         for (const line of output.replace(/\r\n/g, "\n").split("\n")) {
           if (!line) continue;
@@ -93,11 +93,8 @@ export class StaleBranchService {
           matches.push(remote);
           remoteNames.set(match[2], matches);
         }
-      }));
-      checkCancelled(signal);
-      const failure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
-      if (failure) throw failure.reason;
-    }
+    }, signal).catch(error => { checkCancelled(signal); throw error; });
+    checkCancelled(signal);
     const [local, worktrees, after] = await Promise.all([
       this.git(["for-each-ref", "--sort=refname", "--format=%(refname)%00%(objectname)%00%(symref)%00%(HEAD)%00%(subject)", "refs/heads/"], this.repoRoot, { signal }),
       this.git(["worktree", "list", "--porcelain"], this.repoRoot, { signal }),
@@ -105,7 +102,12 @@ export class StaleBranchService {
     ]);
     checkCancelled(signal);
     if (before.remoteConfigHash !== after.remoteConfigHash) throw new Error("Remote settings changed. Run stale branch cleanup again.");
-    const worktreeList = parseWorktreePorcelain(worktrees);
+    const worktreesByRef = new Map<string, string[]>();
+    for (const worktree of parseWorktreePorcelain(worktrees)) {
+      if (!worktree.branchRef) continue;
+      const paths = worktreesByRef.get(worktree.branchRef) ?? [];
+      paths.push(worktree.path); worktreesByRef.set(worktree.branchRef, paths);
+    }
     const localBranches: InspectedLocalBranch[] = local.split("\n").flatMap(line => {
       if (!line) return [];
       const [ref, hash, symref, head, ...subject] = line.split("\0");
@@ -113,7 +115,7 @@ export class StaleBranchService {
       const name = ref.slice("refs/heads/".length);
       if (symref) return [];
       const matchingRemotes = [...new Set(remoteNames.get(name))].sort();
-      const worktreePaths = worktreeList.filter(worktree => worktree.branchRef === ref).map(worktree => worktree.path);
+      const worktreePaths = worktreesByRef.get(ref) ?? [];
       return [{ name, hash, subject: subject.join("\0"), inUse: head === "*" || worktreePaths.length > 0,
         current: head === "*", merged: false, matchingRemotes, worktreePaths,
         remoteState: !before.remotes.length ? "unconfigured" as const
@@ -136,8 +138,9 @@ export class StaleBranchService {
    */
   async cleanup(inspection: StaleBranchInspection, names: readonly string[], force = false): Promise<StaleBranchCleanupResult> {
     if (inspection.repoRoot !== this.repoRoot) throw new Error("The selected repository changed. Run stale branch cleanup again.");
+    const selectable = new Map(inspection.branches.filter(branch => !branch.inUse).map(branch => [branch.name, branch]));
     const selected = [...new Set(names)].map(name => {
-      const branch = inspection.branches.find(candidate => candidate.name === name && !candidate.inUse);
+      const branch = selectable.get(name);
       if (!branch) throw new Error("The branch selection changed. Run stale branch cleanup again.");
       return branch;
     });

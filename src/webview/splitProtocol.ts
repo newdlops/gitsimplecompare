@@ -14,6 +14,7 @@ export type SplitToWebview =
       focus?: SplitFocus;
       singleFile?: boolean;
       workingFile?: { path: string; baseText: string; text: string };
+      generation?: number;
     }
   | {
       /** 현재 작업의 사용자 노출 상태(중복 실행 차단과 aria-live 안내에 사용). */
@@ -24,12 +25,15 @@ export type SplitToWebview =
   | { type: "staged"; message: string }
   | { type: "discarded"; message: string }
   | { type: "saved"; message: string }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  | { type: "fileDetails"; path: string; generation: number; files: DiffFile[]; workingFile?: { path: string; baseText: string; text: string } }
+  | { type: "fileDetailsError"; path: string; generation: number; message: string };
 
 /** 웹뷰 → 확장 */
 export type SplitFromWebview =
   | { type: "ready" }
   | { type: "refresh" }
+  | { type: "loadFileDetails"; path: string; generation: number }
   | { type: "stage"; selections: HunkSelection[] }
   | { type: "discard"; selections: HunkSelection[] }
   | { type: "saveFile"; path: string; content: string }

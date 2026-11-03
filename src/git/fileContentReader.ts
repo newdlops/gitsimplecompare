@@ -2,11 +2,12 @@
 // - GitService 가 위임하는 읽기 전용 경계이며, 대용량 파일을 확장 호스트 메모리에 올리지 않도록 크기 상한을 적용한다.
 // - vscode API 에 의존하지 않는다.
 import * as path from "node:path";
-import { readFile, stat } from "node:fs/promises";
+import { open } from "node:fs/promises";
 import { GitError, runGit } from "./gitExec";
 import { FileTooLargeError } from "./largeChangeSet";
 import { buildWorkingContentWithoutStaged } from "./unstagedView";
 import { EMPTY_TREE_REF } from "./gitTypes";
+import { FileReadLimitError, readBoundedHandle } from "../utils/boundedFileRead";
 
 /** 파일 내용 읽기 옵션(diff 미리보기용 크기 상한). */
 export interface ContentReadOptions {
@@ -90,22 +91,43 @@ export async function readWorkingContentWithoutStaged(
   options: ContentReadOptions = {}
 ): Promise<string> {
   const workingPath = path.join(repoRoot, rel);
-  if (options.maxBytes !== undefined) {
-    const size = await stat(workingPath).then((info) => info.size, () => undefined);
-    if (size !== undefined && size > options.maxBytes) {
-      throw new FileTooLargeError(rel, options.maxBytes, size);
-    }
-  }
-  let content = "";
+  options.signal?.throwIfAborted();
+  const handle = await open(workingPath, "r").catch(() => undefined);
+  if (!handle) { options.signal?.throwIfAborted(); return ""; }
+  const controller = new AbortController(), abort = () => controller.abort();
+  options.signal?.addEventListener("abort", abort, { once: true });
+  if (options.signal?.aborted) abort();
+  let missingWorking = false, failure: unknown;
+  /** 형제 작업도 취소하되 먼저 발생한 실제 읽기 오류를 보존한다. */
+  const own = <T>(promise: Promise<T>) => promise.catch(error => { failure ??= error; controller.abort(); throw error; });
   try {
-    content = await readFile(workingPath, { encoding: "utf8", signal: options.signal });
-  } catch {
+    controller.signal.throwIfAborted();
+    let expectedBytes: number | undefined;
+    if (options.maxBytes !== undefined) {
+      const stats = await handle.stat();
+      expectedBytes = stats.size;
+      controller.signal.throwIfAborted();
+      if (stats.size > options.maxBytes) throw new FileTooLargeError(rel, options.maxBytes, stats.size);
+    }
+    const bytes = options.maxBytes === undefined ? handle.readFile({ signal: controller.signal })
+      : readBoundedHandle(handle, options.maxBytes, controller.signal, expectedBytes);
+    const working = bytes.then(buffer => buffer.toString("utf8")).catch(error => {
+      if (error instanceof FileReadLimitError) throw new FileTooLargeError(rel, error.limit, error.size);
+      if (controller.signal.aborted) throw error;
+      // 기존 계약대로 작업본 자체를 읽을 수 없으면 빈 문서다. 이미 시작한 ref 조회는 함께 회수한다.
+      missingWorking = true; controller.abort(); return "";
+    });
+    const owned = { ...options, signal: controller.signal };
+    const results = await Promise.allSettled([
+      own(working), own(readFileAtRef(repoRoot, "HEAD", rel, owned)), own(readFileAtRef(repoRoot, ":0", rel, owned)),
+    ]);
     options.signal?.throwIfAborted();
-    return "";
+    if (missingWorking) return "";
+    if (failure) throw failure;
+    const [content, head, index] = results.map(result => result.status === "fulfilled" ? result.value : "");
+    return buildWorkingContentWithoutStaged(head, index, content);
+  } finally {
+    options.signal?.removeEventListener("abort", abort);
+    await handle.close();
   }
-  const [head, index] = await Promise.all([
-    readFileAtRef(repoRoot, "HEAD", rel, options),
-    readFileAtRef(repoRoot, ":0", rel, options),
-  ]);
-  return buildWorkingContentWithoutStaged(head, index, content);
 }

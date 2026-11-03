@@ -7,7 +7,7 @@ import type { CommitFailureReport } from "../git/commitHookFailure";
 import type { CommitHooksSnapshot } from "../git/commitHookService";
 import { ChangeDiffArgs, SortKey, ViewMode } from "../providers/changesTreeModel";
 import type { RepoInfo } from "../commands/shared";
-import type { StashView } from "../commands/stash";
+import { ChangesStashState } from "./changesStashState";
 import { editorGutterSettingAllowsMarkers } from "../providers/comparisonScmProvider";
 import { logInfo } from "../ui/outputLog";
 import { FileIconThemeResolver } from "./fileIconTheme";
@@ -49,7 +49,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   private staged: StatusGroups["staged"] = [];
   private unstaged: StatusGroups["unstaged"] = [];
   private statusRenderSignature = "";
-  private stashes: StashView[] = [];
+  private readonly stashState = new ChangesStashState(() => this.render());
   private worktrees: WorktreeView[] = [];
   private fileHistory: FileHistoryView = { commits: [] };
   private commitMessage = "";
@@ -121,7 +121,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       this.staged = [];
       this.unstaged = [];
       this.statusRenderSignature = "";
-      this.stashes = [];
+      this.stashState.reset();
       this.commitMessage = "";
       this.commitMessageRevision++;
       this.commitHooks = undefined;
@@ -175,11 +175,8 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     }
     this.render();
   }
-  /** stash 목록(+ 각 stash 의 파일)을 갱신한다(Stashes 섹션). */
-  setStashes(stashes: StashView[]): void {
-    this.stashes = stashes;
-    this.render();
-  }
+  /** stash 목록 또는 추가 조회 상태를 바꾼 뒤 기존 렌더 경로로 게시한다. */
+  readonly setStashes = this.stashState.set;
   /** git worktree 목록을 갱신한다(Worktrees 섹션). */
   setWorktrees(worktrees: WorktreeView[]): void {
     this.worktrees = worktrees;
@@ -363,7 +360,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.staged = [];
     this.unstaged = [];
     this.statusRenderSignature = "";
-    this.stashes = [];
+    this.stashState.reset();
     this.commitMessage = "";
     this.commitMessageRevision++;
     this.commitHooks = undefined;
@@ -414,7 +411,8 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       draft: this.draft,
       staged: this.staged,
       unstaged: this.unstaged,
-      stashes: this.stashes,
+      stashes: this.stashState.items,
+      stashPagination: this.stashState.pagination,
       worktrees: this.worktrees,
       fileHistory: this.fileHistory,
       commitMessage: this.commitMessage,

@@ -1,0 +1,1763 @@
+{
+  "repositoryHead": "7a130b007012d768f644822a990f44d116351a2c",
+  "baselineKind": "pre-fix worktree snapshot",
+  "baselineSourceSha256": "200245acebdf8198b177c498b240e8fae4e110e0fcb0e395f3c9c2f6e532cc69",
+  "currentSourceSha256": "041b4410d4d61c9f4086d6dcf3d888c94cef1003540be6698cc9448109606c61",
+  "generatedAt": "2026-11-03T09:07:05.373Z",
+  "repetitions": 5,
+  "environment": {
+    "node": "v22.22.2",
+    "git": "git version 2.50.1 (Apple Git-155)",
+    "platform": "darwin",
+    "release": "25.4.0",
+    "cpu": "Apple M5 Pro",
+    "cpuCount": 15,
+    "memoryGiB": 48
+  },
+  "fixture": {
+    "binaryHead": "37a6bae68005737fa0c5db6d34aaba25a9451325",
+    "stashHash": "3c286f4dd66d66acb8d1522ed22b0794a431cf8a",
+    "syntheticFiles": 12,
+    "syntheticSourceBytes": 50330880,
+    "recoveryObjects": 2400,
+    "stashMetadataEntries": 500
+  },
+  "method": "serial isolated workers; alternating AB/BA; OS cache not flushed; power/background load uncontrolled; setup excluded; RSS is Node only; synthetic fixtures; fs observer enabled equally",
+  "cases": {
+    "synthetic-large": {
+      "baseline": {
+        "elapsedMs": 531.146708,
+        "cpuMs": 282.175,
+        "rssStartMiB": 47.28125,
+        "sampledPeakRssMiB": 351.28125,
+        "maxRssMiB": 351.296875,
+        "wallRangeMs": [
+          364.714292,
+          784.886125
+        ]
+      },
+      "current": {
+        "elapsedMs": 511.761958,
+        "cpuMs": 245.896,
+        "rssStartMiB": 47.234375,
+        "sampledPeakRssMiB": 336.203125,
+        "maxRssMiB": 336.21875,
+        "wallRangeMs": [
+          368.118417,
+          1780.905833
+        ]
+      },
+      "wallReductionPercent": 3.6496037173970395,
+      "samples": {
+        "baseline": [
+          {
+            "elapsedMs": 697.958375,
+            "cpuMs": 289.904,
+            "rssStartMiB": 47.28125,
+            "sampledPeakRssMiB": 323.0625,
+            "maxRssMiB": 329.859375,
+            "io": {
+              "stat": 12,
+              "open": 8,
+              "readFile": 0,
+              "fileRead": 520,
+              "bytes": 33553920
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 4,
+              "hunkCharacters": 33973496,
+              "digest": "f31e3c432d176b9f6e4371e9e666d649298a7631c3aed451408e87aca970a3db",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 531.146708,
+            "cpuMs": 282.175,
+            "rssStartMiB": 47.375,
+            "sampledPeakRssMiB": 378.390625,
+            "maxRssMiB": 378.40625,
+            "io": {
+              "stat": 12,
+              "open": 8,
+              "readFile": 0,
+              "fileRead": 520,
+              "bytes": 33553920
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 4,
+              "hunkCharacters": 33973496,
+              "digest": "f31e3c432d176b9f6e4371e9e666d649298a7631c3aed451408e87aca970a3db",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 422.75595899999996,
+            "cpuMs": 236.542,
+            "rssStartMiB": 47.5,
+            "sampledPeakRssMiB": 327.296875,
+            "maxRssMiB": 327.3125,
+            "io": {
+              "stat": 12,
+              "open": 8,
+              "readFile": 0,
+              "fileRead": 520,
+              "bytes": 33553920
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 4,
+              "hunkCharacters": 33973496,
+              "digest": "f31e3c432d176b9f6e4371e9e666d649298a7631c3aed451408e87aca970a3db",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 784.886125,
+            "cpuMs": 311.742,
+            "rssStartMiB": 47.109375,
+            "sampledPeakRssMiB": 356.71875,
+            "maxRssMiB": 356.734375,
+            "io": {
+              "stat": 12,
+              "open": 8,
+              "readFile": 0,
+              "fileRead": 520,
+              "bytes": 33553920
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 4,
+              "hunkCharacters": 33973496,
+              "digest": "f31e3c432d176b9f6e4371e9e666d649298a7631c3aed451408e87aca970a3db",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 364.714292,
+            "cpuMs": 229.239,
+            "rssStartMiB": 47.234375,
+            "sampledPeakRssMiB": 351.28125,
+            "maxRssMiB": 351.296875,
+            "io": {
+              "stat": 12,
+              "open": 8,
+              "readFile": 0,
+              "fileRead": 520,
+              "bytes": 33553920
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 4,
+              "hunkCharacters": 33973496,
+              "digest": "f31e3c432d176b9f6e4371e9e666d649298a7631c3aed451408e87aca970a3db",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          }
+        ],
+        "current": [
+          {
+            "elapsedMs": 511.761958,
+            "cpuMs": 252.404,
+            "rssStartMiB": 47.390625,
+            "sampledPeakRssMiB": 336.203125,
+            "maxRssMiB": 336.21875,
+            "io": {
+              "stat": 14,
+              "open": 8,
+              "readFile": 0,
+              "fileRead": 72,
+              "bytes": 33553920
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 4,
+              "hunkCharacters": 33973496,
+              "digest": "f31e3c432d176b9f6e4371e9e666d649298a7631c3aed451408e87aca970a3db",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 404.84008300000005,
+            "cpuMs": 245.896,
+            "rssStartMiB": 47.46875,
+            "sampledPeakRssMiB": 354.953125,
+            "maxRssMiB": 354.984375,
+            "io": {
+              "stat": 14,
+              "open": 8,
+              "readFile": 0,
+              "fileRead": 72,
+              "bytes": 33553920
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 4,
+              "hunkCharacters": 33973496,
+              "digest": "f31e3c432d176b9f6e4371e9e666d649298a7631c3aed451408e87aca970a3db",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 661.74975,
+            "cpuMs": 203.015,
+            "rssStartMiB": 47.015625,
+            "sampledPeakRssMiB": 329.9375,
+            "maxRssMiB": 329.953125,
+            "io": {
+              "stat": 14,
+              "open": 8,
+              "readFile": 0,
+              "fileRead": 72,
+              "bytes": 33553920
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 4,
+              "hunkCharacters": 33973496,
+              "digest": "f31e3c432d176b9f6e4371e9e666d649298a7631c3aed451408e87aca970a3db",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 368.118417,
+            "cpuMs": 231.168,
+            "rssStartMiB": 47.234375,
+            "sampledPeakRssMiB": 340.875,
+            "maxRssMiB": 340.890625,
+            "io": {
+              "stat": 14,
+              "open": 8,
+              "readFile": 0,
+              "fileRead": 72,
+              "bytes": 33553920
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 4,
+              "hunkCharacters": 33973496,
+              "digest": "f31e3c432d176b9f6e4371e9e666d649298a7631c3aed451408e87aca970a3db",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 1780.905833,
+            "cpuMs": 307.177,
+            "rssStartMiB": 47.046875,
+            "sampledPeakRssMiB": 331.828125,
+            "maxRssMiB": 331.84375,
+            "io": {
+              "stat": 14,
+              "open": 8,
+              "readFile": 0,
+              "fileRead": 72,
+              "bytes": 33553920
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 4,
+              "hunkCharacters": 33973496,
+              "digest": "f31e3c432d176b9f6e4371e9e666d649298a7631c3aed451408e87aca970a3db",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          }
+        ]
+      }
+    },
+    "synthetic-expanded": {
+      "baseline": {
+        "elapsedMs": 1948.9859589999999,
+        "cpuMs": 390.232,
+        "rssStartMiB": 47.265625,
+        "sampledPeakRssMiB": 453.5625,
+        "maxRssMiB": 453.578125,
+        "wallRangeMs": [
+          1869.675042,
+          2541.279542
+        ]
+      },
+      "current": {
+        "elapsedMs": 570.635083,
+        "cpuMs": 334.703,
+        "rssStartMiB": 47.3125,
+        "sampledPeakRssMiB": 384.71875,
+        "maxRssMiB": 384.734375,
+        "wallRangeMs": [
+          485.38645799999995,
+          903.065917
+        ]
+      },
+      "wallReductionPercent": 70.72143694186562,
+      "samples": {
+        "baseline": [
+          {
+            "elapsedMs": 1986.008709,
+            "cpuMs": 385.961,
+            "rssStartMiB": 47.171875,
+            "sampledPeakRssMiB": 483.0625,
+            "maxRssMiB": 483.078125,
+            "io": {
+              "stat": 16,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 780,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 10,
+              "ls-files": 5
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 1869.675042,
+            "cpuMs": 390.232,
+            "rssStartMiB": 47.421875,
+            "sampledPeakRssMiB": 488.5,
+            "maxRssMiB": 488.515625,
+            "io": {
+              "stat": 16,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 780,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 10,
+              "ls-files": 5
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 1889.38275,
+            "cpuMs": 384.308,
+            "rssStartMiB": 47.421875,
+            "sampledPeakRssMiB": 419.765625,
+            "maxRssMiB": 419.78125,
+            "io": {
+              "stat": 16,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 780,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 10,
+              "ls-files": 5
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 2541.279542,
+            "cpuMs": 437.001,
+            "rssStartMiB": 47.265625,
+            "sampledPeakRssMiB": 453.5625,
+            "maxRssMiB": 453.578125,
+            "io": {
+              "stat": 16,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 780,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 10,
+              "ls-files": 5
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 1948.9859589999999,
+            "cpuMs": 404.45,
+            "rssStartMiB": 47.25,
+            "sampledPeakRssMiB": 430.28125,
+            "maxRssMiB": 430.296875,
+            "io": {
+              "stat": 16,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 780,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 10,
+              "ls-files": 5
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          }
+        ],
+        "current": [
+          {
+            "elapsedMs": 513.6754579999999,
+            "cpuMs": 300.391,
+            "rssStartMiB": 47.3125,
+            "sampledPeakRssMiB": 383.78125,
+            "maxRssMiB": 383.796875,
+            "io": {
+              "stat": 26,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 108,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 570.635083,
+            "cpuMs": 291.283,
+            "rssStartMiB": 47.46875,
+            "sampledPeakRssMiB": 366.46875,
+            "maxRssMiB": 366.484375,
+            "io": {
+              "stat": 26,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 108,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 612.829792,
+            "cpuMs": 353.345,
+            "rssStartMiB": 47.265625,
+            "sampledPeakRssMiB": 450.859375,
+            "maxRssMiB": 450.875,
+            "io": {
+              "stat": 26,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 108,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 485.38645799999995,
+            "cpuMs": 334.703,
+            "rssStartMiB": 47.4375,
+            "sampledPeakRssMiB": 384.71875,
+            "maxRssMiB": 384.734375,
+            "io": {
+              "stat": 26,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 108,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          },
+          {
+            "elapsedMs": 903.065917,
+            "cpuMs": 392.902,
+            "rssStartMiB": 47.296875,
+            "sampledPeakRssMiB": 435.84375,
+            "maxRssMiB": 435.859375,
+            "io": {
+              "stat": 26,
+              "open": 12,
+              "readFile": 0,
+              "fileRead": 108,
+              "bytes": 50330880
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 12,
+              "deferred": 0,
+              "hunkCharacters": 50960244,
+              "digest": "e662db2144f45f373816febbc778255621e6428ccb69ba8605c0d46f833b5dae",
+              "pathsDigest": "380a3fe501408b6fceb6f1ac08714eebfda0d89016a04facfabce750ec747981"
+            }
+          }
+        ]
+      }
+    },
+    "synthetic-small": {
+      "baseline": {
+        "elapsedMs": 356.03825,
+        "cpuMs": 100.61,
+        "rssStartMiB": 47.359375,
+        "sampledPeakRssMiB": 74.59375,
+        "maxRssMiB": 74.609375,
+        "wallRangeMs": [
+          236.743083,
+          768.3273750000001
+        ]
+      },
+      "current": {
+        "elapsedMs": 361.08495800000003,
+        "cpuMs": 99.473,
+        "rssStartMiB": 47.484375,
+        "sampledPeakRssMiB": 73.390625,
+        "maxRssMiB": 73.40625,
+        "wallRangeMs": [
+          245.21412500000002,
+          585.922792
+        ]
+      },
+      "wallReductionPercent": -1.4174623091760572,
+      "samples": {
+        "baseline": [
+          {
+            "elapsedMs": 236.743083,
+            "cpuMs": 98.226,
+            "rssStartMiB": 47.359375,
+            "sampledPeakRssMiB": 74.40625,
+            "maxRssMiB": 74.421875,
+            "io": {
+              "stat": 401,
+              "open": 401,
+              "readFile": 0,
+              "fileRead": 817,
+              "bytes": 1072000
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 401,
+              "deferred": 0,
+              "hunkCharacters": 1166419,
+              "digest": "2056861ba311098f9ec956bed1f00061925554c66801c594c5ee721710f5d17f",
+              "pathsDigest": "a74eb0831706d901711d43998f9383a5ce9c0df7c202b8720580759f67d36482"
+            }
+          },
+          {
+            "elapsedMs": 768.3273750000001,
+            "cpuMs": 117.301,
+            "rssStartMiB": 47.3125,
+            "sampledPeakRssMiB": 80.75,
+            "maxRssMiB": 80.765625,
+            "io": {
+              "stat": 401,
+              "open": 401,
+              "readFile": 0,
+              "fileRead": 817,
+              "bytes": 1072000
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 401,
+              "deferred": 0,
+              "hunkCharacters": 1166419,
+              "digest": "2056861ba311098f9ec956bed1f00061925554c66801c594c5ee721710f5d17f",
+              "pathsDigest": "a74eb0831706d901711d43998f9383a5ce9c0df7c202b8720580759f67d36482"
+            }
+          },
+          {
+            "elapsedMs": 356.03825,
+            "cpuMs": 100.61,
+            "rssStartMiB": 47.453125,
+            "sampledPeakRssMiB": 74.59375,
+            "maxRssMiB": 74.609375,
+            "io": {
+              "stat": 401,
+              "open": 401,
+              "readFile": 0,
+              "fileRead": 817,
+              "bytes": 1072000
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 401,
+              "deferred": 0,
+              "hunkCharacters": 1166419,
+              "digest": "2056861ba311098f9ec956bed1f00061925554c66801c594c5ee721710f5d17f",
+              "pathsDigest": "a74eb0831706d901711d43998f9383a5ce9c0df7c202b8720580759f67d36482"
+            }
+          },
+          {
+            "elapsedMs": 611.9197919999999,
+            "cpuMs": 117.118,
+            "rssStartMiB": 47.28125,
+            "sampledPeakRssMiB": 73.265625,
+            "maxRssMiB": 73.28125,
+            "io": {
+              "stat": 401,
+              "open": 401,
+              "readFile": 0,
+              "fileRead": 817,
+              "bytes": 1072000
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 401,
+              "deferred": 0,
+              "hunkCharacters": 1166419,
+              "digest": "2056861ba311098f9ec956bed1f00061925554c66801c594c5ee721710f5d17f",
+              "pathsDigest": "a74eb0831706d901711d43998f9383a5ce9c0df7c202b8720580759f67d36482"
+            }
+          },
+          {
+            "elapsedMs": 253.450542,
+            "cpuMs": 97.278,
+            "rssStartMiB": 47.375,
+            "sampledPeakRssMiB": 74.890625,
+            "maxRssMiB": 74.90625,
+            "io": {
+              "stat": 401,
+              "open": 401,
+              "readFile": 0,
+              "fileRead": 817,
+              "bytes": 1072000
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 401,
+              "deferred": 0,
+              "hunkCharacters": 1166419,
+              "digest": "2056861ba311098f9ec956bed1f00061925554c66801c594c5ee721710f5d17f",
+              "pathsDigest": "a74eb0831706d901711d43998f9383a5ce9c0df7c202b8720580759f67d36482"
+            }
+          }
+        ],
+        "current": [
+          {
+            "elapsedMs": 374.141959,
+            "cpuMs": 99.522,
+            "rssStartMiB": 47.546875,
+            "sampledPeakRssMiB": 73.390625,
+            "maxRssMiB": 73.40625,
+            "io": {
+              "stat": 402,
+              "open": 401,
+              "readFile": 0,
+              "fileRead": 803,
+              "bytes": 1072000
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 401,
+              "deferred": 0,
+              "hunkCharacters": 1166419,
+              "digest": "2056861ba311098f9ec956bed1f00061925554c66801c594c5ee721710f5d17f",
+              "pathsDigest": "a74eb0831706d901711d43998f9383a5ce9c0df7c202b8720580759f67d36482"
+            }
+          },
+          {
+            "elapsedMs": 283.708625,
+            "cpuMs": 99.473,
+            "rssStartMiB": 47.203125,
+            "sampledPeakRssMiB": 73.5625,
+            "maxRssMiB": 73.578125,
+            "io": {
+              "stat": 402,
+              "open": 401,
+              "readFile": 0,
+              "fileRead": 803,
+              "bytes": 1072000
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 401,
+              "deferred": 0,
+              "hunkCharacters": 1166419,
+              "digest": "2056861ba311098f9ec956bed1f00061925554c66801c594c5ee721710f5d17f",
+              "pathsDigest": "a74eb0831706d901711d43998f9383a5ce9c0df7c202b8720580759f67d36482"
+            }
+          },
+          {
+            "elapsedMs": 585.922792,
+            "cpuMs": 106.12,
+            "rssStartMiB": 47.484375,
+            "sampledPeakRssMiB": 74.21875,
+            "maxRssMiB": 74.265625,
+            "io": {
+              "stat": 402,
+              "open": 401,
+              "readFile": 0,
+              "fileRead": 803,
+              "bytes": 1072000
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 401,
+              "deferred": 0,
+              "hunkCharacters": 1166419,
+              "digest": "2056861ba311098f9ec956bed1f00061925554c66801c594c5ee721710f5d17f",
+              "pathsDigest": "a74eb0831706d901711d43998f9383a5ce9c0df7c202b8720580759f67d36482"
+            }
+          },
+          {
+            "elapsedMs": 245.21412500000002,
+            "cpuMs": 89.391,
+            "rssStartMiB": 47.484375,
+            "sampledPeakRssMiB": 73.296875,
+            "maxRssMiB": 73.328125,
+            "io": {
+              "stat": 402,
+              "open": 401,
+              "readFile": 0,
+              "fileRead": 803,
+              "bytes": 1072000
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 401,
+              "deferred": 0,
+              "hunkCharacters": 1166419,
+              "digest": "2056861ba311098f9ec956bed1f00061925554c66801c594c5ee721710f5d17f",
+              "pathsDigest": "a74eb0831706d901711d43998f9383a5ce9c0df7c202b8720580759f67d36482"
+            }
+          },
+          {
+            "elapsedMs": 361.08495800000003,
+            "cpuMs": 92.765,
+            "rssStartMiB": 47.25,
+            "sampledPeakRssMiB": 72.71875,
+            "maxRssMiB": 72.75,
+            "io": {
+              "stat": 402,
+              "open": 401,
+              "readFile": 0,
+              "fileRead": 803,
+              "bytes": 1072000
+            },
+            "commands": {
+              "diff": 2,
+              "ls-files": 1
+            },
+            "result": {
+              "files": 401,
+              "deferred": 0,
+              "hunkCharacters": 1166419,
+              "digest": "2056861ba311098f9ec956bed1f00061925554c66801c594c5ee721710f5d17f",
+              "pathsDigest": "a74eb0831706d901711d43998f9383a5ce9c0df7c202b8720580759f67d36482"
+            }
+          }
+        ]
+      }
+    },
+    "stash-list": {
+      "baseline": {
+        "elapsedMs": 136.87070899999998,
+        "cpuMs": 12.321,
+        "rssStartMiB": 47.40625,
+        "sampledPeakRssMiB": 49,
+        "maxRssMiB": 49.015625,
+        "wallRangeMs": [
+          127.333084,
+          265.376084
+        ]
+      },
+      "current": {
+        "elapsedMs": 157.913375,
+        "cpuMs": 12.959,
+        "rssStartMiB": 47.4375,
+        "sampledPeakRssMiB": 48.953125,
+        "maxRssMiB": 48.96875,
+        "wallRangeMs": [
+          127.40737499999999,
+          475.692666
+        ]
+      },
+      "wallReductionPercent": -15.37411923540195,
+      "samples": {
+        "baseline": [
+          {
+            "elapsedMs": 127.333084,
+            "cpuMs": 11.856,
+            "rssStartMiB": 47.609375,
+            "sampledPeakRssMiB": 49.296875,
+            "maxRssMiB": 49.3125,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 1,
+              "reflog": 1
+            },
+            "result": {
+              "shown": 50,
+              "pagination": {
+                "hasMore": true,
+                "loading": false
+              },
+              "payloadBytes": 7681,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9"
+            }
+          },
+          {
+            "elapsedMs": 129.889167,
+            "cpuMs": 11.883,
+            "rssStartMiB": 47.25,
+            "sampledPeakRssMiB": 48.90625,
+            "maxRssMiB": 48.921875,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 1,
+              "reflog": 1
+            },
+            "result": {
+              "shown": 50,
+              "pagination": {
+                "hasMore": true,
+                "loading": false
+              },
+              "payloadBytes": 7681,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9"
+            }
+          },
+          {
+            "elapsedMs": 163.930333,
+            "cpuMs": 12.321,
+            "rssStartMiB": 47.296875,
+            "sampledPeakRssMiB": 48.953125,
+            "maxRssMiB": 48.96875,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 1,
+              "reflog": 1
+            },
+            "result": {
+              "shown": 50,
+              "pagination": {
+                "hasMore": true,
+                "loading": false
+              },
+              "payloadBytes": 7681,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9"
+            }
+          },
+          {
+            "elapsedMs": 136.87070899999998,
+            "cpuMs": 13.244,
+            "rssStartMiB": 47.40625,
+            "sampledPeakRssMiB": 49.109375,
+            "maxRssMiB": 49.125,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 1,
+              "reflog": 1
+            },
+            "result": {
+              "shown": 50,
+              "pagination": {
+                "hasMore": true,
+                "loading": false
+              },
+              "payloadBytes": 7681,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9"
+            }
+          },
+          {
+            "elapsedMs": 265.376084,
+            "cpuMs": 13.722,
+            "rssStartMiB": 47.40625,
+            "sampledPeakRssMiB": 49,
+            "maxRssMiB": 49.015625,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 1,
+              "reflog": 1
+            },
+            "result": {
+              "shown": 50,
+              "pagination": {
+                "hasMore": true,
+                "loading": false
+              },
+              "payloadBytes": 7681,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9"
+            }
+          }
+        ],
+        "current": [
+          {
+            "elapsedMs": 127.40737499999999,
+            "cpuMs": 12.432,
+            "rssStartMiB": 47.4375,
+            "sampledPeakRssMiB": 48.953125,
+            "maxRssMiB": 48.96875,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 1,
+              "reflog": 1
+            },
+            "result": {
+              "shown": 50,
+              "pagination": {
+                "hasMore": true,
+                "loading": false
+              },
+              "payloadBytes": 7681,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9"
+            }
+          },
+          {
+            "elapsedMs": 281.37879100000004,
+            "cpuMs": 14.465,
+            "rssStartMiB": 47.171875,
+            "sampledPeakRssMiB": 48.671875,
+            "maxRssMiB": 48.6875,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 1,
+              "reflog": 1
+            },
+            "result": {
+              "shown": 50,
+              "pagination": {
+                "hasMore": true,
+                "loading": false
+              },
+              "payloadBytes": 7681,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9"
+            }
+          },
+          {
+            "elapsedMs": 475.692666,
+            "cpuMs": 20.576,
+            "rssStartMiB": 47.5625,
+            "sampledPeakRssMiB": 49.203125,
+            "maxRssMiB": 49.21875,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 1,
+              "reflog": 1
+            },
+            "result": {
+              "shown": 50,
+              "pagination": {
+                "hasMore": true,
+                "loading": false
+              },
+              "payloadBytes": 7681,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9"
+            }
+          },
+          {
+            "elapsedMs": 157.913375,
+            "cpuMs": 12.589,
+            "rssStartMiB": 47.171875,
+            "sampledPeakRssMiB": 48.796875,
+            "maxRssMiB": 48.8125,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 1,
+              "reflog": 1
+            },
+            "result": {
+              "shown": 50,
+              "pagination": {
+                "hasMore": true,
+                "loading": false
+              },
+              "payloadBytes": 7681,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9"
+            }
+          },
+          {
+            "elapsedMs": 143.13287499999998,
+            "cpuMs": 12.959,
+            "rssStartMiB": 47.578125,
+            "sampledPeakRssMiB": 49.078125,
+            "maxRssMiB": 49.09375,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 1,
+              "reflog": 1
+            },
+            "result": {
+              "shown": 50,
+              "pagination": {
+                "hasMore": true,
+                "loading": false
+              },
+              "payloadBytes": 7681,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9"
+            }
+          }
+        ]
+      }
+    },
+    "stash-list-expanded": {
+      "baseline": {
+        "elapsedMs": 2426.4281250000004,
+        "cpuMs": 123.784,
+        "rssStartMiB": 47.546875,
+        "sampledPeakRssMiB": 57.703125,
+        "maxRssMiB": 57.734375,
+        "wallRangeMs": [
+          1610.386292,
+          3768.4575830000003
+        ]
+      },
+      "current": {
+        "elapsedMs": 593.5855419999999,
+        "cpuMs": 49.229,
+        "rssStartMiB": 47.359375,
+        "sampledPeakRssMiB": 58.34375,
+        "maxRssMiB": 58.375,
+        "wallRangeMs": [
+          306.288375,
+          995.6522090000001
+        ]
+      },
+      "wallReductionPercent": 75.53665258475358,
+      "samples": {
+        "baseline": [
+          {
+            "elapsedMs": 2634.1009999999997,
+            "cpuMs": 125.309,
+            "rssStartMiB": 47.640625,
+            "sampledPeakRssMiB": 58.96875,
+            "maxRssMiB": 58.984375,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 10,
+              "reflog": 10
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          },
+          {
+            "elapsedMs": 2038.4138750000002,
+            "cpuMs": 123.784,
+            "rssStartMiB": 47.234375,
+            "sampledPeakRssMiB": 57.578125,
+            "maxRssMiB": 57.59375,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 10,
+              "reflog": 10
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          },
+          {
+            "elapsedMs": 1610.386292,
+            "cpuMs": 92.551,
+            "rssStartMiB": 47.359375,
+            "sampledPeakRssMiB": 57.703125,
+            "maxRssMiB": 57.734375,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 10,
+              "reflog": 10
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          },
+          {
+            "elapsedMs": 2426.4281250000004,
+            "cpuMs": 111.627,
+            "rssStartMiB": 47.546875,
+            "sampledPeakRssMiB": 57.84375,
+            "maxRssMiB": 57.859375,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 10,
+              "reflog": 10
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          },
+          {
+            "elapsedMs": 3768.4575830000003,
+            "cpuMs": 148.133,
+            "rssStartMiB": 47.5625,
+            "sampledPeakRssMiB": 56.28125,
+            "maxRssMiB": 56.28125,
+            "io": {
+              "stat": 0,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 10,
+              "reflog": 10
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          }
+        ],
+        "current": [
+          {
+            "elapsedMs": 363.267583,
+            "cpuMs": 42.085,
+            "rssStartMiB": 47.359375,
+            "sampledPeakRssMiB": 58.34375,
+            "maxRssMiB": 58.375,
+            "io": {
+              "stat": 10,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 2,
+              "reflog": 2
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          },
+          {
+            "elapsedMs": 995.6522090000001,
+            "cpuMs": 59.133,
+            "rssStartMiB": 47.46875,
+            "sampledPeakRssMiB": 58.765625,
+            "maxRssMiB": 58.796875,
+            "io": {
+              "stat": 10,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 2,
+              "reflog": 2
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          },
+          {
+            "elapsedMs": 306.288375,
+            "cpuMs": 36.267,
+            "rssStartMiB": 47.53125,
+            "sampledPeakRssMiB": 58.171875,
+            "maxRssMiB": 58.203125,
+            "io": {
+              "stat": 10,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 2,
+              "reflog": 2
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          },
+          {
+            "elapsedMs": 593.5855419999999,
+            "cpuMs": 49.229,
+            "rssStartMiB": 47.1875,
+            "sampledPeakRssMiB": 58.28125,
+            "maxRssMiB": 58.296875,
+            "io": {
+              "stat": 10,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 2,
+              "reflog": 2
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          },
+          {
+            "elapsedMs": 849.1313329999999,
+            "cpuMs": 54.545,
+            "rssStartMiB": 47.328125,
+            "sampledPeakRssMiB": 58.359375,
+            "maxRssMiB": 58.390625,
+            "io": {
+              "stat": 10,
+              "open": 0,
+              "readFile": 0,
+              "fileRead": 0,
+              "bytes": 0
+            },
+            "commands": {
+              "show-ref": 2,
+              "reflog": 2
+            },
+            "result": {
+              "shown": 500,
+              "pagination": {
+                "hasMore": false,
+                "loading": false
+              },
+              "payloadBytes": 77671,
+              "first50Digest": "ebbc3c2aea5e2c724904ef0bc7d3246af959cbbab2b18f70e1c709cb11c773c9",
+              "allDigest": "8f20ecaed74091c77acf5425cb4136c1bab34ff7d164e1112801017cdd3d5143"
+            }
+          }
+        ]
+      }
+    },
+    "working-content": {
+      "baseline": {
+        "elapsedMs": 192.451958,
+        "cpuMs": 75.401,
+        "rssStartMiB": 47.296875,
+        "sampledPeakRssMiB": 96.203125,
+        "maxRssMiB": 96.234375,
+        "wallRangeMs": [
+          152.537584,
+          526.5689169999999
+        ]
+      },
+      "current": {
+        "elapsedMs": 272.956958,
+        "cpuMs": 70.571,
+        "rssStartMiB": 47.390625,
+        "sampledPeakRssMiB": 95.71875,
+        "maxRssMiB": 95.734375,
+        "wallRangeMs": [
+          159.799458,
+          485.3075
+        ]
+      },
+      "wallReductionPercent": -41.83121898920872,
+      "samples": {
+        "baseline": [
+          {
+            "elapsedMs": 168.17175,
+            "cpuMs": 75.504,
+            "rssStartMiB": 47.234375,
+            "sampledPeakRssMiB": 96.421875,
+            "maxRssMiB": 96.4375,
+            "io": {
+              "stat": 0,
+              "open": 1,
+              "readFile": 0,
+              "fileRead": 38,
+              "bytes": 2388890
+            },
+            "commands": {
+              "show": 2
+            },
+            "result": {
+              "characters": 2388890,
+              "digest": "2ef0d37b7383b0de2cbd9ec17054f0c4b0c3cfc4acc62cc489232b9c14ff274d"
+            }
+          },
+          {
+            "elapsedMs": 223.843791,
+            "cpuMs": 75.401,
+            "rssStartMiB": 47.296875,
+            "sampledPeakRssMiB": 95.515625,
+            "maxRssMiB": 95.53125,
+            "io": {
+              "stat": 0,
+              "open": 1,
+              "readFile": 0,
+              "fileRead": 38,
+              "bytes": 2388890
+            },
+            "commands": {
+              "show": 2
+            },
+            "result": {
+              "characters": 2388890,
+              "digest": "2ef0d37b7383b0de2cbd9ec17054f0c4b0c3cfc4acc62cc489232b9c14ff274d"
+            }
+          },
+          {
+            "elapsedMs": 526.5689169999999,
+            "cpuMs": 78.256,
+            "rssStartMiB": 47.25,
+            "sampledPeakRssMiB": 96.203125,
+            "maxRssMiB": 96.234375,
+            "io": {
+              "stat": 0,
+              "open": 1,
+              "readFile": 0,
+              "fileRead": 38,
+              "bytes": 2388890
+            },
+            "commands": {
+              "show": 2
+            },
+            "result": {
+              "characters": 2388890,
+              "digest": "2ef0d37b7383b0de2cbd9ec17054f0c4b0c3cfc4acc62cc489232b9c14ff274d"
+            }
+          },
+          {
+            "elapsedMs": 192.451958,
+            "cpuMs": 75.373,
+            "rssStartMiB": 47.296875,
+            "sampledPeakRssMiB": 96.890625,
+            "maxRssMiB": 96.90625,
+            "io": {
+              "stat": 0,
+              "open": 1,
+              "readFile": 0,
+              "fileRead": 38,
+              "bytes": 2388890
+            },
+            "commands": {
+              "show": 2
+            },
+            "result": {
+              "characters": 2388890,
+              "digest": "2ef0d37b7383b0de2cbd9ec17054f0c4b0c3cfc4acc62cc489232b9c14ff274d"
+            }
+          },
+          {
+            "elapsedMs": 152.537584,
+            "cpuMs": 70.357,
+            "rssStartMiB": 47.515625,
+            "sampledPeakRssMiB": 95.953125,
+            "maxRssMiB": 95.96875,
+            "io": {
+              "stat": 0,
+              "open": 1,
+              "readFile": 0,
+              "fileRead": 38,
+              "bytes": 2388890
+            },
+            "commands": {
+              "show": 2
+            },
+            "result": {
+              "characters": 2388890,
+              "digest": "2ef0d37b7383b0de2cbd9ec17054f0c4b0c3cfc4acc62cc489232b9c14ff274d"
+            }
+          }
+        ],
+        "current": [
+          {
+            "elapsedMs": 159.799458,
+            "cpuMs": 67.645,
+            "rssStartMiB": 47.625,
+            "sampledPeakRssMiB": 96.25,
+            "maxRssMiB": 96.265625,
+            "io": {
+              "stat": 0,
+              "open": 1,
+              "readFile": 0,
+              "fileRead": 6,
+              "bytes": 2388890
+            },
+            "commands": {
+              "show": 2
+            },
+            "result": {
+              "characters": 2388890,
+              "digest": "2ef0d37b7383b0de2cbd9ec17054f0c4b0c3cfc4acc62cc489232b9c14ff274d"
+            }
+          },
+          {
+            "elapsedMs": 485.3075,
+            "cpuMs": 78.107,
+            "rssStartMiB": 47.328125,
+            "sampledPeakRssMiB": 95.046875,
+            "maxRssMiB": 95.0625,
+            "io": {
+              "stat": 0,
+              "open": 1,
+              "readFile": 0,
+              "fileRead": 6,
+              "bytes": 2388890
+            },
+            "commands": {
+              "show": 2
+            },
+            "result": {
+              "characters": 2388890,
+              "digest": "2ef0d37b7383b0de2cbd9ec17054f0c4b0c3cfc4acc62cc489232b9c14ff274d"
+            }
+          },
+          {
+            "elapsedMs": 461.259208,
+            "cpuMs": 63.003,
+            "rssStartMiB": 47.390625,
+            "sampledPeakRssMiB": 86.40625,
+            "maxRssMiB": 86.421875,
+            "io": {
+              "stat": 0,
+              "open": 1,
+              "readFile": 0,
+              "fileRead": 6,
+              "bytes": 2388890
+            },
+            "commands": {
+              "show": 2
+            },
+            "result": {
+              "characters": 2388890,
+              "digest": "2ef0d37b7383b0de2cbd9ec17054f0c4b0c3cfc4acc62cc489232b9c14ff274d"
+            }
+          },
+          {
+            "elapsedMs": 239.88883299999998,
+            "cpuMs": 70.571,
+            "rssStartMiB": 47.75,
+            "sampledPeakRssMiB": 95.71875,
+            "maxRssMiB": 95.734375,
+            "io": {
+              "stat": 0,
+              "open": 1,
+              "readFile": 0,
+              "fileRead": 6,
+              "bytes": 2388890
+            },
+            "commands": {
+              "show": 2
+            },
+            "result": {
+              "characters": 2388890,
+              "digest": "2ef0d37b7383b0de2cbd9ec17054f0c4b0c3cfc4acc62cc489232b9c14ff274d"
+            }
+          },
+          {
+            "elapsedMs": 272.956958,
+            "cpuMs": 71.979,
+            "rssStartMiB": 47.015625,
+            "sampledPeakRssMiB": 96.25,
+            "maxRssMiB": 96.265625,
+            "io": {
+              "stat": 0,
+              "open": 1,
+              "readFile": 0,
+              "fileRead": 6,
+              "bytes": 2388890
+            },
+            "commands": {
+              "show": 2
+            },
+            "result": {
+              "characters": 2388890,
+              "digest": "2ef0d37b7383b0de2cbd9ec17054f0c4b0c3cfc4acc62cc489232b9c14ff274d"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "runs": [
+    {
+      "generatedAt": "2026-11-03T09:07:05.616Z",
+      "cases": [
+        "synthetic-large",
+        "synthetic-expanded",
+        "synthetic-small",
+        "stash-list",
+        "stash-list-expanded",
+        "working-content"
+      ],
+      "fixture": {
+        "binaryHead": "37a6bae68005737fa0c5db6d34aaba25a9451325",
+        "stashHash": "3c286f4dd66d66acb8d1522ed22b0794a431cf8a",
+        "syntheticFiles": 12,
+        "syntheticSourceBytes": 50330880,
+        "recoveryObjects": 2400,
+        "stashMetadataEntries": 500
+      }
+    }
+  ],
+  "limitations": [
+    "5 worker pairs per case: descriptive medians, not statistical significance or production latency guarantees.",
+    "CPU cases use two warmups and fifteen timed operations per worker; innerMedianMs is the median of three worker medians.",
+    "Peak RSS is the isolated Node worker, includes bundle and inputs, and excludes VS Code, webview and child Git memory.",
+    "Initial synthetic loading and stash pagination return less detail; expanded cases complete the same requested work.",
+    "remote-queue, worktree-map and selection-map inject external boundaries and do not measure real network or branch deletion.",
+    "Digests compare serialized values (object keys canonicalized in later runs); filesystem observers may affect microbenchmarks."
+  ]
+}

@@ -10,6 +10,7 @@ import { FileChange, StashEntry } from "../git/gitTypes";
 import { openRefVsRefDiff } from "../ui/diffPresenter";
 import { logError, logInfo } from "../ui/outputLog";
 import { LruCache } from "../utils/lruCache";
+import { readStashListForDisplay } from "../git/stashListSnapshot";
 
 /** 웹뷰의 일반 render payload로 보낼 stash 메타데이터. 파일 목록은 직접 메시지로 분리한다. */
 export type StashView = StashEntry;
@@ -29,12 +30,14 @@ export interface StashFilesLoadResult {
   files: FileChange[];
 }
 
-/** `${root}@${ref}@${hash}` → 파일 목록 캐시(같은 stash 항목이면 재사용). */
+/** `${root}@${hash}` → 불변 파일 목록 캐시. stash 번호가 이동해도 같은 내용을 재사용한다. */
 const fileCache = new LruCache<string, FileChange[]>(16, 8 * 1024 * 1024,
   (key, files) => key.length * 2 + files.reduce((bytes, file) => bytes + 128 + (file.path.length + (file.oldPath?.length ?? 0)) * 2, 0));
 
 /** 동일 stash 가 렌더 사이에 다시 요청돼도 하나의 git 프로세스만 기다리게 하는 진행 중 조회 맵. */
 const fileLoads = new Map<string, Promise<FileChange[]>>();
+const stashListLimits = new LruCache<string, number>(16, 64 * 1024, root => root.length * 2 + 32);
+const stashListRequests = new Map<string, symbol>();
 
 /**
  * Changes 뷰가 선택한 활성 저장소의 GitService 를 찾는다.
@@ -85,7 +88,7 @@ function errText(e: unknown): string {
  * @param svc 실제 `git stash show` 를 실행할 활성 저장소 서비스
  * @param root 로그와 저장소별 캐시 구분에 사용하는 저장소 루트
  * @param entry 파일을 읽을 stash 메타데이터
- * @param key root/ref/hash 로 만든 캐시 및 진행 중 조회 키
+ * @param key root/hash 로 만든 캐시 및 진행 중 조회 키
  * @returns 해당 stash 에 포함된 파일 변경 목록
  */
 async function loadStashFiles(
@@ -133,19 +136,30 @@ async function loadStashFiles(
  * @param deps 저장소 레지스트리와 Changes 뷰를 포함한 공유 의존성
  * @returns 메타데이터가 현재 활성 저장소의 뷰에 반영되면 완료되는 Promise
  */
-export async function refreshStashes(deps: CommandDeps): Promise<void> {
+export async function refreshStashes(deps: CommandDeps, more = false, expectedRoot?: string): Promise<void> {
   const root = deps.changesView.getActiveRepo();
+  if (expectedRoot && root !== expectedRoot) return;
   const svc = root ? deps.registry.get(root) : undefined;
   if (!svc || !root) {
     deps.changesView.setStashes([]);
     return;
   }
+  if (more && stashListRequests.has(root)) return;
+  const request = Symbol(), previous = stashListLimits.get(root) ?? 50;
+  const limit = more ? Math.min(10000, previous + 50) : previous;
+  stashListRequests.set(root, request);
+  if (more) deps.changesView.setStashes(undefined, { hasMore: true, loading: true });
   try {
-    const entries = await svc.listStashes();
+    // 추가 페이지는 같은 메타데이터 목록에서 자른다. reflog가 바뀌면 전체를 다시 읽어 번호를 재정렬한다.
+    const readLimit = more ? 10000 : Math.min(10000, limit + 1);
+    const listed = await readStashListForDisplay(root, count => svc.listStashes(count), !more, readLimit);
+    if (stashListRequests.get(root) !== request) return;
+    const hasMore = listed.length > limit, entries = listed.slice(0, limit);
+    stashListLimits.set(root, limit);
     logInfo("stashes listed", { root, count: entries.length });
     // 더 이상 없는 stash 항목의 파일 캐시는 정리한다.
-    const valid = new Set(entries.map((e) => stashFileCacheKey(root, e)));
-    for (const key of [...fileCache.keys()]) {
+    const valid = new Set(listed.map((e) => stashFileCacheKey(root, e)));
+    for (const key of listed.length < readLimit || readLimit === 10000 ? [...fileCache.keys()] : []) {
       if (key.startsWith(`${root}@`) && !valid.has(key)) {
         fileCache.delete(key);
       }
@@ -163,13 +177,14 @@ export async function refreshStashes(deps: CommandDeps): Promise<void> {
       });
       return;
     }
-    deps.changesView.setStashes(views);
+    deps.changesView.setStashes(views, { hasMore, loading: false });
   } catch (error) {
     logError("stashes refresh failed", error, { root });
-    if (deps.changesView.getActiveRepo() === root) {
-      deps.changesView.setStashes([]);
+    if (deps.changesView.getActiveRepo() === root && stashListRequests.get(root) === request) {
+      if (more) deps.changesView.setStashes(undefined, { hasMore: true, loading: false, error: vscode.l10n.t("Could not load more stashes. Try again.") });
+      else deps.changesView.setStashes([]);
     }
-  }
+  } finally { if (stashListRequests.get(root) === request) stashListRequests.delete(root); }
 }
 
 /**
@@ -211,10 +226,10 @@ export async function loadStashFilesForView(
  * 저장소와 stash 항목을 함께 묶어 파일 목록 캐시 키를 만든다.
  * @param root stash 를 소유한 저장소 루트
  * @param entry ref/hash/index 를 가진 stash 메타데이터
- * @returns 저장소 전환과 stash 번호 이동을 구분할 수 있는 캐시 키
+ * @returns 저장소를 구분하고 stash 번호 이동과 무관하게 재사용할 캐시 키
  */
 function stashFileCacheKey(root: string, entry: StashEntry): string {
-  return `${root}@${entry.ref}@${entry.hash || entry.index}`;
+  return `${root}@${entry.hash || entry.ref}`;
 }
 
 /**

@@ -7,9 +7,13 @@
   const panel = document.getElementById("graph-reflog-panel");
   const graphEl = document.getElementById("graph");
   const graphContent = document.getElementById("graph-content");
+  const { summaryHtml, iconButton } = window.GscGraphReflogPresentation;
   let entries = [];
   let loading = false;
   let loadingObjects = false;
+  let reflogRequestSeq = 0;
+  let reflogRequestId;
+  let loadError = "";
   let objectScan = false;
   let hoverHash = "";
   let activeHash = "";
@@ -55,6 +59,9 @@
       return;
     }
     panel.hidden = true;
+    if (loading) window.GscGraphPostMessage?.({ type: "cancelReflog", requestId: reflogRequestId });
+    reflogRequestId = undefined;
+    loading = false; loadingObjects = false;
     button?.classList.remove("active");
     updateToggleButton(false);
     hoverHash = "";
@@ -77,9 +84,11 @@
       return;
     }
     loading = true;
+    loadError = "";
+    reflogRequestId = ++reflogRequestSeq;
     loadingObjects = Boolean(includeUnreachable);
     render({ preserveGraphViewport: true, preservePanelScroll: true });
-    window.GscGraphPostMessage?.({ type: "refreshReflog", includeUnreachable: Boolean(includeUnreachable) });
+    window.GscGraphPostMessage?.({ type: "refreshReflog", includeUnreachable: Boolean(includeUnreachable), requestId: reflogRequestId });
   }
 
   /** toolbar reflog 아이콘의 토글 접근성 상태와 tooltip 을 갱신한다. */
@@ -108,7 +117,7 @@
       iconButton("scan-reflog-objects", "search", "Scan unreachable objects") +
       iconButton("close-reflog", "close", "Close reflog") +
       `</div></header>` +
-      `<div class="reflog-help">${summaryHtml()}</div>` +
+      `<div class="reflog-help">${summaryHtml(entries, objectScan)}</div>` +
       `<div class="reflog-list">${window.GscGraphReflogList?.entriesHtml?.(entries, { loading, activeHash, hoverHash, hashLoaded }) || ""}</div>`;
     panel.querySelector("#refresh-reflog")?.addEventListener("click", () => requestReflog(false));
     panel.querySelector("#scan-reflog-objects")?.addEventListener("click", () => requestReflog(true));
@@ -159,6 +168,7 @@
 
   /** 현재 패널 상태 문구를 만든다. */
   function statusText() {
+    if (loadError) return loadError;
     if (loading) {
       return loadingObjects ? "Scanning reflog objects..." : "Loading reflog...";
     }
@@ -166,26 +176,6 @@
     return visible > 0
       ? `${entries.length} entries, ${visible} on graph`
       : `${entries.length} entries`;
-  }
-
-  /** reflog 흐름 상태별 요약 HTML 을 만든다. */
-  function summaryHtml() {
-    const counts = window.GscGraphReflogModel?.counts?.(entries) || { flow: 0, dropped: 0, timeline: 0, object: 0 };
-    const note = objectScan
-      ? "Objects come from git fsck and may disappear after garbage collection."
-      : "Fast loading reads HEAD and branch reflogs.";
-    return `<span class="reflog-summary-chip reflog-relation-flow">Branch flow ${esc(counts.flow)}</span>` +
-      `<span class="reflog-summary-chip reflog-relation-dropped">Dropped ${esc(counts.dropped)}</span>` +
-      `<span class="reflog-summary-chip reflog-relation-timeline">Timeline ${esc(counts.timeline)}</span>` +
-      `<span class="reflog-summary-chip reflog-relation-object">Objects ${esc(counts.object || 0)}</span>` +
-      `<span class="reflog-summary-note">${esc(note)}</span>`;
-  }
-
-  /** toolbar/panel icon button HTML 을 만든다. */
-  function iconButton(id, icon, title) {
-    return `<button id="${id}" class="icon-button" type="button" title="${esc(title)}" ` +
-      `aria-label="${esc(title)}" data-tooltip="${esc(title)}">` +
-      `<span class="codicon codicon-${esc(icon)}" aria-hidden="true"></span></button>`;
   }
 
   /** reflog 항목 버튼 클릭을 기존 graph action 메시지로 변환한다. */
@@ -570,14 +560,23 @@
   window.addEventListener("message", captureGraphSyncMessage, true);
   window.addEventListener("message", (event) => {
     const msg = event.data || {};
+    if (["graphReflog", "graphReflogCancelled", "graphReflogError"].includes(msg.type)
+      && msg.requestId !== undefined && msg.requestId !== reflogRequestId) return;
     if (msg.type === "graphReflog") {
       entries = Array.isArray(msg.entries) ? msg.entries : [];
       loading = false;
       loadingObjects = false;
       objectScan = Boolean(msg.scannedObjects);
+      loadError = "";
       if (!panel?.hidden) {
         render({ preserveGraphViewport: true, preservePanelScroll: true });
       }
+    } else if (msg.type === "graphReflogCancelled" || msg.type === "graphReflogError") {
+      loading = false; loadingObjects = false;
+      loadError = msg.type === "graphReflogError" ? String(msg.message || "") : "";
+      if (!panel?.hidden) render({ preserveGraphViewport: true, preservePanelScroll: true });
+    } else if (msg.type === "graphDetailResume" && !panel?.hidden && !loading) {
+      requestReflog(false);
     } else if (msg.type === "commitVisibility" && pendingJump?.requestId === msg.requestId) {
       const hash = cleanHash(msg.hash || pendingJump.hash);
       pendingJump = undefined;

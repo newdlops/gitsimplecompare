@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+## [0.1.72189] - 2026-11-03
+
+### Performance
+
+- Bound initial untracked diff reads and load remaining file details on demand;
+  reuse file buffers and avoid repeated full Git diff reads when opening details.
+- Page stash metadata while sharing validated snapshots across additional pages;
+  reuse immutable stash file metadata after stash numbers change.
+- Share concurrent line-stat reads, reduce repeated-line diff allocations, and
+  stream unreachable commit metadata while retaining only the latest candidates.
+- Refill remote inspection workers as slots become available and index worktree
+  and selection lookups for large branch lists.
+
+### Fixes
+
+- Revalidate deferred untracked paths after deletion, directory replacement, or
+  ignore-rule changes; retain fresh Git validation before staging or discarding.
+- Cancel obsolete deferred details and recovery reads after refresh or close,
+  preserve selections through loading and retry, and keep literal filename safety.
+
 ## [0.1.72188] - 2026-11-02
 
 ### Fixes

@@ -10,6 +10,8 @@
       viewStashContents: "View Stash Contents",
       viewStagedStashContents: "View Staged Stash Changes",
       loadingStashContents: "Loading stash contents...",
+      loadMoreStashes: "Load more stashes",
+      loadingMoreStashes: "Loading more stashes...",
       noSavedWorkingTreeChanges: "No saved working tree changes. View staged changes from the menu.",
       stashContentsLoadFailed: "Could not load stash contents. Collapse and expand to retry.",
       openStashFile: "View saved changes for {0}",
@@ -193,11 +195,17 @@
         filesByKey.delete(key);
       }
     }
-    if (!rows.length) {
+    if (!rows.length && !context?.pagination?.hasMore) {
       return `<p class="empty">${esc(T.noStashes)}</p>`;
     }
     const expandedByKey = context?.expandedByKey || {};
-    return rows.map((stash) => itemHtml(stash, expandedByKey, renderFileIcon)).join("");
+    const page = context?.pagination, loading = page?.loading;
+    const label = loading ? T.loadingMoreStashes : T.loadMoreStashes;
+    return rows.map((stash) => itemHtml(stash, expandedByKey, renderFileIcon)).join("") +
+      (page?.error ? `<p class="empty" role="alert">${esc(page.error)}</p>` : "") +
+      (page?.hasMore ? `<button type="button" class="gsc-button gsc-button--ghost" data-act="loadMoreStashes" ` +
+        `data-repo-root="${esc(context?.repoRoot)}" title="${esc(label)}" aria-label="${esc(label)}" ` +
+        `aria-busy="${loading ? "true" : "false"}" ${loading ? "disabled" : ""}>${esc(label)}</button>` : "");
   }
 
   /**
@@ -430,6 +438,12 @@
    */
   function bind(rootEl, vscode, context) {
     webviewApi = vscode;
+    rootEl.querySelector('[data-act="loadMoreStashes"]')?.addEventListener("click", event => {
+      const button = event.currentTarget;
+      if (button.disabled) return;
+      button.disabled = true;
+      post(vscode, "loadMoreStashes", { repoRoot: button.dataset.repoRoot });
+    });
     const state = context?.state || {};
     state.stashExpanded = state.stashExpanded || {};
     const menus = context?.menus || {};

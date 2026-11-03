@@ -47,6 +47,7 @@ import "./graphReflogDetail.js";
 import "./graphReflogList.js";
 import "./graphReflogSlotLayout.js";
 import "./graphReflogMarkers.js";
+import "./graphReflogPresentation.js";
 import "./graphReflog.js";
 import "./graphRebaseMessages.js";
 import "./graphRebaseDetail.js";

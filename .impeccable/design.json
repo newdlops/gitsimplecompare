@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-06T00:18:07.457546+00:00",
+  "generatedAt": "2026-11-03T08:10:42Z",
   "title": "Design System: Git Simple Compare",
   "extensions": {
     "colorMeta": {
@@ -105,6 +105,14 @@
       {
         "name": "large",
         "value": "1200px"
+      },
+      {
+        "name": "split-stacked",
+        "value": "640px"
+      },
+      {
+        "name": "split-toolbar-wrap",
+        "value": "900px"
       }
     ]
   },
@@ -159,7 +167,7 @@
   ],
   "narrative": {
     "northStar": "The Native Control Room",
-    "overview": "Git Simple Compare는 VS Code가 원래 제공했을 법한 작업 제어면처럼 느껴져야 한다. 화면은 차분하고 고밀도이며, 장식보다 현재 상태·대상·다음 행동을 명확히 보여준다. Graph, diff, Changes는 같은 간격·상태·포커스 문법을 공유한다.\n\n개인 개발자의 빠른 키보드 흐름을 우선한다. Changes와 Graph는 현재 저장소·브랜치·변경 상태를 즉시 드러내고, staged Pull Request Preview는 게시 전 대상과 결과를 명확히 확인하게 한다. 구획은 정렬, 여백, 얇은 경계와 VS Code 표면 토큰으로 만든다.",
+    "overview": "Git Simple Compare는 별도 SaaS 대시보드처럼 보이지 않고 VS Code가 원래 제공했을 법한 작업 제어면처럼 느껴져야 한다. 화면은 차분하고 고밀도이며, 장식보다 현재 상태·대상·다음 행동을 명확히 보여준다. Graph, diff, Changes처럼 정보가 많은 화면도 같은 간격·상태·포커스 문법을 공유해 사용자가 매번 UI를 다시 해석하지 않게 한다.\n\n개인 개발자의 빠른 키보드 흐름을 우선한다. Changes와 Graph는 현재 저장소·브랜치·변경 상태를 즉시 드러내고, staged Pull Request Preview는 게시 전 대상과 결과를 명확히 확인하게 한다.\n\n밀도는 높지만 답답하지 않아야 한다. 구획은 카드 장식보다 정렬, 여백, 얇은 경계, VS Code의 표면 토큰으로 만든다. 중요한 상태는 색상 하나가 아니라 아이콘, 텍스트, 위치까지 함께 사용한다. 모션은 상태 변화의 원인과 결과를 연결할 때만 짧게 쓴다.",
     "keyCharacteristics": [
       "VS Code 테마와 글꼴을 그대로 따르는 네이티브성",
       "2·4·6·8·12·16·24px 리듬의 차분한 고밀도",

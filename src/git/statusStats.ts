@@ -198,7 +198,7 @@ function withUnstagedStats(
         };
       }
       if (change.status === "A") {
-        const additions = await countUntrackedLines(repoRoot, change.path);
+        const additions = await countUntrackedLines(repoRoot, change.path, signal);
         signal?.throwIfAborted();
         return additions === undefined
           ? { ...change }

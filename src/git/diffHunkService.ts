@@ -11,7 +11,8 @@ import {
 import { createDiffMutationGuard } from "./diffMutationGuard";
 import { applyPatch, safeUnlink, tempIndexPath } from "./gitPatchApply";
 import { runGitLiteralPaths as runGit } from "./gitExec";
-import { readWorkingDiff } from "./diffWorkingRead";
+import { readWorkingDiff, readUntrackedFileDiff, type WorkingDiffReadOptions } from "./diffWorkingRead";
+import { DeferredUntrackedSession } from "./deferredUntrackedSession";
 import { runGitWithPaths } from "./pathspecExec";
 
 /** hunk 가 어느 diff 영역에서 왔는지 나타낸다. */
@@ -30,6 +31,8 @@ export interface DiffFile {
   header: string;
   hunks: DiffHunk[];
   binary: boolean;
+  /** 전체 조회 예산 때문에 본문만 지연된 텍스트 파일. 선택 전에 해당 파일의 최신 상세를 읽어야 한다. */
+  deferred?: boolean;
 }
 
 /** 선택 정보(파일별 선택된 hunk/line id 들, binary 통째 여부) */
@@ -43,11 +46,26 @@ export interface HunkSelection {
 
 /** 작업 변경의 hunk 단위 분할 커밋을 담당하는 서비스(저장소 루트 1개에 대응). */
 export class DiffHunkService {
-  constructor(public readonly repoRoot: string) {}
+  private readonly deferredReads: DeferredUntrackedSession;
+  /** @param repoRoot 파일 본문과 지연 표시 snapshot이 공유하는 저장소 루트 */
+  constructor(public readonly repoRoot: string) { this.deferredReads = new DeferredUntrackedSession(repoRoot); }
 
   /** staged/unstaged 변경을 파일/hunk 로 파싱해 반환한다. */
-  async getWorkingDiff(): Promise<DiffFile[]> {
-    return readWorkingDiff(this.repoRoot);
+  async getWorkingDiff(options?: WorkingDiffReadOptions): Promise<DiffFile[]> {
+    const ticket = await this.deferredReads.start();
+    const files = await readWorkingDiff(this.repoRoot, undefined, undefined, options);
+    await this.deferredReads.remember(ticket, files);
+    return files;
+  }
+
+  /**
+   * 패널의 지연 상세를 읽는다. 전체 snapshot의 미추적 분류만 재사용하며 본문은 항상 실제 파일에서 읽는다.
+   * @param relPath 지연된 저장소 상대 경로 @param signal 소비자 취소 @returns 현재 본문 또는 변경된 index의 native 상세
+   * @remarks 변경 작업과 retry guard는 이 API 대신 항상 getFilesWorkingDiff/getFileWorkingDiff를 사용한다.
+   */
+  async getDeferredFileWorkingDiff(relPath: string, signal?: AbortSignal): Promise<DiffFile[]> {
+    return this.deferredReads.read(relPath, signal, () => readUntrackedFileDiff(this.repoRoot, relPath, signal),
+      () => this.getFileWorkingDiff(relPath, signal));
   }
 
   /**
@@ -87,10 +105,11 @@ export class DiffHunkService {
    * @param relPath 저장소 상대 경로
    * @returns HEAD 기준 UTF-8 파일 내용
    */
-  async readHeadFile(relPath: string): Promise<string> {
+  async readHeadFile(relPath: string, signal?: AbortSignal): Promise<string> {
     try {
-      return await runGit(["show", `HEAD:${relPath}`], this.repoRoot);
+      return await runGit(["show", `HEAD:${relPath}`], this.repoRoot, { signal });
     } catch {
+      signal?.throwIfAborted();
       return "";
     }
   }
@@ -115,6 +134,7 @@ export class DiffHunkService {
     files: DiffFile[],
     selections: HunkSelection[]
   ): Promise<void> {
+    assertLoadedSelections(files, selections);
     const picked = new Map(
       selections.map((sel) => [selectionKey(sel.stage, sel.path), sel])
     );
@@ -152,11 +172,9 @@ export class DiffHunkService {
       true,
       guard.beforeRetry
     );
-    for (const filePath of binaryPaths) {
-      await runGit(["add", "--", filePath], this.repoRoot, {
-        beforeRetry: guard.beforeRetry,
-      });
-    }
+    await runGitWithPaths(["--literal-pathspecs", "add"], binaryPaths, this.repoRoot, {
+      beforeRetry: guard.beforeRetry,
+    });
   }
 
   /**
@@ -169,6 +187,7 @@ export class DiffHunkService {
     files: DiffFile[],
     selections: HunkSelection[]
   ): Promise<void> {
+    assertLoadedSelections(files, selections);
     const picked = new Map(
       selections.map((sel) => [selectionKey(sel.stage, sel.path), sel])
     );
@@ -232,6 +251,7 @@ export class DiffHunkService {
     files: DiffFile[],
     selections: HunkSelection[]
   ): Promise<void> {
+    assertLoadedSelections(files, selections);
     const picked = new Map(
       selections.map((sel) => [selectionKey(sel.stage, sel.path), sel])
     );
@@ -269,11 +289,9 @@ export class DiffHunkService {
       false,
       guard.beforeRetry
     );
-    for (const filePath of binaryPaths) {
-      await runGit(["checkout", "--", filePath], this.repoRoot, {
-        beforeRetry: guard.beforeRetry,
-      });
-    }
+    await runGitWithPaths(["--literal-pathspecs", "checkout"], binaryPaths, this.repoRoot, {
+      beforeRetry: guard.beforeRetry,
+    });
   }
 
   /**
@@ -287,6 +305,7 @@ export class DiffHunkService {
     selections: HunkSelection[],
     message: string
   ): Promise<void> {
+    assertLoadedSelections(files, selections);
     const picked = new Map(
       selections.map((sel) => [selectionKey(sel.stage, sel.path), sel])
     );
@@ -333,12 +352,8 @@ export class DiffHunkService {
       await runGit(["read-tree", oldHead], this.repoRoot, tempEnv);
       await applyPatch(this.repoRoot, pickedStagedParts, false, tempEnv);
       await applyPatch(this.repoRoot, pickedUnstagedParts, false, tempEnv);
-      for (const filePath of [
-        ...pickedStagedBinaryPaths,
-        ...pickedUnstagedBinaryPaths,
-      ]) {
-        await runGit(["add", "--", filePath], this.repoRoot, tempEnv);
-      }
+      await runGitWithPaths(["--literal-pathspecs", "add"],
+        [...pickedStagedBinaryPaths, ...pickedUnstagedBinaryPaths], this.repoRoot, { env: tempEnv });
       const tree = (await runGit(["write-tree"], this.repoRoot, tempEnv)).trim();
       const commit = (
         await runGit(
@@ -355,17 +370,23 @@ export class DiffHunkService {
         true,
         guard.beforeRetry
       );
-      for (const filePath of pickedUnstagedBinaryPaths) {
-        await runGit(["add", "--", filePath], this.repoRoot, {
-          beforeRetry: guard.beforeRetry,
-        });
-      }
+      await runGitWithPaths(["--literal-pathspecs", "add"], pickedUnstagedBinaryPaths, this.repoRoot, {
+        beforeRetry: guard.beforeRetry,
+      });
       await runGit(["update-ref", "HEAD", commit, oldHead], this.repoRoot, {
         beforeRetry: guard.beforeRetry,
       });
     } finally {
       safeUnlink(tempIndex);
     }
+  }
+}
+
+/** 지연된 상세를 빈 diff나 전체 파일 선택으로 오해하지 않고, Git 쓰기 전에 명시적으로 거절한다. */
+function assertLoadedSelections(files: DiffFile[], selections: HunkSelection[]): void {
+  const selected = new Set(selections.map(item => selectionKey(item.stage, item.path)));
+  if (files.some(file => file.deferred && selected.has(selectionKey(file.stage, file.path)))) {
+    throw new Error("Load the selected file changes before applying hunks.");
   }
 }
 

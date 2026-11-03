@@ -406,8 +406,8 @@ export class GitService {
    * - 필드 구분 \x1f, 레코드 구분 \x1e 로 포매팅해 메시지에 개행이 있어도 안전하게 파싱한다.
    * - %gd(stash@{n}) · %gs(reflog 제목) · %cr(상대시각) · %H(해시).
    */
-  async listStashes(): Promise<StashEntry[]> {
-    return new StashService(this.repoRoot).list();
+  async listStashes(limit?: number): Promise<StashEntry[]> {
+    return new StashService(this.repoRoot).list(limit);
   }
 
   /** 확인창 전에 선택을 전체 hash로 고정한다. 없거나 모호한 선택이면 중단한다. */

@@ -37,7 +37,7 @@ export function buildWorkingContentWithoutStaged(
   index: string,
   working: string
 ): string {
-  return buildWorkingContentWithoutStagedView(head, index, working).text;
+  return buildWorkingView(head, index, working, false).text;
 }
 
 /**
@@ -54,6 +54,15 @@ export function buildWorkingContentWithoutStagedView(
   index: string,
   working: string
 ): WorkingContentWithoutStagedView {
+  return buildWorkingView(head, index, working, true);
+}
+
+/**
+ * 텍스트와 overlay가 같은 병합 규칙을 공유하되 표시용 배열은 필요한 호출에만 만든다.
+ * @param includeMappings true면 표시 좌표를 만들고, false면 필수 index→HEAD 매핑만 사용한다.
+ * @returns staged 변경을 제거한 텍스트와 요청한 경우의 줄 매핑
+ */
+function buildWorkingView(head: string, index: string, working: string, includeMappings: boolean): WorkingContentWithoutStagedView {
   try {
     const headContent = splitContent(head);
     const indexContent = splitContent(index);
@@ -62,28 +71,30 @@ export function buildWorkingContentWithoutStagedView(
       headContent.lines,
       indexContent.lines
     );
-    const indexToHeadDisplay = mapIndexLinesToHeadDisplay(
-      indexToHead,
-      headContent.lines.length
-    );
+    const boundaries = indexHeadBoundaries(indexToHead, headContent.lines.length);
+    const indexToHeadDisplay = includeMappings
+      ? mapIndexLinesToHeadDisplay(indexToHead, headContent.lines.length, boundaries) : [];
     const unstagedChunks = diffChunks(indexContent.lines, workingContent.lines);
     const merged = applyIndexToWorkingChunksToHead(
       headContent.lines,
       workingContent.lines,
       indexToHead,
-      unstagedChunks
+      unstagedChunks,
+      boundaries,
+      includeMappings
     );
     return {
       text: joinContent({
         lines: merged.lines,
         finalNewline: workingContent.finalNewline,
       }),
-      indexToHeadLine: toOneBasedLineMap(indexToHead),
+      indexToHeadLine: includeMappings ? toOneBasedLineMap(indexToHead) : [],
       indexToHeadDisplayLine: toOneBasedLineMap(indexToHeadDisplay),
       workingToViewLine: toOneBasedLineMap(merged.workingToView),
     };
   } catch {
-    return fallbackWorkingView(working);
+    return includeMappings ? fallbackWorkingView(working)
+      : { text: working, indexToHeadLine: [], indexToHeadDisplayLine: [], workingToViewLine: [] };
   }
 }
 
@@ -143,7 +154,8 @@ function mapIndexLinesToHead(
  */
 function mapIndexLinesToHeadDisplay(
   indexToHead: Array<number | undefined>,
-  headLength: number
+  headLength: number,
+  boundaries: number[]
 ): Array<number | undefined> {
   const map = new Array<number | undefined>(indexToHead.length);
   if (!headLength) {
@@ -160,7 +172,7 @@ function mapIndexLinesToHeadDisplay(
     while (index < indexToHead.length && indexToHead[index] === undefined) {
       index++;
     }
-    const boundary = headBoundaryForIndexPosition(indexToHead, start, headLength);
+    const boundary = boundaries[start];
     const nextExact = indexToHead[index];
     const maxLine = nextExact === undefined ? headLength - 1 : nextExact - 1;
     const firstLine = Math.min(Math.max(boundary, 0), headLength - 1);
@@ -177,17 +189,19 @@ function applyIndexToWorkingChunksToHead(
   head: string[],
   working: string[],
   indexToHead: Array<number | undefined>,
-  chunks: EditChunk[]
+  chunks: EditChunk[],
+  boundaries: number[],
+  includeMappings: boolean
 ): { lines: string[]; workingToView: Array<number | undefined> } {
   const out: string[] = [];
-  const workingToView = new Array<number | undefined>(working.length);
+  const workingToView = new Array<number | undefined>(includeMappings ? working.length : 0);
   let headCursor = 0;
   for (const chunk of chunks) {
     const range = headRangeForIndexChunk(
       indexToHead,
       chunk.aStart,
       chunk.aEnd,
-      head.length
+      boundaries
     );
     const start = Math.max(headCursor, range.start);
     while (headCursor < start) {
@@ -199,7 +213,7 @@ function applyIndexToWorkingChunksToHead(
       workingIndex < chunk.bEnd;
       workingIndex++
     ) {
-      workingToView[workingIndex] = out.length;
+      if (includeMappings) workingToView[workingIndex] = out.length;
       out.push(working[workingIndex]);
     }
   }
@@ -233,44 +247,54 @@ function headRangeForIndexChunk(
   indexToHead: Array<number | undefined>,
   start: number,
   end: number,
-  headLength: number
+  boundaries: number[]
 ): { start: number; end: number } {
-  const mapped = indexToHead
-    .slice(start, end)
-    .filter((item): item is number => item !== undefined);
-  if (mapped.length) {
-    return {
-      start: Math.min(...mapped),
-      end: Math.max(...mapped) + 1,
-    };
+  let first: number | undefined, last: number | undefined;
+  for (let i = start; i < end; i++) {
+    const mapped = indexToHead[i];
+    if (mapped !== undefined) { first ??= mapped; last = mapped; }
   }
-  const boundary = headBoundaryForIndexPosition(indexToHead, start, headLength);
+  if (first !== undefined && last !== undefined) return { start: first, end: last + 1 };
+  const boundary = boundaries[start];
   return { start: boundary, end: boundary };
 }
 
-/** index 경계 위치를 HEAD 경계 위치로 변환한다. */
-function headBoundaryForIndexPosition(
+/**
+ * 모든 index 경계의 HEAD 위치를 두 번의 선형 순회로 구한다. 이전 동일 줄을 다음 동일 줄보다 우선한다.
+ * @param indexToHead 순서가 유지된 정확 매핑 @param headLength 매핑이 전혀 없을 때 사용할 끝 경계
+ * @returns index.length + 1개 경계 위치. 변경 블록마다 다시 앞뒤를 검색하지 않는다.
+ */
+function indexHeadBoundaries(
   indexToHead: Array<number | undefined>,
-  indexPosition: number,
   headLength: number
-): number {
-  for (let i = indexPosition - 1; i >= 0; i--) {
-    const mapped = indexToHead[i];
-    if (mapped !== undefined) {
-      return mapped + 1;
-    }
+): number[] {
+  const boundaries = new Array<number>(indexToHead.length + 1);
+  let previous: number | undefined;
+  for (let i = 0; i <= indexToHead.length; i++) {
+    boundaries[i] = previous === undefined ? -1 : previous + 1;
+    if (indexToHead[i] !== undefined) previous = indexToHead[i];
   }
-  for (let i = indexPosition; i < indexToHead.length; i++) {
-    const mapped = indexToHead[i];
-    if (mapped !== undefined) {
-      return mapped;
-    }
+  let next = headLength;
+  for (let i = indexToHead.length; i >= 0; i--) {
+    if (indexToHead[i] !== undefined) next = indexToHead[i]!;
+    if (boundaries[i] === -1) boundaries[i] = next;
   }
-  return headLength;
+  return boundaries;
 }
 
 /** LCS 기반 줄 diff 를 edit chunk 배열로 만든다. */
-function diffChunks(a: string[], b: string[]): EditChunk[] {
+export function diffChunks(a: string[], b: string[]): EditChunk[] {
+  // 뒤쪽 공통 줄을 제외하면 반복 줄의 LCS 동률 선택이 달라진다. 앞쪽 일치만 기존 복원과 동일하다.
+  let prefix = 0;
+  while (prefix < a.length && prefix < b.length && a[prefix] === b[prefix]) prefix++;
+  if (prefix) {
+    return diffChunks(a.slice(prefix), b.slice(prefix)).map(chunk => ({
+      aStart: chunk.aStart + prefix, aEnd: chunk.aEnd + prefix,
+      bStart: chunk.bStart + prefix, bEnd: chunk.bEnd + prefix,
+    }));
+  }
+  if (!a.length || !b.length) return a.length || b.length
+    ? [{ aStart: 0, aEnd: a.length, bStart: 0, bEnd: b.length }] : [];
   if ((a.length + 1) * (b.length + 1) > MAX_DIFF_CELLS) {
     throw new Error("Diff input is too large.");
   }

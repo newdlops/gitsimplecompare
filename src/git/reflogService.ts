@@ -1,6 +1,9 @@
 // git reflog 조회 전용 서비스.
 // - 그래프 UI 에서 히스토리 복구 후보를 보여주고, 사용자가 브랜치를 만들어 수동 복구할 수 있게 한다.
 import { runGit, runGitWithInput } from "./gitExec";
+import { allReads } from "../utils/readGroup";
+import { normalizeReflogReadOptions, type ReflogReadOptions } from "./reflogReadOptions";
+export type { ReflogReadOptions } from "./reflogReadOptions";
 import { visibleBranchReflogRecords } from "./reflogBranchRecords";
 import {
   directDropSourcesByHash,
@@ -99,12 +102,6 @@ interface ParsedReflogRecord {
   dateIso?: string;
 }
 
-/** reflog 조회 범위와 느린 복구 보조 정보를 제어하는 옵션 */
-export interface ReflogReadOptions {
-  limit?: number;
-  includeUnreachable?: boolean;
-}
-
 /**
  * 저장소의 HEAD/branch reflog 를 최신 항목부터 읽는다.
  * - 기본 경로는 터미널 `git reflog --all` 처럼 빠르게 보여주기 위해 ref 포함 여부 검사는 생략한다.
@@ -117,18 +114,20 @@ export async function readReflogEntries(
   repoRoot: string,
   input: number | ReflogReadOptions = 80
 ): Promise<ReflogEntry[]> {
-  const options = normalizeReadOptions(input);
+  const options = normalizeReflogReadOptions(input);
+  const signal = options.signal;
+  signal?.throwIfAborted();
   const safeLimit = options.limit;
   const allLimit = options.includeUnreachable
     ? Math.max(240, safeLimit * 6)
     : Math.max(120, safeLimit * 3);
-  const [headOut, allOut, currentRefs] = await Promise.all([
-    runGit(reflogArgs(safeLimit, "HEAD"), repoRoot),
-    runGit(reflogArgs(allLimit, "--all"), repoRoot),
+  const [headOut, allOut, currentRefs] = await allReads([
+    runGit(reflogArgs(safeLimit, "HEAD"), repoRoot, { signal }),
+    runGit(reflogArgs(allLimit, "--all"), repoRoot, { signal }),
     options.includeUnreachable
-      ? currentTipRefsByHash(repoRoot)
+      ? currentTipRefsByHash(repoRoot, signal)
       : Promise.resolve(new Map<string, ReflogCurrentRef[]>()),
-  ]);
+  ], signal);
   const headRecords = parseReflogRecords(headOut);
   const allRecords = parseReflogRecords(allOut);
   const branchRecords = visibleBranchReflogRecords(allRecords, headRecords, safeLimit * 2);
@@ -136,17 +135,18 @@ export async function readReflogEntries(
   const directDropSources = directDropSourcesByHash(allRecords);
   const reflogRecords = [...headRecords, ...branchRecords];
   const reflogHashes = new Set(reflogRecords.map((record) => record.hash));
-  const objectRecords = options.includeUnreachable
-    ? (await readUnreachableCommitRecords(repoRoot, safeLimit))
-      .filter((record) => !reflogHashes.has(record.hash))
-    : [];
+  // 존재 검사는 reflog 해시만 필요하다. 느린 fsck가 끝날 때까지 기다리지 않고 함께 읽는다.
+  const [unreachable, existingCommits] = await allReads([
+    options.includeUnreachable ? readUnreachableCommitRecords(repoRoot, safeLimit, signal) : Promise.resolve([]),
+    options.includeUnreachable
+      ? existingCommitsByHash(repoRoot, reflogRecords.map(record => record.hash), signal)
+      : Promise.resolve(assumedExistingCommitsByHash(reflogRecords.map(record => record.hash))),
+  ], signal);
+  const objectRecords = unreachable.filter(record => !reflogHashes.has(record.hash));
   const objectDropSources = inheritedDropSourcesByHash(
     objectRecords,
     directDropSources
   );
-  const existingCommits = options.includeUnreachable
-    ? await existingCommitsByHash(repoRoot, reflogRecords.map((record) => record.hash))
-    : assumedExistingCommitsByHash(reflogRecords.map((record) => record.hash));
   const reflogEntries = [
     ...headRecords.map((record, index) => reflogEntryFromRecord("head", record, index, headRecords, branchSources, directDropSources, currentRefs, existingCommits)),
     ...branchRecords.map((record, index) => reflogEntryFromRecord("branch", record, index, branchRecords, branchSources, directDropSources, currentRefs, existingCommits)),
@@ -155,18 +155,6 @@ export async function readReflogEntries(
     ...reflogEntries,
     ...objectRecords.map((record) => unreachableEntryFromRecord(record, branchSources, objectDropSources, currentRefs)),
   ];
-}
-
-/**
- * 호출자가 숫자 limit 만 넘긴 기존 방식과 옵션 객체 방식을 같은 형태로 정규화한다.
- * @param input limit 숫자 또는 세부 조회 옵션
- */
-function normalizeReadOptions(input: number | ReflogReadOptions): Required<ReflogReadOptions> {
-  const rawLimit = typeof input === "number" ? input : input.limit ?? 80;
-  return {
-    limit: Math.max(1, Math.floor(rawLimit)),
-    includeUnreachable: typeof input === "object" ? Boolean(input.includeUnreachable) : false,
-  };
 }
 
 /**
@@ -332,7 +320,7 @@ function branchSourcesByHash(
  * - 그래서 기본 조회에서는 ref 가 정확히 가리키는 tip 만 한 번에 읽고, ancestor 판정은 그래프 표시/사용자 액션에 맡긴다.
  * @param repoRoot 저장소 루트
  */
-async function currentTipRefsByHash(repoRoot: string): Promise<Map<string, ReflogCurrentRef[]>> {
+async function currentTipRefsByHash(repoRoot: string, signal?: AbortSignal): Promise<Map<string, ReflogCurrentRef[]>> {
   const result = new Map<string, ReflogCurrentRef[]>();
   try {
     const out = await runGit([
@@ -341,7 +329,7 @@ async function currentTipRefsByHash(repoRoot: string): Promise<Map<string, Reflo
       "refs/heads",
       "refs/remotes",
       "refs/tags",
-    ], repoRoot, { retryOnLock: false });
+    ], repoRoot, { retryOnLock: false, signal });
     out.split(RS).forEach((raw) => {
       const [objectHash, peeledHash, refName] = raw.split(FS);
       const hash = (peeledHash || objectHash)?.trim();
@@ -351,6 +339,7 @@ async function currentTipRefsByHash(repoRoot: string): Promise<Map<string, Reflo
       }
     });
   } catch {
+    signal?.throwIfAborted();
     return result;
   }
   return result;
@@ -374,7 +363,8 @@ function assumedExistingCommitsByHash(hashes: string[]): Map<string, boolean> {
  */
 async function existingCommitsByHash(
   repoRoot: string,
-  hashes: string[]
+  hashes: string[],
+  signal?: AbortSignal
 ): Promise<Map<string, boolean>> {
   const uniqueHashes = Array.from(new Set(hashes.map((hash) => hash.trim()).filter(Boolean)));
   const result = new Map(uniqueHashes.map((hash) => [hash, true]));
@@ -387,13 +377,14 @@ async function existingCommitsByHash(
       ["cat-file", "--batch-check=%(objecttype)"],
       repoRoot,
       input,
-      { retryOnLock: false }
+      { retryOnLock: false, signal }
     );
     const lines = out.split(/\r?\n/);
     uniqueHashes.forEach((hash, index) => {
       result.set(hash, lines[index]?.trim() === "commit");
     });
   } catch {
+    signal?.throwIfAborted();
     uniqueHashes.forEach((hash) => result.set(hash, true));
   }
   return result;

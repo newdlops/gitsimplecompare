@@ -7,6 +7,7 @@ import type { FileChange, StashEntry } from "./gitTypes";
 import { runStash, stashPushPaths } from "./stashExec";
 import { logInfo } from "../ui/outputLog";
 import { assertConflictRelativePath } from "./conflictPathSafety";
+import { readStashUntrackedPaths } from "./stashReadCache";
 
 /** 화면에서 선택한 stash 번호와 변경되지 않는 전체 commit hash다. */
 export interface StashTarget {
@@ -29,7 +30,8 @@ export class StashService {
    * reflog를 읽어 번호, 메시지, hash를 함께 반환한다. stash가 없는 경우만 빈 목록이다.
    * @returns 현재 stash stack. Git 조회 오류는 호출자에게 전달한다.
    */
-  async list(): Promise<StashEntry[]> {
+  async list(limit = 10000): Promise<StashEntry[]> {
+    const count = Number.isFinite(limit) ? Math.max(1, Math.min(10000, Math.floor(limit))) : 10000;
     try {
       await runGit(["show-ref", "--verify", "--quiet", "refs/stash"], this.repoRoot);
     } catch (error) {
@@ -37,7 +39,7 @@ export class StashService {
       throw error;
     }
     const output = await runGit([
-      "reflog", "show", "--max-count=10000",
+      "reflog", "show", `--max-count=${count}`,
       "--format=%gd%x1f%gs%x1f%cr%x1f%H%x1e", "refs/stash",
     ], this.repoRoot);
     const entries: StashEntry[] = [];
@@ -98,7 +100,7 @@ export class StashService {
     const hash = isHash(ref) ? ref : (await this.resolve(ref)).hash;
     assertConflictRelativePath(this.repoRoot, change.path);
     assertConflictRelativePath(this.repoRoot, change.oldPath ?? change.path);
-    const untracked = staged ? new Set<string>() : new Set((await runStash(["show", "--only-untracked", "--name-only", "-z", hash], this.repoRoot)).split("\0").filter(Boolean));
+    const untracked = staged ? new Set<string>() : await readStashUntrackedPaths(this.repoRoot, hash);
     return { base: `${hash}^1`, target: staged ? `${hash}^2` : untracked.has(change.path) ? `${hash}^3` : hash,
       path: change.path, originalPath: change.oldPath ?? change.path };
   }

@@ -25,6 +25,8 @@ export class SplitPanel {
   private pendingFocus: SplitFocus | undefined;
   private scope: SplitFocus | undefined;
   private operationRunning = false;
+  private readGeneration = 0;
+  private readonly detailReads = new Map<string, AbortController>();
 
   /**
    * 패널을 열거나, 있으면 앞으로 가져와 변경을 다시 읽는다.
@@ -75,6 +77,7 @@ export class SplitPanel {
 
   /** 패널과 리스너를 정리한다. */
   private dispose(): void {
+    this.cancelDetails();
     SplitPanel.current = undefined;
     this.panel.dispose();
     while (this.disposables.length) {
@@ -91,6 +94,7 @@ export class SplitPanel {
       await this.reloadChanges();
       return;
     }
+    if (msg.type === "loadFileDetails") { await this.loadFileDetails(msg.path, msg.generation); return; }
     if (msg.type === "stage") {
       await this.stage(msg.selections);
     } else if (msg.type === "discard") {
@@ -302,7 +306,8 @@ export class SplitPanel {
 
   /** 작업 변경을 다시 읽어 웹뷰로 보낸다. */
   private async sendChanges(): Promise<void> {
-    this.files = await this.service.getWorkingDiff();
+    this.cancelDetails();
+    this.files = this.scope?.path ? await this.service.getFileWorkingDiff(this.scope.path) : await this.service.getWorkingDiff();
     const files = this.visibleFiles();
     const workingFile = await this.workingFilePayload(files);
     this.post({
@@ -311,29 +316,59 @@ export class SplitPanel {
       focus: this.pendingFocus ?? this.scope,
       singleFile: !!this.scope?.path,
       workingFile,
+      generation: this.readGeneration,
     });
     this.pendingFocus = undefined;
   }
 
+  /** 새 snapshot·종료 경계에서 이전 파일 상세를 취소하고 늦은 응답의 세대를 무효화한다. */
+  private cancelDetails(): void {
+    this.readGeneration++;
+    for (const controller of this.detailReads.values()) controller.abort();
+    this.detailReads.clear();
+  }
+
+  /** 예산으로 지연된 파일만 명시 범위로 읽어 hunk 선택 기능을 유지한다. 외부 임의 경로 요청은 무시한다. */
+  private async loadFileDetails(path: string, generation: number): Promise<void> {
+    if (generation !== this.readGeneration || this.detailReads.has(path) || !this.files.some(file => file.path === path && file.deferred)) return;
+    const controller = new AbortController(), service = this.service;
+    this.detailReads.set(path, controller);
+    try {
+      const files = await service.getDeferredFileWorkingDiff(path, controller.signal);
+      if (controller.signal.aborted || generation !== this.readGeneration || service !== this.service) return;
+      const workingFile = await this.workingFilePayload(files, controller.signal, service);
+      if (controller.signal.aborted || generation !== this.readGeneration || service !== this.service) return;
+      this.files = this.files.flatMap(file => file.path === path ? [] : [file]).concat(files);
+      this.post({ type: "fileDetails", path, generation, files, workingFile });
+      logInfo("split deferred file loaded", { repoRoot: service.repoRoot, path, generation });
+    } catch (error) {
+      if (!controller.signal.aborted && generation === this.readGeneration) {
+        logError("split deferred file failed", error, { path });
+        this.post({ type: "fileDetailsError", path, generation, message: errorMessage(error) });
+      }
+    } finally { if (this.detailReads.get(path) === controller) this.detailReads.delete(path); }
+  }
+
   /** 단일 파일 scope 일 때 작업 파일 내용을 웹뷰로 함께 보낸다. */
   private async workingFilePayload(
-    files: DiffFile[]
+    files: DiffFile[], signal?: AbortSignal, service = this.service
   ): Promise<{ path: string; baseText: string; text: string } | undefined> {
     const path = this.scope?.path ?? files[0]?.path;
     if (!path) {
       return undefined;
     }
     const file = files.find((item) => item.path === path);
-    if (file?.binary) {
+    if (file?.binary || file?.deferred) {
       return undefined;
     }
     try {
       const [baseText, text] = await Promise.all([
-        this.service.readHeadFile(path),
-        this.service.readWorkingFile(path),
+        service.readHeadFile(path, signal),
+        service.readWorkingFile(path, signal),
       ]);
       return { path, baseText, text };
     } catch {
+      signal?.throwIfAborted();
       return undefined;
     }
   }
@@ -362,6 +397,7 @@ export class SplitPanel {
     const editableDiffScriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "splitEditableDiff.js")
     );
+    const deferredScriptUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, "splitDeferredFiles.js"));
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "split.css")
     );
@@ -385,6 +421,8 @@ export class SplitPanel {
       discardSelected: vscode.l10n.t("Discard Selected"),
       discardedSelected: vscode.l10n.t("Selected hunks discarded."),
       emptyFile: vscode.l10n.t("Select a file."),
+      loadingFileChanges: vscode.l10n.t("Loading file changes..."),
+      loadFileChanges: vscode.l10n.t("Load file changes"),
       files: vscode.l10n.t("Files"),
       filter: vscode.l10n.t("Filter"),
       hunk: vscode.l10n.t("Hunk"),
@@ -519,6 +557,7 @@ export class SplitPanel {
   <script nonce="${nonce}">window.__gscSplitI18n=${JSON.stringify(i18n)};</script>
   ${sharedWebviewScriptTags(sharedResources, nonce)}
   <script nonce="${nonce}" src="${editableDiffScriptUri}"></script>
+  <script nonce="${nonce}" src="${deferredScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;

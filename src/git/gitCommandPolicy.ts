@@ -17,6 +17,9 @@ export function gitCommandPolicy(args: readonly string[]): GitCommandPolicy {
   const reads = new Set(["status", "log", "show", "diff", "diff-files", "diff-index", "diff-tree", "rev-parse",
     "rev-list", "ls-files", "ls-tree", "cat-file", "check-ignore", "check-attr", "merge-base", "for-each-ref", "blame", "describe", "name-rev", "show-ref", "ls-remote", "check-ref-format"]);
   let readOnly = reads.has(command);
+  // 복구 조회의 고정 fsck 형태만 자동 종료 가능한 읽기다. --lost-found 같은 쓰기 옵션은 허용하지 않는다.
+  if (command === "fsck") readOnly = rest.length > 0
+    && rest.every(value => ["--no-reflogs", "--unreachable", "--no-progress"].includes(value));
   // 객체만 추가하고 ref/FETCH_HEAD를 건드리지 않는 PR 이동도 현재 Graph를 무효화하지 않는 조회 수명을 쓴다.
   if (command === "fetch") readOnly = isReadOnlyFetchNegotiation(rest) || isPullRequestGraphObjectFetch(rest);
   if (command === "config") readOnly = rest.some(value => ["--get", "--get-all", "--get-regexp", "--get-urlmatch", "--list", "-l"].includes(value))

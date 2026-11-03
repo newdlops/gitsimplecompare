@@ -140,7 +140,9 @@ export type ToWebviewMessage =
   | { type: "graphDetailResume" }
   | { type: "graphRepositorySearchResult"; requestId: string; result: GraphRepositorySearchResult }
   | { type: "graphRepositorySearchError"; requestId: string; query: string; message: string }
-  | { type: "graphReflog"; entries: ReflogEntry[]; scannedObjects?: boolean }
+  | { type: "graphReflog"; entries: ReflogEntry[]; scannedObjects?: boolean; requestId?: number }
+  | { type: "graphReflogCancelled"; requestId?: number }
+  | { type: "graphReflogError"; message: string; requestId?: number }
   | { type: "commitVisibility"; requestId: string; hash?: string; found: boolean }
   | { type: "commitDetail"; detail: CommitDetail }
   | { type: "graphRebasePlan"; plan: RebasePlanInfo }
@@ -184,7 +186,8 @@ export type FromWebviewMessage =
       branch?: string;
       parentHash?: string;
     }
-  | { type: "refreshReflog"; includeUnreachable?: boolean }
+  | { type: "refreshReflog"; includeUnreachable?: boolean; requestId?: number }
+  | { type: "cancelReflog"; requestId?: number }
   | { type: "searchPullRequests"; requestId: string; query: string; cursor?: string }
   | { type: "loadMorePullRequests" }
   | { type: "refreshPullRequestDetail"; number: number; requestId?: string }

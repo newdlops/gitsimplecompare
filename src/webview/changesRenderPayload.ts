@@ -10,6 +10,7 @@ import {
 } from "../providers/changesTreeModel";
 import type { RepoInfo } from "../commands/shared";
 import type { StashView } from "../commands/stash";
+import type { StashPagination } from "./changesStashState";
 import type { FileIconThemeResolver } from "./fileIconTheme";
 import type { RepositorySetupState } from "./changesOnboardingProtocol";
 import type {
@@ -32,6 +33,7 @@ export interface ChangesRenderState {
   staged: StatusGroups["staged"];
   unstaged: StatusGroups["unstaged"];
   stashes: StashView[];
+  stashPagination?: StashPagination;
   worktrees: WorktreeView[];
   fileHistory: FileHistoryView;
   commitMessage: string;
@@ -102,6 +104,7 @@ export function buildChangesRenderPayload(
       ),
     },
     commit: buildCommitPayload(state),
+    stashPagination: state.stashPagination,
     stashes: state.stashes.map((s) => ({
       ref: s.ref,
       hash: s.hash,

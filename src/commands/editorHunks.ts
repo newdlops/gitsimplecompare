@@ -291,7 +291,7 @@ async function resolveHunkContext(
     return undefined;
   }
   const service = new DiffHunkService(resolvedTarget.repoRoot);
-  const files = await service.getWorkingDiff();
+  const files = await service.getFileWorkingDiff(resolvedTarget.relPath);
   const editorMatchesActiveTarget =
     activeTarget &&
     (activeTarget.modified.toString() === editor.document.uri.toString() ||
