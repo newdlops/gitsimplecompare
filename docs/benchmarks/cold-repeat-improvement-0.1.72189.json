@@ -1,0 +1,350 @@
+{
+  "recordedAt": "2026-11-03T12:01:34.881Z",
+  "baseline": "61ae9e60c1f5b8a9826b48e236301b08d7db6843",
+  "candidateKind": "uncommitted working tree",
+  "candidateSourceSha256": "b15d03e81e0c36f0473bae64f1c4c6e193dee63106445f3f0e8c7a561552be6d",
+  "order": "A/B/B/A",
+  "aggregation": "Median of per-process repeat medians; 2 lifetimes per source, 3 sequential repeat reads per lifetime. Initial read excluded.",
+  "before": {
+    "repeatMs": 1145.0525205000004,
+    "nodeCpuMs": 27.069,
+    "repeatGitCalls": [
+      6,
+      6,
+      6,
+      6,
+      6,
+      6
+    ],
+    "coldScans": [
+      4,
+      4
+    ]
+  },
+  "after": {
+    "repeatMs": 693.7726250000005,
+    "nodeCpuMs": 6.5075,
+    "repeatGitCalls": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "coldScans": [
+      1,
+      1
+    ]
+  },
+  "repeatWallReductionPercent": 39.411283536841026,
+  "checks": {
+    "nodeTests": 60,
+    "fail": 0,
+    "types": true,
+    "build": true,
+    "allNativeOraclesMatched": true
+  },
+  "limitations": [
+    "Optional warmup kept unavailable; host load uncontrolled. Wall ranges overlap.",
+    "Foreground status reads, not active VS Code or whole-machine responsiveness.",
+    "Node CPU only; no child Git CPU or memory improvement claim.",
+    "No fsmonitor settings, timeouts or source index writes changed."
+  ],
+  "runs": [
+    {
+      "id": "before-1",
+      "source": {
+        "kind": "commit",
+        "commit": "61ae9e60c1f5b8a9826b48e236301b08d7db6843",
+        "bundleSha256": "f9089e4c1685a064688066a8adb65b7fee2548828f5b5ae41c204785a0e85353"
+      },
+      "fixture": {
+        "files": 6000,
+        "directories": 300
+      },
+      "samples": [
+        {
+          "round": 0,
+          "elapsedMs": 1015.4905830000002,
+          "nodeCpuMs": 75.022,
+          "gitCalls": 7,
+          "commands": [
+            "rev-parse",
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "status"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        },
+        {
+          "round": 1,
+          "elapsedMs": 973.848583,
+          "nodeCpuMs": 32.163,
+          "gitCalls": 6,
+          "commands": [
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "status",
+            "ls-files"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        },
+        {
+          "round": 2,
+          "elapsedMs": 1109.1181669999996,
+          "nodeCpuMs": 42.496,
+          "gitCalls": 6,
+          "commands": [
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "status",
+            "ls-files",
+            "ls-files"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        },
+        {
+          "round": 3,
+          "elapsedMs": 965.523416,
+          "nodeCpuMs": 21.879,
+          "gitCalls": 6,
+          "commands": [
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "status",
+            "ls-files"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        }
+      ],
+      "coldScans": 4,
+      "scope": "Native foreground reads with optional warmup kept unavailable. No stale result reuse; every read compared to independent Git status and source index identity. Existing host load uncontrolled. Not active VS Code latency or GitHub network."
+    },
+    {
+      "id": "after-1",
+      "source": {
+        "kind": "working-tree",
+        "commit": "650a023da43317555588490963939eb398be164e",
+        "bundleSha256": "90d34c63c48f5cdebbbb1df5dd33a549ef88d404d23b946fd6d2f3f08e5dd24c"
+      },
+      "fixture": {
+        "files": 6000,
+        "directories": 300
+      },
+      "samples": [
+        {
+          "round": 0,
+          "elapsedMs": 1437.566667,
+          "nodeCpuMs": 79.14,
+          "gitCalls": 7,
+          "commands": [
+            "rev-parse",
+            "ls-files",
+            "status",
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "ls-files"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        },
+        {
+          "round": 1,
+          "elapsedMs": 878.5142500000011,
+          "nodeCpuMs": 16.275,
+          "gitCalls": 1,
+          "commands": [
+            "status"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        },
+        {
+          "round": 2,
+          "elapsedMs": 717.8694589999996,
+          "nodeCpuMs": 6.244,
+          "gitCalls": 1,
+          "commands": [
+            "status"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        },
+        {
+          "round": 3,
+          "elapsedMs": 1444.3105830000004,
+          "nodeCpuMs": 7.293,
+          "gitCalls": 1,
+          "commands": [
+            "status"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        }
+      ],
+      "coldScans": 1,
+      "scope": "Native foreground reads with optional warmup kept unavailable. No stale result reuse; every read compared to independent Git status and source index identity. Existing host load uncontrolled. Not active VS Code latency or GitHub network."
+    },
+    {
+      "id": "after-2",
+      "source": {
+        "kind": "working-tree",
+        "commit": "650a023da43317555588490963939eb398be164e",
+        "bundleSha256": "90d34c63c48f5cdebbbb1df5dd33a549ef88d404d23b946fd6d2f3f08e5dd24c"
+      },
+      "fixture": {
+        "files": 6000,
+        "directories": 300
+      },
+      "samples": [
+        {
+          "round": 0,
+          "elapsedMs": 1006.7592500000001,
+          "nodeCpuMs": 68.124,
+          "gitCalls": 7,
+          "commands": [
+            "rev-parse",
+            "ls-files",
+            "ls-files",
+            "status",
+            "ls-files",
+            "ls-files",
+            "ls-files"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        },
+        {
+          "round": 1,
+          "elapsedMs": 434.8935419999998,
+          "nodeCpuMs": 6.601,
+          "gitCalls": 1,
+          "commands": [
+            "status"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        },
+        {
+          "round": 2,
+          "elapsedMs": 509.03099999999995,
+          "nodeCpuMs": 5.147,
+          "gitCalls": 1,
+          "commands": [
+            "status"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        },
+        {
+          "round": 3,
+          "elapsedMs": 562.1315830000003,
+          "nodeCpuMs": 5.722,
+          "gitCalls": 1,
+          "commands": [
+            "status"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        }
+      ],
+      "coldScans": 1,
+      "scope": "Native foreground reads with optional warmup kept unavailable. No stale result reuse; every read compared to independent Git status and source index identity. Existing host load uncontrolled. Not active VS Code latency or GitHub network."
+    },
+    {
+      "id": "before-2",
+      "source": {
+        "kind": "commit",
+        "commit": "61ae9e60c1f5b8a9826b48e236301b08d7db6843",
+        "bundleSha256": "b66413cb834c696c70bba30e314b6061cb17d58989ed45a0da6c326aa4a66ff9"
+      },
+      "fixture": {
+        "files": 6000,
+        "directories": 300
+      },
+      "samples": [
+        {
+          "round": 0,
+          "elapsedMs": 1655.426708,
+          "nodeCpuMs": 86.754,
+          "gitCalls": 7,
+          "commands": [
+            "rev-parse",
+            "ls-files",
+            "status",
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "ls-files"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        },
+        {
+          "round": 1,
+          "elapsedMs": 1316.2564580000007,
+          "nodeCpuMs": 54.535,
+          "gitCalls": 6,
+          "commands": [
+            "status",
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "ls-files"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        },
+        {
+          "round": 2,
+          "elapsedMs": 1401.7450840000001,
+          "nodeCpuMs": 21.975,
+          "gitCalls": 6,
+          "commands": [
+            "ls-files",
+            "status",
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "ls-files"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        },
+        {
+          "round": 3,
+          "elapsedMs": 1234.8942079999997,
+          "nodeCpuMs": 21.046,
+          "gitCalls": 6,
+          "commands": [
+            "status",
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "ls-files",
+            "ls-files"
+          ],
+          "nativeExact": true,
+          "sourceIndexPreserved": true
+        }
+      ],
+      "coldScans": 4,
+      "scope": "Native foreground reads with optional warmup kept unavailable. No stale result reuse; every read compared to independent Git status and source index identity. Existing host load uncontrolled. Not active VS Code latency or GitHub network."
+    }
+  ]
+}

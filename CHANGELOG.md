@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [0.1.72190] - 2026-11-03
+
+### Performance
+
+- Run the parallel cold status scan once per validated private index, then let
+  subsequent native status reads build its directory cache. Avoid repeated scan
+  batches while optional cache warming is delayed or unavailable.
+- Retain private index state and independent cache warming when a foreground
+  consumer cancels; revalidate the source and private copy before the next read.
+
+### Safety
+
+- Preserve native state validation, original index contents, cancellation and
+  timeout policies, with regression coverage for interrupted private writes,
+  staging changes after cancellation, and explicit resource disposal.
+
 ## [0.1.72189] - 2026-11-03
 
 ### Performance

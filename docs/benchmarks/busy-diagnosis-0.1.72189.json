@@ -1,0 +1,353 @@
+{
+  "recordedAt": "2026-11-03T11:23:51.744Z",
+  "scope": "Diagnosis only; no product code, user settings, repositories, processes or installed version were changed.",
+  "machineSnapshot": {
+    "loadAverage1m": 16.23,
+    "cpuUserPercent": 62.17,
+    "cpuSystemPercent": 24.42,
+    "cpuIdlePercent": 13.39,
+    "physicalMemoryUsedGiB": 46,
+    "compressorGiB": 22,
+    "swapUsedMiB": 7126.88,
+    "memoryPressureReportedFreePercent": 43,
+    "warning": "Snapshots were taken at different instants. Compression/swap occupancy is not proof of current paging pressure; no OS-wide load was generated."
+  },
+  "observedSlowTrace": {
+    "version": "0.1.72189",
+    "initialFrameTotalMs": 5451,
+    "gitLogPhaseMs": 5317,
+    "nativeGitLogElapsedMs": 5305,
+    "nativeGitLogSyncSpawnMs": 1,
+    "layoutMs": 0,
+    "rendererMs": 76,
+    "transportMs": 4,
+    "frameMs": 52,
+    "laterColdScansMs": [
+      18123,
+      2467,
+      1855,
+      1417
+    ],
+    "coldScanScopes": 377,
+    "coldScanBatches": 4,
+    "monitorProbeTimeoutMs": 1000,
+    "monitorBypassReason": "unresponsive-query",
+    "note": "A 58025ms trace total included focus pause/resume and is not a 58-second status execution. Its resumed status phase was 1310ms."
+  },
+  "productionLogCounts": {
+    "0.1.72188": {
+      "logs": 8,
+      "gitSlowSamples": {
+        "n": 136,
+        "p50": 1904,
+        "p95": 13390,
+        "max": 38987
+      },
+      "graphCommitDetails": {
+        "n": 145,
+        "p50": 134,
+        "p95": 598,
+        "max": 3609
+      }
+    },
+    "0.1.72189": {
+      "logs": 4,
+      "gitSlowSamples": {
+        "n": 115,
+        "p50": 1709,
+        "p95": 5335,
+        "max": 10875
+      },
+      "graphCommitDetails": {
+        "n": 22,
+        "p50": 853,
+        "p95": 3284,
+        "max": 4773
+      }
+    }
+  },
+  "unchangedCriticalPath": [
+    {
+      "file": "src/git/gitLogService.ts",
+      "sha256": "2de7a7b60a7aa6bd927c1a16e567b227a5bfb6d810ee41a79015062e97ac4416",
+      "identicalBetweenReleases": true
+    },
+    {
+      "file": "src/git/workingTreeSnapshot.ts",
+      "sha256": "a38ad10dca338e395da40f9cf7cb994b863911bc62aaf7689a25ee84821cec2c",
+      "identicalBetweenReleases": true
+    },
+    {
+      "file": "src/git/privateStatusIndex.ts",
+      "sha256": "f410d8cb3a9bec8e5e5403708fabf329e979256b7bac7b931d6897622999fa32",
+      "identicalBetweenReleases": true
+    },
+    {
+      "file": "src/git/coldStatusScan.ts",
+      "sha256": "deb5b66a3881c8f8f759ffa0d7b9380aefd220ce613ec137d68fcf28394fb641",
+      "identicalBetweenReleases": true
+    },
+    {
+      "file": "src/git/ownedFsmonitor.ts",
+      "sha256": "cfe247e21def67e66a685021103efa1e8da1e34a980103bbbaf9a0299b83e6e1",
+      "identicalBetweenReleases": true
+    },
+    {
+      "file": "src/git/gitProcessRunner.ts",
+      "sha256": "33786363fc7ec293f5b861905e5bae96e1f7b363d7a65cb00cfb784268d5a79b",
+      "identicalBetweenReleases": true
+    },
+    {
+      "file": "src/webview/graphPanel.ts",
+      "sha256": "1cddb093e34d49753b95910e798bea50c1002827e28fbe049ec4a83196669f5e",
+      "identicalBetweenReleases": true
+    },
+    {
+      "file": "src/webview/graphFirstPageRead.ts",
+      "sha256": "458e6084d293d751a4a5ae75b9fcca826ac78eb20f157e6ddcfe93c0ed39f541",
+      "identicalBetweenReleases": true
+    },
+    {
+      "file": "src/webview/graphWorkingTreeLoading.ts",
+      "sha256": "0d75e85a5d49aed24eaf39f89d725a2241b97792b412101cac1cb66b45704ede",
+      "identicalBetweenReleases": true
+    }
+  ],
+  "comparison": {
+    "order": "A/B/B/A",
+    "baseline": "0.1.72188",
+    "candidate": "0.1.72189",
+    "rendererCpuThrottle": 6,
+    "actualHostLoad": "Uncontrolled existing host load; no synthetic system stress",
+    "runs": [
+      {
+        "id": "72188-a1",
+        "source": {
+          "kind": "commit",
+          "commit": "7a130b007012d768f644822a990f44d116351a2c",
+          "bundleSha256": "400c482b8a10de8ecb263896f316484ff8660d3b70b6ea599353a91f4a871988"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 235073,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 998.8000000119209,
+              "duration": 418
+            },
+            {
+              "startTime": 1417.3999999761581,
+              "duration": 109
+            },
+            {
+              "startTime": 1528.300000011921,
+              "duration": 68
+            },
+            {
+              "startTime": 1599.0999999642372,
+              "duration": 95
+            },
+            {
+              "startTime": 1779.8999999761581,
+              "duration": 50
+            }
+          ],
+          "navigationMs": 232,
+          "readyMs": 222,
+          "firstGraphFrameMs": 1600,
+          "latestGraphFrameMs": 3758
+        },
+        "elapsedMs": 3957,
+        "gitProcesses": 18,
+        "gitCommands": {
+          "for-each-ref": 4,
+          "worktree": 2,
+          "log": 1,
+          "rev-list": 1,
+          "remote": 1,
+          "rev-parse": 3,
+          "symbolic-ref": 1,
+          "config": 3,
+          "status": 1,
+          "ls-remote": 1
+        },
+        "nativeAndDomExact": true
+      },
+      {
+        "id": "72189-b1",
+        "source": {
+          "kind": "commit",
+          "commit": "61ae9e60c1f5b8a9826b48e236301b08d7db6843",
+          "bundleSha256": "9759dc22017312dfeeeedefe62c263e2b4470c80cbb055bd8cacddf5b8704475"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 236025,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 701.6999999880791,
+              "duration": 349
+            },
+            {
+              "startTime": 1050.9000000357628,
+              "duration": 80
+            },
+            {
+              "startTime": 1131.1000000238419,
+              "duration": 54
+            },
+            {
+              "startTime": 1188.1000000238419,
+              "duration": 61
+            }
+          ],
+          "navigationMs": 187,
+          "readyMs": 176,
+          "firstGraphFrameMs": 1190,
+          "latestGraphFrameMs": 3326
+        },
+        "elapsedMs": 3997,
+        "gitProcesses": 23,
+        "gitCommands": {
+          "for-each-ref": 6,
+          "worktree": 3,
+          "log": 1,
+          "rev-list": 1,
+          "remote": 1,
+          "config": 4,
+          "rev-parse": 3,
+          "symbolic-ref": 2,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true
+      },
+      {
+        "id": "72189-b2",
+        "source": {
+          "kind": "commit",
+          "commit": "61ae9e60c1f5b8a9826b48e236301b08d7db6843",
+          "bundleSha256": "74357b5fd75c2e8dfb4aec44d051269fb38fc3161d91c77cb8addfef2d0f245d"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 236025,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 919.8999999761581,
+              "duration": 377
+            },
+            {
+              "startTime": 1297.699999988079,
+              "duration": 87
+            },
+            {
+              "startTime": 1438.7999999523163,
+              "duration": 59
+            }
+          ],
+          "navigationMs": 169,
+          "readyMs": 156,
+          "firstGraphFrameMs": 1440,
+          "latestGraphFrameMs": 4145
+        },
+        "elapsedMs": 4587,
+        "gitProcesses": 23,
+        "gitCommands": {
+          "for-each-ref": 6,
+          "worktree": 3,
+          "log": 1,
+          "rev-list": 1,
+          "remote": 1,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "config": 4,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true
+      },
+      {
+        "id": "72188-a2",
+        "source": {
+          "kind": "commit",
+          "commit": "7a130b007012d768f644822a990f44d116351a2c",
+          "bundleSha256": "96aace25fec8006d608328e98cb5109bf0c709fed510d762c80aebe8ca199de8"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 235073,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 780.0999999642372,
+              "duration": 399
+            },
+            {
+              "startTime": 1179.7999999523163,
+              "duration": 90
+            },
+            {
+              "startTime": 1271.199999988079,
+              "duration": 54
+            },
+            {
+              "startTime": 1327.7999999523163,
+              "duration": 64
+            }
+          ],
+          "navigationMs": 195,
+          "readyMs": 183,
+          "firstGraphFrameMs": 1329,
+          "latestGraphFrameMs": 3131
+        },
+        "elapsedMs": 3841,
+        "gitProcesses": 23,
+        "gitCommands": {
+          "for-each-ref": 6,
+          "worktree": 3,
+          "log": 1,
+          "rev-list": 1,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "config": 4,
+          "remote": 1,
+          "status": 1,
+          "ls-remote": 1
+        },
+        "nativeAndDomExact": true
+      }
+    ],
+    "limitations": [
+      "Two independent lifetimes per version are descriptive, not proof of absence of a regression.",
+      "The logical fixture is recreated for each lifetime; OS load, filesystem cache and async cache expiry may differ.",
+      "Real production logs cover different repositories, actions and times; cross-version log medians are not a controlled performance comparison.",
+      "No active VS Code CPU profile or GitHub network comparison was performed."
+    ],
+    "finding": "No consistent Graph startup regression reproduced. Critical history/status/native-process code is identical. Production slowness is concentrated in Native Git waits and repeated cold status scans after monitor probe failures; renderer computation is a much smaller portion."
+  },
+  "nextInvestigation": "Prioritize duplicated cold scans while private-index warmup is pending, and contention between history reads and foreground/background status. Preserve native validation and cancellation ownership; do not lengthen timeouts or disable correctness checks as a diagnosis substitute."
+}

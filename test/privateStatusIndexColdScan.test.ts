@@ -11,7 +11,8 @@ import { registerStatusIndex } from "../src/git/statusIndexOwnership";
 import { readColdStatus } from "../src/git/coldStatusScan";
 import { StatusIndexWarmCache } from "../src/git/statusIndexWarmCache";
 import { StatusIndexWarmup } from "../src/git/statusIndexWarmup";
-import { setGitReadTimeoutResolver } from "../src/git/gitProcessRunner";
+import { setGitReadTimeoutResolver, setGitProcessPreparation } from "../src/git/gitProcessRunner";
+import { GitStatusFsMonitorGuard } from "../src/git/gitStatusExec";
 
 /** 실제 큰 index와 단계별 rename·미추적 경로를 만들어 첫 전체 결과를 Git 원본과 비교한다. */
 async function repository(t: TestContext, count = 5001) {
@@ -52,6 +53,79 @@ async function waitForFile(file: string): Promise<void> {
   }
   throw new Error("Expected Git phase did not start.");
 }
+
+test("repeat foreground reads build the private cache instead of repeating cold scan batches", { timeout: 120000 }, async t => {
+  const f = await repository(t), events: string[] = [];
+  // 백그라운드 캐시가 아직 준비되지 않은 상태를 결정적으로 유지한다. 실제 foreground Git은 그대로 실행한다.
+  t.mock.method(StatusIndexWarmup.prototype, "schedule", () => undefined);
+  const index = new PrivateStatusIndex(f.root, event => events.push(event));
+  try {
+    await index.read(new AbortController().signal);
+    await writeFile(path.join(f.root, "src/0/0.txt"), "later edit\n");
+    await writeFile(path.join(f.root, "src/2/new.txt"), "later untracked\n");
+    const actual = await index.read(new AbortController().signal);
+    assert.deepEqual(sortedGroups(actual.groups), sortedGroups(await expectedGroups(f.root)));
+    assert.equal(events.filter(event => event === "private status cold scan completed").length, 1,
+      "only the initial foreground request may fan out cold scan batches");
+    assert.deepEqual(await readFile(path.join(f.root, ".git/index")), f.index);
+  } finally { await index.dispose(); }
+});
+
+test("foreground cancellation retains the private index but the next read still observes new files", { timeout: 120000 }, async t => {
+  const f = await repository(t, 32), index = new PrivateStatusIndex(f.root, () => undefined);
+  try {
+    await index.read(new AbortController().signal);
+    const privateFile = (index as any).index as string;
+    const run = GitStatusFsMonitorGuard.prototype.run, controller = new AbortController();
+    let started!: () => void; const ready = new Promise<void>(resolve => { started = resolve; });
+    const override = t.mock.method(GitStatusFsMonitorGuard.prototype, "run", async (...args: Parameters<typeof run>) => {
+      started(); await new Promise<void>((_resolve, reject) => {
+        const signal = args[2]!.signal!;
+        signal.addEventListener("abort", () => reject(new DOMException("cancelled", "AbortError")), { once: true });
+      }); return "";
+    });
+    const pending = index.read(controller.signal); void pending.catch(() => undefined);
+    await ready; controller.abort(); await assert.rejects(pending, { name: "AbortError" }); override.mock.restore();
+    assert.ok((await stat(privateFile)).isFile(), "consumer cancellation must not destroy the reusable private index");
+    await writeFile(path.join(f.root, "after-cancel.txt"), "new\n");
+    assert.deepEqual(sortedGroups((await index.read(new AbortController().signal)).groups), sortedGroups(await expectedGroups(f.root)));
+    assert.deepEqual(await readFile(path.join(f.root, ".git/index")), f.index);
+  } finally { await index.dispose(); }
+});
+
+test("cancelling a repeat read does not cancel independent cache warming", { timeout: 120000 }, async t => {
+  const f = await repository(t); let started!: () => void, release!: () => void;
+  const ready = new Promise<void>(resolve => { started = resolve; }), gate = new Promise<void>(resolve => { release = resolve; });
+  let warmingSignal: AbortSignal | undefined;
+  const restore = setGitProcessPreparation(async (_args, _root, options) => {
+    if (options.env?.GIT_INDEX_FILE?.includes("gsc-status-warmup-")) {
+      warmingSignal = options.signal; started();
+      await Promise.race([gate, new Promise<never>((_resolve, reject) => options.signal!.addEventListener("abort",
+        () => reject(new DOMException("cancelled", "AbortError")), { once: true }))]);
+    }
+    return { options };
+  });
+  const events: string[] = [], index = new PrivateStatusIndex(f.root, event => events.push(event));
+  try {
+    await index.read(new AbortController().signal); await ready;
+    const run = GitStatusFsMonitorGuard.prototype.run, controller = new AbortController();
+    let reading!: () => void; const active = new Promise<void>(resolve => { reading = resolve; });
+    const override = t.mock.method(GitStatusFsMonitorGuard.prototype, "run", async (...args: Parameters<typeof run>) => {
+      reading(); await new Promise<void>((_resolve, reject) => args[2]!.signal!.addEventListener("abort",
+        () => reject(new DOMException("cancelled", "AbortError")), { once: true })); return "";
+    });
+    const pending = index.read(controller.signal); void pending.catch(() => undefined);
+    await active; controller.abort(); await assert.rejects(pending, { name: "AbortError" }); override.mock.restore();
+    assert.equal(warmingSignal!.aborted, false);
+    release(); await (index as any).warmup.task?.completion;
+    assert.ok(events.includes("private status index warmup completed"));
+    await writeFile(path.join(f.root, "after-warming.txt"), "new\n");
+    assert.deepEqual(sortedGroups((await index.read(new AbortController().signal)).groups), sortedGroups(await expectedGroups(f.root)));
+    assert.ok(events.includes("private status index warmup applied"));
+    assert.equal(events.filter(event => event === "private status cold scan completed").length, 1);
+    assert.deepEqual(await readFile(path.join(f.root, ".git/index")), f.index);
+  } finally { release(); await index.dispose(); restore(); }
+});
 
 test("the first large snapshot is complete before an optional directory-cache build finishes", { timeout: 60000, skip: process.platform === "win32" }, async t => {
   const f = await repository(t), executable = path.join(f.directory, "git-fixture"), warming = path.join(f.directory, "warming.pid");

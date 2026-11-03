@@ -104,6 +104,12 @@ export class PrivateStatusIndex {
         const indexUnchanged = before.key === (await indexIdentity(source, signal)).key;
         const bindingUnchanged = indexUnchanged && await this.sourcePath.unchangedForStatus(sourcePath, signal);
         if (indexUnchanged && bindingUnchanged) {
+          // 병렬 cold 탐색은 첫 완료에만 쓴다. 이후 Native status는 같은 전용 index의 UNTR를 직접 완성한다.
+          // optional warmup이 늦거나 실패해도 매 새로고침마다 여러 전체 탐색을 다시 시작하지 않는다.
+          if (initial) {
+            this.cold = false;
+            this.log("private status cold scan consumed", { repoRoot: this.root, nextRead: "native-private-index" });
+          }
           if (initial && !signal.aborted && this.warmFingerprint && before.bytes && before.mtime !== undefined) {
             const key = this.warmFingerprint;
             this.warmup.schedule({ key, bytes: before.bytes, mtimeMs: before.mtime,
@@ -124,7 +130,14 @@ export class PrivateStatusIndex {
           ...(indexUnchanged ? { metadataChanged: !bindingUnchanged } : {}) });
       }
     } catch (error) {
-      if (signal.aborted || isGitLifecycleError(error)) { await this.dispose(); throw error; }
+      if (signal.aborted) {
+        // 화면 소비자 취소는 별도 index에서 진행 중인 warmup의 종료 사유가 아니다.
+        // prepare 도중 쓰기가 취소됐을 수도 있으므로 다음 조회에서 원본·사본을 반드시 다시 검증한다.
+        this.fingerprint = undefined; this.sourcePath.clear();
+        this.log("private status index retained after cancellation", { repoRoot: this.root, revalidate: true });
+        throw error;
+      }
+      if (isGitLifecycleError(error)) { await this.dispose(); throw error; }
       this.log("private status index fallback", { repoRoot: this.root, reason: error instanceof Error ? error.name : "cache-failed" });
       await this.dispose();
     }
