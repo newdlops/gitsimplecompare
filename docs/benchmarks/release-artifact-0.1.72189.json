@@ -130,5 +130,18 @@
     "Focused suites were run; the entire repository test suite was not repeated.",
     "Native stash picker UI smoke stopped before feature execution because its isolated VS Code window was not focused. No window focus was forced. Stash behavior is covered by native Git Node tests and Chromium tests.",
     "The VSIX was installed in an isolated temporary profile. Existing user windows were not reloaded."
-  ]
+  ],
+  "publication": {
+    "publisher": "newdlops",
+    "extensionId": "newdlops.gitsimplecompare",
+    "version": "0.1.72189",
+    "releaseCommit": "61ae9e60c1f5b8a9826b48e236301b08d7db6843",
+    "remoteMainVerified": true,
+    "publishExitCode": 0,
+    "url": "https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare",
+    "downloadUrl": "https://newdlops.gallery.vsassets.io/_apis/public/gallery/publisher/newdlops/extension/gitsimplecompare/0.1.72189/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage",
+    "downloadSha256": "b8e98a28324db61f4dfa9129bf8872875834e92ef70791dd95420da49d5f66cc",
+    "downloadExactPackageMatched": true,
+    "verifiedAtUtc": "2026-11-03T09:45:22.311Z"
+  }
 }
